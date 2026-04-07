@@ -1,0 +1,186 @@
+import { useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Car, Eye, EyeOff, Lock, Mail, FlaskConical } from 'lucide-react';
+import { loginApi } from '../../api/auth';
+import { useAuthStore } from '../../store/authStore';
+import { getRoleFromToken, getUserIdFromToken, getEmailFromToken } from '../../utils/helpers';
+import { useToast } from '../../components/ui/Toast';
+
+const schema = z.object({
+  email: z.string().email('Email không hợp lệ'),
+  password: z.string().min(1, 'Vui lòng nhập mật khẩu'),
+});
+
+type FormData = z.infer<typeof schema>;
+
+const Login = () => {
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuthStore();
+  const { showToast } = useToast();
+
+  const from = (location.state as { from?: Location })?.from?.pathname || '/';
+
+  // Demo login for testing (no backend needed)
+  const handleDemoLogin = () => {
+    login('demo-token-user', 2, 'user@autohub.com', ['ROLE_USER']);
+    showToast('Đã đăng nhập demo User!', 'success');
+    navigate(from === '/login' ? '/dashboard' : from);
+  };
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormData>({ resolver: zodResolver(schema) });
+
+  const onSubmit = async (data: FormData) => {
+    setLoading(true);
+    try {
+      const res = await loginApi(data);
+      if (res.success) {
+        // Extract info from JWT token
+        const token = res.data;
+        const roles = getRoleFromToken(token);
+        const userId = getUserIdFromToken(token) ?? 0;
+        const email = getEmailFromToken(token) ?? data.email;
+        login(token, userId, email, roles);
+        showToast('Đăng nhập thành công!', 'success');
+        // Redirect based on role
+        const adminRole = roles.some((r: string) => r.toLowerCase().includes('admin'));
+        if (adminRole) {
+          navigate('/admin');
+        } else {
+          navigate(from === '/login' ? '/dashboard' : from);
+        }
+      } else {
+        showToast(res.message || 'Đăng nhập thất bại', 'error');
+      }
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      showToast(error?.response?.data?.message || 'Email hoặc mật khẩu không đúng', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-navy via-navy-400 to-navy flex items-center justify-center p-4">
+      {/* Background pattern */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl" />
+      </div>
+
+      <div className="relative w-full max-w-md">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <Link to="/" className="inline-flex items-center gap-2">
+            <div className="bg-primary rounded-xl p-3">
+              <Car className="w-7 h-7 text-white" />
+            </div>
+            <span className="font-heading font-bold text-2xl text-white">
+              Auto<span className="text-primary">Hub</span>
+            </span>
+          </Link>
+          <p className="text-gray-400 mt-2">Chào mừng trở lại!</p>
+        </div>
+
+        {/* Card */}
+        <div className="bg-white rounded-3xl shadow-2xl p-8">
+          <h1 className="font-heading font-bold text-2xl text-navy mb-6">Đăng nhập</h1>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  {...register('email')}
+                  type="email"
+                  placeholder="you@example.com"
+                  className="input-field pl-10"
+                />
+              </div>
+              {errors.email && (
+                <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
+              )}
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  {...register('password')}
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  className="input-field pl-10 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : null}
+              {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+            </button>
+          </form>
+
+          <p className="text-center text-sm text-gray-500 mt-6">
+            Chưa có tài khoản?{' '}
+            <Link to="/register" className="text-primary font-semibold hover:underline">
+              Đăng ký ngay
+            </Link>
+          </p>
+
+          {/* Demo accounts */}
+          <div className="mt-6 pt-5 border-t border-gray-100">
+            <div className="flex items-center gap-2 mb-3">
+              <FlaskConical className="w-4 h-4 text-amber-500" />
+              <span className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Tài khoản Demo (Test)</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleDemoLogin()}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50 hover:bg-blue-100 hover:border-blue-300 transition-all duration-200 group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">U</div>
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-blue-700">User Demo</p>
+                  <p className="text-xs text-blue-500">user@autohub.com</p>
+                </div>
+              </div>
+              <span className="text-xs text-blue-400 group-hover:text-blue-600 font-medium">Đăng nhập →</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Login;
