@@ -59,4 +59,11 @@ public class RentalBusinessRule {
         }
     }
 
+    public void checkCarAvailability(int carId, LocalDate startDate, LocalDate endDate) {
+        boolean overlap = rentalRepository.existsActiveOverlap(carId, startDate, endDate);
+        if (overlap) {
+            throw new BusinessException("Xe đang được thuê trong khoảng thời gian này.");
+        }
+    }
+
 }

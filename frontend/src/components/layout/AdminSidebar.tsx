@@ -5,7 +5,6 @@ import {
   Users,
   FileText,
   Tag,
-  Palette,
   Cpu,
   LogOut,
   Menu,
@@ -20,11 +19,10 @@ import { useAuthStore } from '../../store/authStore';
 const navItems = [
   { label: 'Tổng quan', to: '/admin', icon: LayoutDashboard, exact: true },
   { label: 'Quản lý xe', to: '/admin/cars', icon: Car },
+  { label: 'Quản lý người dùng', to: '/admin/users', icon: Users },
   { label: 'Thương hiệu & Model', to: '/admin/brands', icon: Tag },
-  { label: 'Màu sắc', to: '/admin/colors', icon: Palette },
-  { label: 'Đơn thuê', to: '/admin/rentals', icon: FileText },
-  { label: 'Hóa đơn', to: '/admin/invoices', icon: Receipt },
-  { label: 'Người dùng', to: '/admin/users', icon: Users },
+  { label: 'Quản lý đơn thuê', to: '/admin/rentals', icon: FileText },
+  { label: 'Quản lý hóa đơn', to: '/admin/invoices', icon: Receipt },
   { label: 'Báo cáo', to: '/admin/reports', icon: BarChart3 },
 ];
 
@@ -46,9 +44,8 @@ const AdminSidebar = () => {
 
   return (
     <aside
-      className={`bg-navy min-h-screen flex flex-col transition-all duration-300 ${
-        collapsed ? 'w-16' : 'w-64'
-      }`}
+      className={`bg-navy min-h-screen flex flex-col transition-all duration-300 ${collapsed ? 'w-16' : 'w-64'
+        }`}
     >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-navy-400">
@@ -91,11 +88,10 @@ const AdminSidebar = () => {
           <Link
             key={item.to}
             to={item.to}
-            className={`flex items-center gap-3 px-4 py-3 mx-2 rounded-xl mb-1 transition-all duration-200 group ${
-              isActive(item)
-                ? 'bg-primary text-white'
-                : 'text-gray-400 hover:bg-navy-400 hover:text-white'
-            }`}
+            className={`flex items-center gap-3 px-4 py-3 mx-2 rounded-xl mb-1 transition-all duration-200 group ${isActive(item)
+              ? 'bg-primary text-white'
+              : 'text-gray-400 hover:bg-navy-400 hover:text-white'
+              }`}
             title={collapsed ? item.label : undefined}
           >
             <item.icon className="w-5 h-5 flex-shrink-0" />

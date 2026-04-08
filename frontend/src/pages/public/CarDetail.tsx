@@ -51,8 +51,22 @@ const CarDetail = () => {
         navigate('/dashboard/rentals');
       }
     },
-    onError: () => {
-      showToast('Có lỗi xảy ra khi đặt xe', 'error');
+    onError: (error: unknown) => {
+      const apiError = error as {
+        response?: {
+          data?: { message?: string } | Record<string, string>;
+        };
+      };
+      const data = apiError?.response?.data;
+      const message =
+        (typeof data === 'object' && data !== null && 'message' in data && typeof data.message === 'string'
+          ? data.message
+          : null) ||
+        (typeof data === 'object' && data !== null
+          ? Object.values(data).find((v) => typeof v === 'string')
+          : null) ||
+        'Có lỗi xảy ra khi đặt xe';
+      showToast(String(message), 'error');
     },
   });
 
@@ -66,13 +80,18 @@ const CarDetail = () => {
       showToast('Vui lòng chọn ngày thuê và trả xe', 'info');
       return;
     }
+    if (!userId) {
+      showToast('Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại', 'error');
+      navigate('/login');
+      return;
+    }
     if (!car) return;
 
     rentalMutation.mutate({
       startDate: formatDateForApi(startDate),
       endDate: formatDateForApi(endDate),
       carId: car.id,
-      userId: userId!,
+      userId,
       paymentMethod,
     });
   };

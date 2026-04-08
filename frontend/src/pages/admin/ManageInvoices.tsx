@@ -86,7 +86,7 @@ const ManageInvoices = () => {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr className="text-gray-500">
-                  <th className="text-left px-5 py-4 font-medium">#</th>
+                  <th className="text-left px-5 py-4 font-medium">STT</th>
                   <th className="text-left px-5 py-4 font-medium">Số hóa đơn</th>
                   <th className="text-left px-5 py-4 font-medium">Mã đơn thuê</th>
                   <th className="text-right px-5 py-4 font-medium">Tổng tiền</th>
@@ -96,9 +96,9 @@ const ManageInvoices = () => {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((invoice) => (
+                {filtered.map((invoice, idx) => (
                   <tr key={invoice.id} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="px-5 py-4 text-gray-400">{invoice.id}</td>
+                    <td className="px-5 py-4 text-gray-400">{idx + 1}</td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
@@ -165,10 +165,28 @@ const ManageInvoices = () => {
               <p className="text-gray-400 text-sm">AutoHub Car Rental</p>
             </div>
 
+            {/* Car summary */}
+            <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+              <img
+                src={selected.rental?.car?.imagePath || ''}
+                alt=""
+                className="w-20 h-16 object-cover rounded-lg"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+              <div className="min-w-0">
+                <p className="font-semibold text-navy">
+                  {selected.rental?.car?.model?.brand?.name} {selected.rental?.car?.model?.name}
+                </p>
+                <p className="text-sm text-gray-500">Biển số: {selected.rental?.car?.plate}</p>
+              </div>
+            </div>
+
             <div className="space-y-3">
               {[
                 { label: 'ID hóa đơn', value: `#${selected.id}` },
                 { label: 'Mã đơn thuê', value: `#${getRentalId(selected)}` },
+                { label: 'Ngày nhận xe', value: selected.rental?.startDate || '-' },
+                { label: 'Ngày trả xe', value: selected.rental?.endDate || '-' },
                 { label: 'Chiết khấu', value: `${selected.discountRate}%` },
                 { label: 'Thuế VAT', value: `${selected.taxRate}%` },
               ].map((row) => (

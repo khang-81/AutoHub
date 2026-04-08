@@ -5,9 +5,11 @@ import { SlidersHorizontal, Search, X, ChevronLeft, ChevronRight, LayoutGrid, Li
 import { getAllCarsApi } from '../../api/cars';
 import { getAllBrandsApi } from '../../api/brands';
 import { getAllColorsApi } from '../../api/colors';
+import { getAllRentalsApi } from '../../api/rentals';
 import CarCard from '../../components/ui/CarCard';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import type { Car, Brand, Color } from '../../types';
+import type { Car, Brand, Color, Rental } from '../../types';
+import { formatDate } from '../../utils/helpers';
 
 const ITEMS_PER_PAGE = 9;
 
@@ -28,6 +30,32 @@ const CarListing = () => {
   const { data: cars = [], isLoading } = useQuery<Car[]>({ queryKey: ['cars'], queryFn: getAllCarsApi });
   const { data: brands = [] } = useQuery<Brand[]>({ queryKey: ['brands'], queryFn: getAllBrandsApi });
   const { data: colors = [] } = useQuery<Color[]>({ queryKey: ['colors'], queryFn: getAllColorsApi });
+  const { data: rentals = [] } = useQuery<Rental[]>({ queryKey: ['rentals'], queryFn: getAllRentalsApi });
+
+  const bookingMap = useMemo(() => {
+    const map = new Map<number, Array<{ startDate: string; endDate: string }>>();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    rentals.forEach((rental) => {
+      if (!rental?.car?.id || !rental.startDate || !rental.endDate) return;
+      if (rental.rentalStatus === 'COMPLETED' || rental.rentalStatus === 'CANCELLED' || !!rental.returnDate) return;
+
+      const end = new Date(rental.endDate);
+      end.setHours(0, 0, 0, 0);
+      if (end < today) return;
+
+      const list = map.get(rental.car.id) || [];
+      list.push({ startDate: rental.startDate, endDate: rental.endDate });
+      map.set(rental.car.id, list);
+    });
+
+    for (const [, ranges] of map.entries()) {
+      ranges.sort((a, b) => a.startDate.localeCompare(b.startDate));
+    }
+
+    return map;
+  }, [rentals]);
 
   const filtered = useMemo(() => {
     return cars.filter((car) => {
@@ -217,7 +245,15 @@ const CarListing = () => {
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
                   {paginated.map((car) => (
-                    <CarCard key={car.id} car={car} />
+                    <CarCard
+                      key={car.id}
+                      car={car}
+                      bookedRanges={(bookingMap.get(car.id) || []).map((r) => ({
+                        ...r,
+                        startDate: formatDate(r.startDate),
+                        endDate: formatDate(r.endDate),
+                      }))}
+                    />
                   ))}
                 </div>
 
