@@ -19,6 +19,11 @@ export const getUserRolesApi = async (userId: number): Promise<{ name: string }[
   }
 };
 
+export const changePasswordApi = async (data: { currentPassword: string; newPassword: string }) => {
+  const res = await axiosInstance.put('/api/users/changePassword', data);
+  return res.data;
+};
+
 export const deleteUserApi = async (id: number) => {
   const res = await axiosInstance.delete('/api/users/delete', { data: { id } });
   return res.data;

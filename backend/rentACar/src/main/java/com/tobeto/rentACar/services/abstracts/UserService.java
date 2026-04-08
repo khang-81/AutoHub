@@ -21,6 +21,7 @@ public interface UserService extends UserDetailsService {
     GetUserByIdResponse getById(int id);
     GetUserByNameResponse getByName(String email);
     GetUserByNameResponse updateProfile(String email, UpdateProfileRequest request);
+    Result changePassword(String email, ChangePasswordRequest request);
 
     List<RoleDto> getRolesByUserId(Integer id);
 }

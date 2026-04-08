@@ -1,6 +1,7 @@
 package com.tobeto.rentACar.services.concretes;
 
 import com.tobeto.rentACar.core.exceptions.types.NotFoundException;
+import com.tobeto.rentACar.core.exceptions.types.BusinessException;
 import com.tobeto.rentACar.core.utilities.messages.MessageService;
 import com.tobeto.rentACar.core.utilities.mappers.ModelMapperService;
 import com.tobeto.rentACar.core.utilities.results.Result;
@@ -37,6 +38,7 @@ public class UserManager implements UserService {
     private final UserRepository userRepository;
     private final ModelMapperService modelMapperService;
     private final UserBusinessRule userBusinessRule;
+    private final PasswordEncoder passwordEncoder;
     private MessageService messageService;
 
     @Override
@@ -80,6 +82,21 @@ public class UserManager implements UserService {
         userRepository.save(user);
 
         return new GetUserByNameResponse(user.getId(), user.getEmail(), user.getPassword());
+    }
+
+    @Override
+    public Result changePassword(String email, ChangePasswordRequest request) {
+        User user = userRepository.findByEmail(email).orElseThrow(() ->
+                new NotFoundException(messageService.getMessage(Messages.User.getUserNotFoundMessage)));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new BusinessException("Mật khẩu hiện tại không đúng.");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        return new SuccessResult("Password changed successfully.");
     }
 
     @Override
