@@ -65,6 +65,9 @@ const CarDetail = () => {
     onSuccess: (res) => {
       // Backend returns { id, result: { success, message } }
       if (res?.id) {
+        if (paymentMethod === 'CASH') {
+          showToast(`Thuê xe thành công! Đơn #${res.id} đang chờ admin xác nhận.`, 'success');
+        }
         navigate(`/dashboard/payment/${res.id}`);
       } else {
         navigate('/dashboard/rentals');

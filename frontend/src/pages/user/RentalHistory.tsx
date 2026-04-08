@@ -19,6 +19,7 @@ const RentalHistory = () => {
   const { data: rentals = [], isLoading } = useQuery<RentalByUser[]>({
     queryKey: ['myRentals'],
     queryFn: getRentalsByUserIdApi,
+    refetchOnMount: 'always',
   });
 
   const { data: invoices = [] } = useQuery<Invoice[]>({
@@ -44,6 +45,18 @@ const RentalHistory = () => {
 
   const selectedInvoice = invoices.find((inv) => (inv.rental?.id ?? inv.rentalId) === invoiceRentalId) || null;
   const totalSpent = sortedRentals.reduce((sum, r) => sum + (r.totalPrice || 0), 0);
+  const getPaymentLabel = (rental: RentalByUser) => {
+    if (rental.paymentMethod === 'CASH') return 'Thanh toán khi nhận xe';
+    return 'Chuyển khoản ngân hàng';
+  };
+  const getRentalStatusLabel = (rental: RentalByUser) => {
+    const status = rental.rentalStatus || (rental.returnDate ? 'COMPLETED' : 'PENDING_ADMIN_CONFIRM');
+    if (status === 'PENDING_ADMIN_CONFIRM') return 'Chờ admin xác nhận';
+    if (status === 'PENDING_PAYMENT') return 'Chờ chuyển khoản';
+    if (status === 'CONFIRMED') return 'Đã xác nhận';
+    if (status === 'COMPLETED') return 'Đã hoàn tất';
+    return status;
+  };
 
   return (
     <div className="space-y-6">
@@ -137,10 +150,10 @@ const RentalHistory = () => {
 
                     <div className="flex flex-wrap items-center gap-2 mb-4">
                       <span className="badge text-xs bg-blue-100 text-blue-700">
-                        Thanh toán: {rental.paymentMethod || 'BANK_TRANSFER'} / {rental.paymentStatus || 'UNPAID'}
+                        Thanh toán: {getPaymentLabel(rental)}
                       </span>
                       <span className="badge text-xs bg-amber-100 text-amber-700">
-                        Trạng thái đơn: {rental.rentalStatus || (rental.returnDate ? 'COMPLETED' : 'PENDING_ADMIN_CONFIRM')}
+                        Trạng thái đơn: {getRentalStatusLabel(rental)}
                       </span>
                     </div>
 
