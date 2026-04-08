@@ -8,9 +8,11 @@ import com.tobeto.rentACar.core.utilities.results.SuccessResult;
 import com.tobeto.rentACar.entities.concretes.Rental;
 import com.tobeto.rentACar.repositories.RentalRepository;
 import com.tobeto.rentACar.services.abstracts.CarService;
+import com.tobeto.rentACar.services.abstracts.InvoiceService;
 import com.tobeto.rentACar.services.abstracts.RentalService;
 import com.tobeto.rentACar.services.constants.Messages;
 import com.tobeto.rentACar.services.dtos.car.response.GetCarByIdResponse;
+import com.tobeto.rentACar.services.dtos.invoice.request.AddInvoiceRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.AddRentalRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.DeleteRentalRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.FindRentalIdRequest;
@@ -37,6 +39,7 @@ public class RentalManager implements RentalService {
     private final RentalRepository rentalRepository;
     private final ModelMapperService modelMapperService;
     private final CarService carService;
+    private final InvoiceService invoiceService;
     private final List<RentalBusinessRule> rentalBusinessRules;
     private MessageService messageService;
 
@@ -69,6 +72,16 @@ public class RentalManager implements RentalService {
         rental.setStartKilometer(currentCarKilometer);
         rental.setTotalPrice(totalPrice);
         Rental savedRental = rentalRepository.save(rental);
+
+        // Auto-create invoice right after successful booking so user pages can show invoice data immediately.
+        AddInvoiceRequest invoiceRequest = new AddInvoiceRequest();
+        invoiceRequest.setInvoiceNo("INV-" + savedRental.getId() + "-" + System.currentTimeMillis());
+        invoiceRequest.setTotalPrice((float) totalPrice);
+        invoiceRequest.setDiscountRate(0f);
+        invoiceRequest.setTaxRate(10f);
+        invoiceRequest.setRentalId(savedRental.getId());
+        invoiceService.add(invoiceRequest);
+
         Result result = new SuccessResult(messageService.getMessage(Messages.Rental.rentalAddSuccess));
 
         AddRentalResponse addRentalResponse = new AddRentalResponse();

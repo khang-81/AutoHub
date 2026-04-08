@@ -79,6 +79,15 @@ public class InvoiceManager implements InvoiceService {
     }
 
     @Override
+    public List<GetAllInvoicesResponse> getByUserId(int userId) {
+        List<Invoice> invoices = invoiceRepository.findByRentalUserId(userId);
+        return invoices.stream()
+                .map(invoice -> this.modelMapperService.forResponse()
+                        .map(invoice, GetAllInvoicesResponse.class))
+                .toList();
+    }
+
+    @Override
     public GetInvoiceByIdResponse getById(int id) {
 
         Invoice invoice = invoiceRepository.findById(id).orElseThrow(() ->

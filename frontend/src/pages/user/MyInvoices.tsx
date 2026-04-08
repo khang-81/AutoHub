@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { FileText, Download, Eye, Search, Receipt } from 'lucide-react';
-import { getAllInvoicesApi } from '../../api/invoices';
+import { getMyInvoicesApi } from '../../api/invoices';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Modal from '../../components/ui/Modal';
-import { formatCurrency } from '../../utils/helpers';
+import { formatCurrency, formatDate } from '../../utils/helpers';
 import type { Invoice } from '../../types';
 
 const MyInvoices = () => {
@@ -12,8 +12,8 @@ const MyInvoices = () => {
   const [selected, setSelected] = useState<Invoice | null>(null);
 
   const { data: invoices = [], isLoading } = useQuery<Invoice[]>({
-    queryKey: ['invoices'],
-    queryFn: getAllInvoicesApi,
+    queryKey: ['myInvoices'],
+    queryFn: getMyInvoicesApi,
   });
 
   const getRentalId = (inv: Invoice) => inv.rental?.id ?? inv.rentalId;
@@ -136,6 +136,15 @@ const MyInvoices = () => {
               {[
                 { label: 'Số hóa đơn', value: selected.invoiceNo || `INV-${selected.id}` },
                 { label: 'Mã đơn thuê', value: `#${getRentalId(selected)}` },
+                {
+                  label: 'Xe',
+                  value: selected.rental?.car
+                    ? `${selected.rental.car.model?.brand?.name ?? ''} ${selected.rental.car.model?.name ?? ''}`.trim()
+                    : 'N/A',
+                },
+                { label: 'Biển số', value: selected.rental?.car?.plate || 'N/A' },
+                { label: 'Ngày nhận xe', value: selected.rental?.startDate ? formatDate(selected.rental.startDate) : 'N/A' },
+                { label: 'Ngày trả xe', value: selected.rental?.endDate ? formatDate(selected.rental.endDate) : 'N/A' },
                 { label: 'Chiết khấu', value: `${selected.discountRate}%` },
                 { label: 'Thuế VAT', value: `${selected.taxRate}%` },
               ].map((row) => (
