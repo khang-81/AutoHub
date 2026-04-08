@@ -44,6 +44,27 @@ const RentalHistory = () => {
 
   const selectedInvoice = invoices.find((inv) => (inv.rental?.id ?? inv.rentalId) === invoiceRentalId) || null;
   const totalSpent = sortedRentals.reduce((sum, r) => sum + (r.totalPrice || 0), 0);
+  const getPaymentLabel = (rental: RentalByUser) => {
+    if (rental.paymentMethod === 'CASH') return 'Thanh toán khi nhận xe';
+    if (rental.paymentMethod === 'BANK_TRANSFER') return 'Chuyển khoản ngân hàng';
+    return 'Chưa xác định';
+  };
+  const getPaymentStatusLabel = (rental: RentalByUser) => {
+    if (rental.paymentMethod === 'CASH') return 'Thanh toán khi nhận xe';
+    if (rental.paymentStatus === 'PAID') return 'Đã thanh toán';
+    if (rental.paymentStatus === 'PENDING_CONFIRM') return 'Chờ xác nhận chuyển khoản';
+    if (rental.paymentStatus === 'PENDING_TRANSFER') return 'Chờ chuyển khoản';
+    return 'Chưa thanh toán';
+  };
+  const getRentalStatusLabel = (rental: RentalByUser) => {
+    const status = rental.rentalStatus || (rental.returnDate ? 'COMPLETED' : 'PENDING_ADMIN_CONFIRM');
+    if (status === 'PENDING_ADMIN_CONFIRM') return 'Chờ admin xác nhận';
+    if (status === 'PENDING_PAYMENT') return 'Chờ khách thanh toán';
+    if (status === 'CONFIRMED') return 'Đã xác nhận';
+    if (status === 'COMPLETED') return 'Đã hoàn tất';
+    if (status === 'CANCELLED') return 'Đã hủy';
+    return 'Đang xử lý';
+  };
 
   return (
     <div className="space-y-6">
@@ -137,10 +158,10 @@ const RentalHistory = () => {
 
                     <div className="flex flex-wrap items-center gap-2 mb-4">
                       <span className="badge text-xs bg-blue-100 text-blue-700">
-                        Thanh toán: {rental.paymentMethod || 'BANK_TRANSFER'} / {rental.paymentStatus || 'UNPAID'}
+                        Thanh toán: {getPaymentLabel(rental)} / {getPaymentStatusLabel(rental)}
                       </span>
                       <span className="badge text-xs bg-amber-100 text-amber-700">
-                        Trạng thái đơn: {rental.rentalStatus || (rental.returnDate ? 'COMPLETED' : 'PENDING_ADMIN_CONFIRM')}
+                        Trạng thái đơn: {getRentalStatusLabel(rental)}
                       </span>
                     </div>
 
