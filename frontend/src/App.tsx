@@ -31,6 +31,7 @@ import Profile from './pages/user/Profile';
 import RentalHistory from './pages/user/RentalHistory';
 import MyInvoices from './pages/user/MyInvoices';
 import ChangePassword from './pages/user/ChangePassword';
+import PaymentPage from './pages/user/PaymentPage';
 
 // Admin pages
 import AdminLogin from './pages/admin/AdminLogin';
@@ -86,6 +87,7 @@ function App() {
               <Route index element={<UserDashboard />} />
               <Route path="profile" element={<Profile />} />
               <Route path="rentals" element={<RentalHistory />} />
+              <Route path="payment/:rentalId" element={<PaymentPage />} />
               <Route path="invoices" element={<MyInvoices />} />
               <Route path="change-password" element={<ChangePassword />} />
             </Route>

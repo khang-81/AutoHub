@@ -114,6 +114,9 @@ export interface Rental {
   returnDate: string | null;
   startKilometer: number;
   totalPrice: number;
+  paymentMethod?: 'CASH' | 'BANK_TRANSFER';
+  paymentStatus?: 'PENDING_TRANSFER' | 'PENDING_CONFIRM' | 'PAID' | 'UNPAID' | 'FAILED';
+  rentalStatus?: 'PENDING_PAYMENT' | 'PENDING_ADMIN_CONFIRM' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
   car: Car;
   user: User;
 }
@@ -123,6 +126,7 @@ export interface AddRentalRequest {
   endDate: string;
   carId: number;
   userId: number;
+  paymentMethod: 'CASH' | 'BANK_TRANSFER';
 }
 
 export interface AddRentalResponse {
@@ -138,6 +142,9 @@ export interface RentalByUser {
   endDate: string;
   returnDate: string | null;
   totalPrice: number;
+  paymentMethod?: 'CASH' | 'BANK_TRANSFER';
+  paymentStatus?: 'PENDING_TRANSFER' | 'PENDING_CONFIRM' | 'PAID' | 'UNPAID' | 'FAILED';
+  rentalStatus?: 'PENDING_PAYMENT' | 'PENDING_ADMIN_CONFIRM' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
   car: Car;
 }
 

@@ -18,6 +18,11 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
     return <Navigate to="/dashboard" replace />;
   }
 
+  // Prevent admin session from opening user dashboard pages (it causes empty user-specific data).
+  if (!requireAdmin && isAdmin) {
+    return <Navigate to="/admin" replace />;
+  }
+
   return <>{children}</>;
 };
 
