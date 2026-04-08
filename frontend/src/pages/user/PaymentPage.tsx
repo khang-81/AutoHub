@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CreditCard, QrCode, Landmark, ArrowLeft } from 'lucide-react';
 import { getRentalByIdApi, submitTransferApi } from '../../api/rentals';
 import { useToast } from '../../components/ui/Toast';
@@ -19,6 +19,7 @@ const BANK_INFO = {
 const PaymentPage = () => {
   const { rentalId } = useParams<{ rentalId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { showToast } = useToast();
 
   const { data: rental, isLoading } = useQuery<Rental>({
@@ -96,13 +97,20 @@ const PaymentPage = () => {
             <h2 className="font-semibold text-navy">Thanh toan tien mat khi nhan xe</h2>
           </div>
           <p className="text-gray-600">
-            Don cua ban da duoc tao. Don se o trang thai cho admin xac nhan. Sau khi admin xac nhan, trang thai se la:
-            <strong> Xac nhan don hang, chua thanh toan</strong>.
+            Don cua ban da duoc tao. Trang thai hien tai:
+            <strong> Cho admin xac nhan, thanh toan khi nhan xe</strong>.
           </p>
           <div className="mt-5">
-            <button onClick={() => navigate('/dashboard/rentals')} className="btn-primary inline-flex items-center gap-2">
+            <button
+              onClick={() => {
+                queryClient.invalidateQueries({ queryKey: ['myRentals'] });
+                queryClient.invalidateQueries({ queryKey: ['myInvoices'] });
+                navigate('/dashboard/rentals');
+              }}
+              className="btn-primary inline-flex items-center gap-2"
+            >
               <ArrowLeft className="w-4 h-4" />
-              Ve lich su don
+              Ve lich su thue xe
             </button>
           </div>
         </div>
