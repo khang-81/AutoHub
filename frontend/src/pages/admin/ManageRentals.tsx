@@ -103,6 +103,7 @@ const ManageRentals = () => {
       (filterStatus === 'returned' && (r.rentalStatus === 'COMPLETED' || !!r.returnDate));
     return matchSearch && matchStatus;
   });
+  const sortedFiltered = [...filtered].sort((a, b) => b.id - a.id);
 
   const totalRevenue = rentals.reduce((s, r) => s + (r.totalPrice || 0), 0);
   const activeCount = rentals.filter((r) => !r.returnDate).length;
@@ -173,7 +174,7 @@ const ManageRentals = () => {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((rental, idx) => (
+                {sortedFiltered.map((rental, idx) => (
                   <tr key={rental.id} className="border-b border-gray-50 hover:bg-gray-50">
                     <td className="px-5 py-4 text-gray-400">{idx + 1}</td>
                     <td className="px-5 py-4">
@@ -254,7 +255,7 @@ const ManageRentals = () => {
                 ))}
               </tbody>
             </table>
-            {filtered.length === 0 && (
+            {sortedFiltered.length === 0 && (
               <div className="text-center py-16 text-gray-400">
                 <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 Không có đơn thuê
