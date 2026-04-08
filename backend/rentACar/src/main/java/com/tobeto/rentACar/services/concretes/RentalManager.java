@@ -197,19 +197,19 @@ public class RentalManager implements RentalService {
                 () -> new NotFoundException(messageService.getMessage(Messages.Rental.getRentalNotFoundMessage)));
 
         if (rental.getUser() == null || rental.getUser().getId() != userId) {
-            throw new BusinessException("You are not allowed to update this rental.");
+            throw new BusinessException("Bạn không có quyền cập nhật đơn thuê này.");
         }
         if (!"BANK_TRANSFER".equals(rental.getPaymentMethod())) {
-            throw new BusinessException("This rental is not using bank transfer.");
+            throw new BusinessException("Đơn thuê này không dùng phương thức chuyển khoản.");
         }
         if (!"PENDING_PAYMENT".equals(rental.getRentalStatus())) {
-            throw new BusinessException("Rental is not in pending payment status.");
+            throw new BusinessException("Đơn thuê chưa ở trạng thái chờ thanh toán.");
         }
 
         rental.setPaymentStatus("PENDING_CONFIRM");
         rental.setRentalStatus("PENDING_ADMIN_CONFIRM");
         rentalRepository.save(rental);
-        return new SuccessResult("Transfer submitted. Waiting for admin confirmation.");
+        return new SuccessResult("Đã gửi xác nhận chuyển khoản. Vui lòng chờ admin xác nhận.");
     }
 
     @Override
@@ -219,7 +219,7 @@ public class RentalManager implements RentalService {
 
         if ("BANK_TRANSFER".equals(rental.getPaymentMethod())) {
             if (!"PENDING_CONFIRM".equals(rental.getPaymentStatus())) {
-                throw new BusinessException("Bank transfer has not been submitted by customer.");
+                throw new BusinessException("Khách hàng chưa gửi xác nhận chuyển khoản.");
             }
             rental.setPaymentStatus("PAID");
         } else if ("CASH".equals(rental.getPaymentMethod())) {
@@ -227,7 +227,7 @@ public class RentalManager implements RentalService {
         }
         rental.setRentalStatus("CONFIRMED");
         rentalRepository.save(rental);
-        return new SuccessResult("Rental confirmed by admin.");
+        return new SuccessResult("Admin đã xác nhận đơn thuê.");
     }
 
 }
