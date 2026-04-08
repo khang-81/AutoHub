@@ -315,18 +315,18 @@ const CarDetail = () => {
               <div className="mb-5">
                 <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                   <CreditCard className="w-4 h-4 text-primary" />
-                  Phuong thuc thanh toan
+                  Phương thức thanh toán
                 </label>
                 <select
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value as 'CASH' | 'BANK_TRANSFER')}
                   className="input-field"
                 >
-                  <option value="BANK_TRANSFER">Chuyen khoan ngan hang</option>
-                  <option value="CASH">Tien mat khi nhan xe</option>
+                  <option value="BANK_TRANSFER">Chuyển khoản ngân hàng</option>
+                  <option value="CASH">Tiền mặt khi nhận xe</option>
                 </select>
                 <p className="text-xs text-gray-400 mt-2">
-                  Sau khi dat xe, ban se duoc chuyen den trang thanh toan theo phuong thuc da chon.
+                  Sau khi đặt xe, bạn sẽ được chuyển đến trang thanh toán theo phương thức đã chọn.
                 </p>
               </div>
 
