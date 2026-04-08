@@ -71,6 +71,15 @@ public class UsersController {
         return userService.updateProfile(username, request);
     }
 
+    @PutMapping("/changePassword")
+    public Result changePassword(@RequestBody @Valid ChangePasswordRequest request, HttpServletRequest httpRequest) {
+        String tokenWithPrefix = httpRequest.getHeader("Authorization");
+        String token = tokenWithPrefix.replace("Bearer ", "");
+        String username = jwtService.extractUser(token);
+
+        return userService.changePassword(username, request);
+    }
+
     @GetMapping("/{userId}/roles")
     public List<RoleDto> getUserRoles(@PathVariable Integer userId) {
         return userService.getRolesByUserId(userId);

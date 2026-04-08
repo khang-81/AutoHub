@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useToast } from '../../components/ui/Toast';
+import { changePasswordApi } from '../../api/users';
 
 const schema = z.object({
   currentPassword: z.string().min(1, 'Vui lòng nhập mật khẩu hiện tại'),
@@ -27,15 +28,18 @@ const ChangePassword = () => {
     resolver: zodResolver(schema),
   });
 
-  const onSubmit = async (_data: FormData) => {
+  const onSubmit = async (data: FormData) => {
     setLoading(true);
     try {
-      // TODO: Call change password API when backend supports it
-      await new Promise((r) => setTimeout(r, 1000));
+      await changePasswordApi({
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword,
+      });
       showToast('Đổi mật khẩu thành công!', 'success');
       reset();
-    } catch {
-      showToast('Có lỗi xảy ra, vui lòng thử lại', 'error');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      showToast(error?.response?.data?.message || 'Đổi mật khẩu thất bại', 'error');
     } finally {
       setLoading(false);
     }
