@@ -35,7 +35,7 @@ const PaymentPage = () => {
     },
     onError: (err: unknown) => {
       const e = err as { response?: { data?: { message?: string } } };
-      showToast(e?.response?.data?.message || 'Khong the gui xac nhan chuyen khoan', 'error');
+      showToast(e?.response?.data?.message || 'Không thể gửi xác nhận chuyển khoản', 'error');
     },
   });
 
@@ -47,23 +47,23 @@ const PaymentPage = () => {
   }, [rental]);
 
   if (isLoading) return <LoadingSpinner />;
-  if (!rental) return <div className="text-center text-gray-500">Khong tim thay don thue.</div>;
+  if (!rental) return <div className="text-center text-gray-500">Không tìm thấy đơn thuê.</div>;
 
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-2xl shadow-sm p-6">
-        <h1 className="font-heading font-bold text-xl text-navy mb-1">Thanh toan don thue #{rental.id}</h1>
+        <h1 className="font-heading font-bold text-xl text-navy mb-1">Thanh toán đơn thuê #{rental.id}</h1>
         <p className="text-gray-500 text-sm">
-          Xe: {rental.car?.model?.brand?.name} {rental.car?.model?.name} - Bien so {rental.car?.plate}
+          Xe: {rental.car?.model?.brand?.name} {rental.car?.model?.name} - Biển số {rental.car?.plate}
         </p>
-        <p className="text-primary font-bold text-lg mt-2">Tong tien: {formatCurrency(rental.totalPrice)}</p>
+        <p className="text-primary font-bold text-lg mt-2">Tổng tiền: {formatCurrency(rental.totalPrice)}</p>
       </div>
 
       {rental.paymentMethod === 'BANK_TRANSFER' ? (
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <div className="flex items-center gap-2 mb-4">
             <QrCode className="w-5 h-5 text-primary" />
-            <h2 className="font-semibold text-navy">Chuyen khoan ngan hang</h2>
+            <h2 className="font-semibold text-navy">Chuyển khoản ngân hàng</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -71,11 +71,11 @@ const PaymentPage = () => {
               <img src={qrUrl} alt="QR payment" className="w-56 h-56 object-contain" />
             </div>
             <div className="space-y-3 text-sm text-gray-700">
-              <p className="flex items-center gap-2"><Landmark className="w-4 h-4 text-primary" /> Ngan hang: {BANK_INFO.bankName}</p>
-              <p>Chu tai khoan: <strong>{BANK_INFO.accountName}</strong></p>
-              <p>So tai khoan: <strong>{BANK_INFO.accountNumberDisplay}</strong></p>
-              <p>Noi dung CK: <strong>THUEXE-{rental.id}</strong></p>
-              <p className="text-amber-600">Sau khi chuyen khoan, bam nut ben duoi de gui xac nhan cho admin.</p>
+              <p className="flex items-center gap-2"><Landmark className="w-4 h-4 text-primary" /> Ngân hàng: {BANK_INFO.bankName}</p>
+              <p>Chủ tài khoản: <strong>{BANK_INFO.accountName}</strong></p>
+              <p>Số tài khoản: <strong>{BANK_INFO.accountNumberDisplay}</strong></p>
+              <p>Nội dung CK: <strong>THUEXE-{rental.id}</strong></p>
+              <p className="text-amber-600">Sau khi chuyển khoản, bấm nút bên dưới để gửi xác nhận cho admin.</p>
             </div>
           </div>
 
@@ -85,7 +85,7 @@ const PaymentPage = () => {
               disabled={transferMutation.isPending}
               className="btn-primary min-w-[260px] text-center"
             >
-              {transferMutation.isPending ? 'Dang gui...' : 'Xác nhận chuyển khoản'}
+              {transferMutation.isPending ? 'Đang gửi...' : 'Xác nhận chuyển khoản'}
             </button>
           </div>
         </div>
@@ -93,16 +93,16 @@ const PaymentPage = () => {
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <div className="flex items-center gap-2 mb-3">
             <CreditCard className="w-5 h-5 text-primary" />
-            <h2 className="font-semibold text-navy">Thanh toan tien mat khi nhan xe</h2>
+            <h2 className="font-semibold text-navy">Thanh toán tiền mặt khi nhận xe</h2>
           </div>
           <p className="text-gray-600">
-            Don cua ban da duoc tao. Don se o trang thai cho admin xac nhan. Sau khi admin xac nhan, trang thai se la:
-            <strong> Xac nhan don hang, chua thanh toan</strong>.
+            Đơn của bạn đã được tạo. Đơn sẽ ở trạng thái chờ admin xác nhận. Sau khi admin xác nhận, trạng thái sẽ là:
+            <strong> Xác nhận đơn hàng, chưa thanh toán</strong>.
           </p>
           <div className="mt-5">
             <button onClick={() => navigate('/dashboard/rentals')} className="btn-primary inline-flex items-center gap-2">
               <ArrowLeft className="w-4 h-4" />
-              Ve lich su don
+              Về lịch sử đơn
             </button>
           </div>
         </div>
