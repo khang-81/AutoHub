@@ -3,10 +3,11 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Car, Eye, EyeOff, Lock, Mail, FlaskConical } from 'lucide-react';
+import { Car, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { loginApi } from '../../api/auth';
+import { getUserRolesApi } from '../../api/users';
 import { useAuthStore } from '../../store/authStore';
-import { getRoleFromToken, getUserIdFromToken, getEmailFromToken } from '../../utils/helpers';
+import { getUserIdFromToken, getEmailFromToken } from '../../utils/helpers';
 import { useToast } from '../../components/ui/Toast';
 
 const schema = z.object({
@@ -26,13 +27,6 @@ const Login = () => {
 
   const from = (location.state as { from?: Location })?.from?.pathname || '/';
 
-  // Demo login for testing (no backend needed)
-  const handleDemoLogin = () => {
-    login('demo-token-user', 2, 'user@autohub.com', ['ROLE_USER']);
-    showToast('Đã đăng nhập demo User!', 'success');
-    navigate(from === '/login' ? '/dashboard' : from);
-  };
-
   const {
     register,
     handleSubmit,
@@ -44,11 +38,17 @@ const Login = () => {
     try {
       const res = await loginApi(data);
       if (res.success) {
-        // Extract info from JWT token
-        const token = res.data;
-        const roles = getRoleFromToken(token);
+        // Extract token from nested loginResponse
+        const token = res.loginResponse?.token || res.data || res.token;
+        if (!token) {
+          showToast('Không nhận được token từ server', 'error');
+          return;
+        }
         const userId = getUserIdFromToken(token) ?? 0;
         const email = getEmailFromToken(token) ?? data.email;
+        // Fetch roles from API (backend JWT doesn't include roles)
+        const rolesData = userId ? await getUserRolesApi(userId) : [];
+        const roles = rolesData.map((r) => r.name);
         login(token, userId, email, roles);
         showToast('Đăng nhập thành công!', 'success');
         // Redirect based on role
@@ -156,27 +156,6 @@ const Login = () => {
             </Link>
           </p>
 
-          {/* Demo accounts */}
-          <div className="mt-6 pt-5 border-t border-gray-100">
-            <div className="flex items-center gap-2 mb-3">
-              <FlaskConical className="w-4 h-4 text-amber-500" />
-              <span className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Tài khoản Demo (Test)</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => handleDemoLogin()}
-              className="w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50 hover:bg-blue-100 hover:border-blue-300 transition-all duration-200 group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">U</div>
-                <div className="text-left">
-                  <p className="text-sm font-semibold text-blue-700">User Demo</p>
-                  <p className="text-xs text-blue-500">user@autohub.com</p>
-                </div>
-              </div>
-              <span className="text-xs text-blue-400 group-hover:text-blue-600 font-medium">Đăng nhập →</span>
-            </button>
-          </div>
         </div>
       </div>
     </div>

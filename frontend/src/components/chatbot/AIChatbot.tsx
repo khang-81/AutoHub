@@ -46,7 +46,8 @@ const AIChatbot = () => {
     setLoading(true);
 
     try {
-      const history = messages.filter((m) => m.role !== 'model' || messages.indexOf(m) > 0);
+      // Skip the initial greeting message when sending context to Gemini.
+      const history = messages.slice(1);
       const response = await sendChatMessage(msg, history);
       setMessages((prev) => [...prev, { role: 'model', content: response }]);
       if (!isOpen) setUnread((u) => u + 1);

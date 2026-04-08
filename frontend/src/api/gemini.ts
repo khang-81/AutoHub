@@ -1,8 +1,7 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getAllCarsApi } from './cars';
+import type { Car } from '../types';
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
-
-const genAI = new GoogleGenerativeAI(API_KEY);
+import axiosInstance from './axiosInstance';
 
 const SYSTEM_PROMPT = `Bạn là AutoBot - trợ lý AI thông minh của AutoHub, nền tảng thuê xe ô tô hàng đầu Việt Nam.
 
@@ -31,71 +30,150 @@ PHONG CÁCH:
 Hãy luôn giới thiệu mình là AutoBot khi được hỏi.`;
 
 export interface ChatMessage {
-  role: 'user' | 'model';
-  content: string;
+    role: 'user' | 'model';
+    content: string;
 }
 
-export const sendChatMessage = async (
-  message: string,
-  history: ChatMessage[]
-): Promise<string> => {
-  if (!API_KEY || API_KEY === 'your_gemini_api_key_here') {
-    // Demo mode - simulate responses when no API key
-    await new Promise((r) => setTimeout(r, 800));
-    return getDemoResponse(message);
-  }
+let carsCache: { data: Car[]; at: number } | null = null;
+const CARS_CACHE_MS = 60_000;
 
-  try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+async function getCarsLive(): Promise<Car[]> {
+    const now = Date.now();
+    if (carsCache && now - carsCache.at < CARS_CACHE_MS) return carsCache.data;
+    try {
+        const cars = await getAllCarsApi();
+        const normalized = Array.isArray(cars) ? cars : [];
+        carsCache = { data: normalized, at: now };
+        return normalized;
+    } catch {
+        return carsCache?.data || [];
+    }
+}
 
-    const chat = model.startChat({
-      history: [
-        {
-          role: 'user',
-          parts: [{ text: SYSTEM_PROMPT }],
-        },
-        {
-          role: 'model',
-          parts: [{ text: 'Tôi đã hiểu. Tôi sẽ đóng vai AutoBot - trợ lý AI của AutoHub.' }],
-        },
-        ...history.map((msg) => ({
-          role: msg.role,
-          parts: [{ text: msg.content }],
-        })),
-      ],
-    });
+function formatVnd(value: number) {
+    return new Intl.NumberFormat('vi-VN').format(value);
+}
 
-    const result = await chat.sendMessage(message);
-    return result.response.text();
-  } catch (error) {
-    console.error('Gemini API error:', error);
-    return 'Xin lỗi, tôi đang gặp sự cố kết nối. Vui lòng thử lại sau hoặc liên hệ hotline 1800-AUTO nhé! 🙏';
-  }
+function pickTopCars(cars: Car[], count = 5) {
+    return [...cars]
+        .sort((a, b) => a.dailyPrice - b.dailyPrice)
+        .slice(0, count)
+        .map((c) => `${c.model?.brand?.name || ''} ${c.model?.name || ''}`.trim());
+}
+
+async function tryBusinessReply(message: string): Promise<string | null> {
+    const msg = message.toLowerCase();
+    const cars = await getCarsLive();
+    const totalCars = cars.length;
+    const minPrice = totalCars ? Math.min(...cars.map((c) => c.dailyPrice || 0)) : 0;
+    const maxPrice = totalCars ? Math.max(...cars.map((c) => c.dailyPrice || 0)) : 0;
+
+    if (msg.includes('giá') || msg.includes('bao nhiêu') || msg.includes('phí')) {
+        if (!totalCars) {
+            return '💰 Hiện mình chưa đọc được dữ liệu giá xe realtime. Bạn thử lại sau vài giây hoặc xem trực tiếp trang danh sách xe nhé.';
+        }
+        const topCars = pickTopCars(cars, 4).join(', ');
+        return `💰 Dữ liệu realtime hiện có **${totalCars} xe**.\n- Giá thấp nhất: **${formatVnd(minPrice)} VNĐ/ngày**\n- Giá cao nhất: **${formatVnd(maxPrice)} VNĐ/ngày**\n- Gợi ý xe giá tốt: ${topCars}`;
+    }
+
+    if (msg.includes('xe') && (msg.includes('rẻ') || msg.includes('gợi ý') || msg.includes('nào'))) {
+        if (!totalCars) return '🚗 Hiện mình chưa tải được danh sách xe realtime. Bạn mở trang Xe để xem ngay nhé.';
+        const cheapCars = [...cars]
+            .sort((a, b) => a.dailyPrice - b.dailyPrice)
+            .slice(0, 5)
+            .map((c, idx) => `${idx + 1}. ${c.model?.brand?.name || ''} ${c.model?.name || ''} - ${formatVnd(c.dailyPrice)} VNĐ/ngày`);
+        return `🚗 Top xe giá tốt hiện tại:\n${cheapCars.join('\n')}`;
+    }
+
+    if (msg.includes('tư vấn xe') || msg.includes('tu van xe') || msg.includes('chon xe')) {
+        if (!totalCars) return '🚗 Mình chưa tải được dữ liệu xe realtime lúc này. Bạn thử lại sau vài giây nhé.';
+        const suggestions = [...cars]
+            .sort((a, b) => a.dailyPrice - b.dailyPrice)
+            .slice(0, 4)
+            .map((c) => `- ${c.model?.brand?.name || ''} ${c.model?.name || ''}: ${formatVnd(c.dailyPrice)} VNĐ/ngày`);
+        return `🚗 Mình gợi ý nhanh 4 xe dễ thuê từ dữ liệu hiện tại:\n${suggestions.join('\n')}\n\nBạn cho mình thêm ngân sách/ngày và số người, mình lọc chuẩn hơn nhé.`;
+    }
+
+    if (msg.includes('suv') || msg.includes('7 chỗ') || msg.includes('gia đình')) {
+        const suvCars = cars.filter((c) => {
+            const modelName = (c.model?.name || '').toLowerCase();
+            return (
+                modelName.includes('fortuner') ||
+                modelName.includes('santafe') ||
+                modelName.includes('everest') ||
+                modelName.includes('cxeight')
+            );
+        });
+        if (!suvCars.length) {
+            return '🚙 Mình gợi ý nhóm SUV/7 chỗ cho gia đình. Bạn có thể lọc theo thương hiệu Toyota/Hyundai/Ford để chọn nhanh hơn nhé.';
+        }
+        return `🚙 Gợi ý xe gia đình từ dữ liệu hiện tại:\n${suvCars
+            .slice(0, 4)
+            .map((c) => `- ${c.model?.brand?.name} ${c.model?.name}: ${formatVnd(c.dailyPrice)} VNĐ/ngày`)
+            .join('\n')}`;
+    }
+
+    if (msg.includes('điều kiện') || (msg.includes('thuê') && msg.includes('cần'))) {
+        return '📋 Điều kiện thuê xe AutoHub:\n1. CCCD/Hộ chiếu còn hiệu lực\n2. GPLX hợp lệ\n3. Hồ sơ tài khoản đầy đủ\n4. Đặt cọc theo chính sách từng xe';
+    }
+
+    if (msg.includes('quy trình') || msg.includes('các bước') || msg.includes('như thế nào')) {
+        return '🛞 Quy trình thuê xe:\n1) Chọn xe\n2) Chọn ngày nhận/trả\n3) Đặt xe\n4) Xác nhận và đặt cọc\n5) Nhận xe\n6) Trả xe và tất toán';
+    }
+
+    if (msg.includes('liên hệ') || msg.includes('hotline') || msg.includes('hỗ trợ')) {
+        return '📞 Liên hệ AutoHub:\n- Hotline: **1800-AUTO**\n- Email: **support@autohub.vn**\n- Giờ hỗ trợ: 07:00 - 22:00';
+    }
+
+    return null;
+}
+
+function toErrorMessage(error: unknown): string {
+    const text = String(error || '').toLowerCase();
+    if (text.includes('404') || text.includes('not found') || text.includes('model')) {
+        return '⚠️ Model Gemini hiện tại không tương thích với key/project. AutoBot đã tự chuyển sang chế độ dự phòng nghiệp vụ realtime.';
+    }
+    if (text.includes('api key') || text.includes('permission') || text.includes('403')) {
+        return '⚠️ Gemini API key đang bị từ chối (403). Mình đã chuyển sang chế độ tư vấn nghiệp vụ realtime từ dữ liệu hệ thống.';
+    }
+    if (text.includes('quota') || text.includes('429') || text.includes('rate')) {
+        return '⚠️ Gemini đang quá tải/quá quota. Mình vẫn có thể tư vấn theo dữ liệu xe realtime của AutoHub.';
+    }
+    return '⚠️ Kết nối Gemini tạm thời lỗi. Mình tiếp tục hỗ trợ bằng dữ liệu nghiệp vụ realtime nhé.';
+}
+
+function getBusinessFallback(message: string): string {
+    const msg = message.toLowerCase();
+    if (msg.includes('xe') || msg.includes('tư vấn') || msg.includes('gia') || msg.includes('thuê')) {
+        return '🚗 Mình đang dùng chế độ dự phòng nghiệp vụ. Bạn có thể hỏi cụ thể như: "xe dưới 1 triệu/ngày", "xe gia đình 7 chỗ", "điều kiện thuê xe".';
+    }
+    return '🤖 Mình đang ở chế độ dự phòng nghiệp vụ. Bạn thử hỏi về giá xe, quy trình thuê, điều kiện thuê hoặc liên hệ để mình hỗ trợ nhanh nhé.';
+}
+
+export const sendChatMessage = async (message: string, history: ChatMessage[]): Promise<string> => {
+    const businessReply = await tryBusinessReply(message);
+    if (businessReply) return businessReply;
+
+    try {
+        const cars = await getCarsLive();
+        const liveContext = cars.length
+            ? `Du lieu realtime: tong ${cars.length} xe, gia tu ${formatVnd(
+                Math.min(...cars.map((c) => c.dailyPrice || 0))
+            )} den ${formatVnd(Math.max(...cars.map((c) => c.dailyPrice || 0)))} VND/ngay.`
+            : 'Du lieu realtime tam thoi chua tai duoc.';
+
+        const res = await axiosInstance.post('/api/ai/chat', {
+            message,
+            history,
+            systemPrompt: `${SYSTEM_PROMPT}\n\n${liveContext}`,
+        });
+        if (res?.data?.success && res?.data?.message) {
+            return res.data.message as string;
+        }
+        throw new Error(res?.data?.message || 'AI backend returned no response');
+    } catch (error) {
+        console.error('Gemini API error:', error);
+        const fallback = (await tryBusinessReply(message)) || getBusinessFallback(message);
+        return `${toErrorMessage(error)}\n\n${fallback}`;
+    }
 };
-
-function getDemoResponse(message: string): string {
-  const msg = message.toLowerCase();
-
-  if (msg.includes('giá') || msg.includes('bao nhiêu') || msg.includes('phí')) {
-    return '💰 Giá thuê xe tại AutoHub dao động từ **500.000 VNĐ/ngày** (xe phổ thông) đến **3.000.000 VNĐ/ngày** (xe cao cấp). Bạn có thể xem giá chi tiết từng xe tại trang Danh sách xe nhé!';
-  }
-  if (msg.includes('thuê') && (msg.includes('cần') || msg.includes('yêu cầu') || msg.includes('điều kiện'))) {
-    return '📋 Để thuê xe tại AutoHub, bạn cần:\n1. CCCD/Hộ chiếu còn hiệu lực\n2. Giấy phép lái xe hợp lệ\n3. Đặt cọc theo giá trị xe\n4. Tạo hồ sơ cá nhân trên website';
-  }
-  if (msg.includes('quy trình') || msg.includes('bước') || msg.includes('như thế nào')) {
-    return '🚗 Quy trình thuê xe:\n1️⃣ Chọn xe phù hợp\n2️⃣ Chọn ngày nhận & trả\n3️⃣ Xác nhận đặt xe\n4️⃣ Đặt cọc & ký hợp đồng\n5️⃣ Nhận xe & lái đi\n6️⃣ Trả xe & thanh toán';
-  }
-  if (msg.includes('hủy') || msg.includes('cancel')) {
-    return '❌ Chính sách hủy: Hủy trước 24h - hoàn 100% cọc. Hủy trong vòng 24h - mất 50% cọc. Vui lòng liên hệ support@autohub.vn để được hỗ trợ.';
-  }
-  if (msg.includes('xin chào') || msg.includes('hello') || msg.includes('hi') || msg.includes('chào')) {
-    return '👋 Xin chào! Tôi là **AutoBot** - trợ lý AI của AutoHub. Tôi có thể giúp bạn tư vấn chọn xe, giải đáp thắc mắc về dịch vụ thuê xe. Bạn cần hỗ trợ gì hôm nay? 😊';
-  }
-  if (msg.includes('liên hệ') || msg.includes('hotline') || msg.includes('điện thoại')) {
-    return '📞 Thông tin liên hệ AutoHub:\n- Hotline: **1800-AUTO** (miễn phí)\n- Email: support@autohub.vn\n- Giờ làm việc: 7:00 - 22:00 hàng ngày';
-  }
-  if (msg.includes('xe') && (msg.includes('suv') || msg.includes('7 chỗ') || msg.includes('gia đình'))) {
-    return '🚙 Cho chuyến du lịch gia đình, tôi gợi ý xe **SUV 7 chỗ** như Toyota Fortuner, Mitsubishi Outlander hoặc Hyundai Santa Fe. Phù hợp cho 5-7 người với hành lý thoải mái. Xem thêm tại trang /cars!';
-  }
-  return '🤖 Cảm ơn bạn đã liên hệ AutoHub! Tôi đang trong chế độ demo (chưa có API key). Để sử dụng AI thực, vui lòng cài đặt VITE_GEMINI_API_KEY. Bạn có thể hỏi về: giá xe, quy trình thuê, điều kiện thuê xe... 😊';
-}
