@@ -1,5 +1,6 @@
 package com.tobeto.rentACar.controllers;
 
+import com.tobeto.rentACar.core.services.JwtService;
 import com.tobeto.rentACar.core.utilities.results.Result;
 import com.tobeto.rentACar.services.abstracts.InvoiceService;
 import com.tobeto.rentACar.services.dtos.invoice.request.AddInvoiceRequest;
@@ -19,6 +20,7 @@ import java.util.List;
 @CrossOrigin
 public class InvoicesController {
     private final InvoiceService invoiceService;
+    private final JwtService jwtService;
 
     @PostMapping("/add")
     public Result add(@RequestBody @Valid AddInvoiceRequest request){
@@ -38,6 +40,14 @@ public class InvoicesController {
     @GetMapping("/getAll")
     public List<GetAllInvoicesResponse> getAll(){
         return invoiceService.getAll();
+    }
+
+    @GetMapping("/getMyInvoices")
+    public List<GetAllInvoicesResponse> getMyInvoices(jakarta.servlet.http.HttpServletRequest request){
+        String tokenWithPrefix = request.getHeader("Authorization");
+        String token = tokenWithPrefix.replace("Bearer ", "");
+        Integer userId = jwtService.extractUserId(token);
+        return invoiceService.getByUserId(userId);
     }
 
     @GetMapping("/getById/{id}")

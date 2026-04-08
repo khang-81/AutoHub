@@ -14,5 +14,6 @@ public interface InvoiceService {
     Result update(UpdateInvoiceRequest request);
     Result delete(DeleteInvoiceRequest request);
     List<GetAllInvoicesResponse> getAll();
+    List<GetAllInvoicesResponse> getByUserId(int userId);
     GetInvoiceByIdResponse getById(int id);
 }

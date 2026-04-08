@@ -154,6 +154,7 @@ export interface Invoice {
     startDate?: string;
     endDate?: string;
     totalPrice?: number;
+    car?: Car;
   };
 }
 
