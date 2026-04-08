@@ -39,19 +39,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         if (jwtHeader != null && jwtHeader.startsWith(("Bearer "))) {
 
-            String jwt = jwtHeader.substring(7); // "Bearer removed"
-            String username = jwtService.extractUser(jwt);
+            try {
+                String jwt = jwtHeader.substring(7); // "Bearer removed"
+                String username = jwtService.extractUser(jwt);
 
-            if (username!=null) {
-                UserDetails user = userService.loadUserByUsername(username);
-                if (jwtService.validateToken(jwt,user)) {
-                    Collection<? extends GrantedAuthority> authorities = user.getAuthorities();
-                    authorities.forEach(authority -> System.out.println("User Authority: " + authority.getAuthority()));
-                    // working as intended
-                    UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-                    authenticationToken.setDetails(new WebAuthenticationDetailsSource());
-                    SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                if (username!=null) {
+                    UserDetails user = userService.loadUserByUsername(username);
+                    if (jwtService.validateToken(jwt,user)) {
+                        Collection<? extends GrantedAuthority> authorities = user.getAuthorities();
+                        authorities.forEach(authority -> System.out.println("User Authority: " + authority.getAuthority()));
+                        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                        authenticationToken.setDetails(new WebAuthenticationDetailsSource());
+                        SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                    }
                 }
+            } catch (Exception ignored) {
+                // Ignore invalid/expired token for public endpoints; secured endpoints still require valid auth.
             }
         }
         filterChain.doFilter(request,response);

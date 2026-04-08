@@ -2,7 +2,7 @@
 // Run: node seed_data.mjs
 // Requires: Node.js 18+, backend running at http://localhost:8080
 
-const BASE = 'http://localhost:8080';
+const BASE = 'http://localhost:8081';
 
 async function api(method, path, body, token) {
   const headers = { 'Content-Type': 'application/json' };
@@ -27,8 +27,17 @@ async function sleep(ms) {
 
 console.log('\n=== AutoHub Data Seeder ===\n');
 
+// ─── STEP 0: Create Roles (via direct API if possible) ────────
+// Note: Roles are usually pre-seeded via SQL
+// Try to create them via the roles endpoint (may require admin)
+console.log('[0] Roles setup (via API - may skip if auth required)...');
+const roleAdmin = await api('POST', '/api/roles/add', { name: 'admin' });
+console.log('  Role admin:', roleAdmin ? 'created/exists' : 'skipped');
+const roleUser = await api('POST', '/api/roles/add', { name: 'user' });
+console.log('  Role user:', roleUser ? 'created/exists' : 'skipped');
+
 // ─── STEP 1: Register Accounts ───────────────────────────────
-console.log('[1] Registering accounts...');
+console.log('\n[1] Registering accounts...');
 await api('POST', '/api/auth/register', { email: 'admin@autohub.vn', password: 'Admin@123', roles: ['admin'] });
 console.log('  OK: admin@autohub.vn / Admin@123');
 await api('POST', '/api/auth/register', { email: 'vana@gmail.com', password: 'User@123', roles: ['user'] });
@@ -41,16 +50,16 @@ console.log('  OK: vanc@gmail.com / User@123');
 // ─── STEP 2: Login ───────────────────────────────────────────
 console.log('\n[2] Logging in...');
 const adminLoginRes = await api('POST', '/api/auth/login', { email: 'admin@autohub.vn', password: 'Admin@123' });
-const ADMIN_TOKEN = adminLoginRes?.data;
+const ADMIN_TOKEN = adminLoginRes?.loginResponse?.token || adminLoginRes?.data || adminLoginRes?.token;
 if (!ADMIN_TOKEN) {
   console.error('[ERROR] Cannot get admin token! Is backend running?');
-  console.error('  Response:', adminLoginRes);
+  console.error('  Response:', JSON.stringify(adminLoginRes));
   process.exit(1);
 }
 console.log('  OK: Admin token obtained');
 
 const userLoginRes = await api('POST', '/api/auth/login', { email: 'vana@gmail.com', password: 'User@123' });
-const USER_TOKEN = userLoginRes?.data;
+const USER_TOKEN = userLoginRes?.loginResponse?.token || userLoginRes?.data || userLoginRes?.token;
 console.log('  OK: User token obtained');
 
 // ─── STEP 3: Colors ──────────────────────────────────────────
@@ -279,4 +288,4 @@ console.log('  USER 3: vanc@gmail.com  / User@123');
 console.log('\nURLs:');
 console.log('  Frontend : http://localhost:3000');
 console.log('  Admin    : http://localhost:3000/admin/login');
-console.log('  Swagger  : http://localhost:8080/swagger-ui/index.html');
+  console.log('  Swagger  : http://localhost:8081/swagger-ui/index.html');
