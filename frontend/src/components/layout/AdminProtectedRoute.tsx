@@ -1,15 +1,14 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../../store/authStore';
 
 interface AdminProtectedRouteProps {
   children: React.ReactNode;
 }
 
 const AdminProtectedRoute = ({ children }: AdminProtectedRouteProps) => {
-  const { isAuthenticated, isAdmin } = useAuthStore();
   const location = useLocation();
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('autohub_admin_token') : null;
 
-  if (!isAuthenticated || !isAdmin) {
+  if (!adminToken) {
     return <Navigate to="/admin/login" state={{ from: location }} replace />;
   }
 

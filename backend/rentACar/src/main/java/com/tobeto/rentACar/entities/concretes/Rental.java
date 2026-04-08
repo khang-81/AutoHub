@@ -33,6 +33,15 @@ public class Rental extends BaseEntity {
     @Column(name = "total_price")
     private double totalPrice;
 
+    @Column(name = "payment_method")
+    private String paymentMethod;
+
+    @Column(name = "payment_status")
+    private String paymentStatus;
+
+    @Column(name = "rental_status")
+    private String rentalStatus;
+
     @ManyToOne()
     @JoinColumn(name="car_id")
     private Car car;
