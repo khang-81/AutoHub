@@ -5,11 +5,9 @@ import { formatCurrency, CAR_PLACEHOLDER } from '../../utils/helpers';
 
 interface CarCardProps {
   car: Car;
-  bookedRanges?: Array<{ startDate: string; endDate: string }>;
 }
 
-const CarCard = ({ car, bookedRanges = [] }: CarCardProps) => {
-  const hasBookings = bookedRanges.length > 0;
+const CarCard = ({ car }: CarCardProps) => {
   return (
     <div className="card group overflow-hidden">
       {/* Image */}
@@ -41,16 +39,6 @@ const CarCard = ({ car, bookedRanges = [] }: CarCardProps) => {
           {car.model?.brand?.name} {car.model?.name}
         </h3>
         <p className="text-gray-500 text-sm mb-4">{car.color?.name} • {car.modelYear}</p>
-        <div className="mb-4">
-          <span className={`badge text-xs ${hasBookings ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
-            {hasBookings ? 'Dang duoc dat' : 'Trong hom nay'}
-          </span>
-          {hasBookings && (
-            <p className="text-xs text-gray-500 mt-2 line-clamp-2">
-              Da dat: {bookedRanges.slice(0, 2).map((r) => `${r.startDate} - ${r.endDate}`).join(' | ')}
-            </p>
-          )}
-        </div>
 
         {/* Specs */}
         <div className="grid grid-cols-3 gap-3 mb-5">

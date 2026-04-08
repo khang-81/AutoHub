@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { FileText, Download, Eye, Search, Receipt } from 'lucide-react';
 import { getMyInvoicesApi } from '../../api/invoices';
@@ -22,6 +22,17 @@ const MyInvoices = () => {
     inv.invoiceNo?.toLowerCase().includes(search.toLowerCase()) ||
     String(inv.id).includes(search) ||
     String(getRentalId(inv) ?? '').includes(search)
+  );
+
+  const sortedFiltered = useMemo(
+    () =>
+      [...filtered].sort((a, b) => {
+        const aTime = a.rental?.startDate ? new Date(a.rental.startDate).getTime() : 0;
+        const bTime = b.rental?.startDate ? new Date(b.rental.startDate).getTime() : 0;
+        if (bTime !== aTime) return bTime - aTime;
+        return b.id - a.id;
+      }),
+    [filtered]
   );
 
   const handlePrint = () => {
@@ -57,7 +68,7 @@ const MyInvoices = () => {
         <div className="bg-white rounded-2xl shadow-sm p-8">
           <LoadingSpinner />
         </div>
-      ) : filtered.length === 0 ? (
+      ) : sortedFiltered.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
           <FileText className="w-16 h-16 text-gray-200 mx-auto mb-4" />
           <h3 className="font-heading font-semibold text-navy text-lg mb-2">Chưa có hóa đơn</h3>
@@ -65,7 +76,7 @@ const MyInvoices = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map((invoice) => (
+          {sortedFiltered.map((invoice) => (
             <div
               key={invoice.id}
               className="bg-white rounded-2xl shadow-sm p-5 hover:shadow-md transition-shadow"
