@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Car, Calendar, DollarSign, FileText, Eye, X, Receipt } from 'lucide-react';
 import { getRentalsByUserIdApi, deleteRentalApi } from '../../api/rentals';
-import { getAllInvoicesApi } from '../../api/invoices';
+import { getMyInvoicesApi } from '../../api/invoices';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
@@ -22,8 +22,8 @@ const RentalHistory = () => {
   });
 
   const { data: invoices = [] } = useQuery<Invoice[]>({
-    queryKey: ['invoices'],
-    queryFn: getAllInvoicesApi,
+    queryKey: ['myInvoices'],
+    queryFn: getMyInvoicesApi,
   });
 
   const cancelMutation = useMutation({
@@ -211,6 +211,15 @@ const RentalHistory = () => {
             <div className="space-y-3">
               {[
                 { label: 'Mã đơn thuê', value: `#${selectedInvoice.rental?.id ?? selectedInvoice.rentalId}` },
+                {
+                  label: 'Xe',
+                  value: selectedInvoice.rental?.car
+                    ? `${selectedInvoice.rental.car.model?.brand?.name ?? ''} ${selectedInvoice.rental.car.model?.name ?? ''}`.trim()
+                    : 'N/A',
+                },
+                { label: 'Biển số', value: selectedInvoice.rental?.car?.plate || 'N/A' },
+                { label: 'Ngày nhận xe', value: selectedInvoice.rental?.startDate ? formatDate(selectedInvoice.rental.startDate) : 'N/A' },
+                { label: 'Ngày trả xe', value: selectedInvoice.rental?.endDate ? formatDate(selectedInvoice.rental.endDate) : 'N/A' },
                 { label: 'Chiết khấu', value: `${selectedInvoice.discountRate}%` },
                 { label: 'Thuế VAT', value: `${selectedInvoice.taxRate}%` },
               ].map((row) => (
