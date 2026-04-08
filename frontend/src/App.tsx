@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Layouts
@@ -38,7 +38,6 @@ import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ManageCars from './pages/admin/ManageCars';
 import ManageBrands from './pages/admin/ManageBrands';
-import ManageColors from './pages/admin/ManageColors';
 import ManageRentals from './pages/admin/ManageRentals';
 import ManageInvoices from './pages/admin/ManageInvoices';
 import ManageUsers from './pages/admin/ManageUsers';
@@ -53,70 +52,79 @@ const queryClient = new QueryClient({
   },
 });
 
+function RoutesWithChatbot() {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
+  return (
+    <>
+      <Routes>
+        {/* Public routes */}
+        <Route element={<PublicLayout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/cars" element={<CarListing />} />
+          <Route path="/cars/:id" element={<CarDetail />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/about" element={<About />} />
+        </Route>
+
+        {/* Auth routes (user) */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
+        {/* Admin login - standalone, no layout */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+
+        {/* User dashboard routes */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <UserLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<UserDashboard />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="rentals" element={<RentalHistory />} />
+          <Route path="payment/:rentalId" element={<PaymentPage />} />
+          <Route path="invoices" element={<MyInvoices />} />
+          <Route path="change-password" element={<ChangePassword />} />
+        </Route>
+
+        {/* Admin routes - protected by AdminProtectedRoute */}
+        <Route
+          path="/admin"
+          element={
+            <AdminProtectedRoute>
+              <AdminLayout />
+            </AdminProtectedRoute>
+          }
+        >
+          <Route index element={<AdminDashboard />} />
+          <Route path="cars" element={<ManageCars />} />
+          <Route path="brands" element={<ManageBrands />} />
+          <Route path="rentals" element={<ManageRentals />} />
+          <Route path="invoices" element={<ManageInvoices />} />
+          <Route path="users" element={<ManageUsers />} />
+          <Route path="reports" element={<ManageReports />} />
+        </Route>
+
+        {/* Catch all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+
+      {/* Global AI Chatbot - ẩn trên admin */}
+      {!isAdminRoute && <AIChatbot />}
+    </>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <BrowserRouter>
-          <Routes>
-            {/* Public routes */}
-            <Route element={<PublicLayout />}>
-              <Route path="/" element={<Home />} />
-              <Route path="/cars" element={<CarListing />} />
-              <Route path="/cars/:id" element={<CarDetail />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/about" element={<About />} />
-            </Route>
-
-            {/* Auth routes (user) */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-
-            {/* Admin login - standalone, no layout */}
-            <Route path="/admin/login" element={<AdminLogin />} />
-
-            {/* User dashboard routes */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <UserLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<UserDashboard />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="rentals" element={<RentalHistory />} />
-              <Route path="payment/:rentalId" element={<PaymentPage />} />
-              <Route path="invoices" element={<MyInvoices />} />
-              <Route path="change-password" element={<ChangePassword />} />
-            </Route>
-
-            {/* Admin routes - protected by AdminProtectedRoute */}
-            <Route
-              path="/admin"
-              element={
-                <AdminProtectedRoute>
-                  <AdminLayout />
-                </AdminProtectedRoute>
-              }
-            >
-              <Route index element={<AdminDashboard />} />
-              <Route path="cars" element={<ManageCars />} />
-              <Route path="brands" element={<ManageBrands />} />
-              <Route path="colors" element={<ManageColors />} />
-              <Route path="rentals" element={<ManageRentals />} />
-              <Route path="invoices" element={<ManageInvoices />} />
-              <Route path="users" element={<ManageUsers />} />
-              <Route path="reports" element={<ManageReports />} />
-            </Route>
-
-            {/* Catch all */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-
-          {/* Global AI Chatbot - visible on all pages */}
-          <AIChatbot />
+          <RoutesWithChatbot />
         </BrowserRouter>
       </ToastProvider>
     </QueryClientProvider>

@@ -161,7 +161,7 @@ const ManageRentals = () => {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr className="text-gray-500">
-                  <th className="text-left px-5 py-4 font-medium">#</th>
+                  <th className="text-left px-5 py-4 font-medium">STT</th>
                   <th className="text-left px-5 py-4 font-medium">Xe</th>
                   <th className="text-left px-5 py-4 font-medium">Khách hàng</th>
                   <th className="text-left px-5 py-4 font-medium">Ngày thuê</th>
@@ -173,9 +173,9 @@ const ManageRentals = () => {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((rental) => (
+                {filtered.map((rental, idx) => (
                   <tr key={rental.id} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="px-5 py-4 text-gray-400">{rental.id}</td>
+                    <td className="px-5 py-4 text-gray-400">{idx + 1}</td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <img
@@ -201,23 +201,23 @@ const ManageRentals = () => {
                     </td>
                     <td className="px-5 py-4 text-right">
                       <span className="badge text-xs bg-blue-100 text-blue-700">
-                        {rental.paymentMethod || 'BANK_TRANSFER'} / {rental.paymentStatus || 'UNPAID'}
+                        {rental.paymentMethod || 'BANK_TRANSFER'}
                       </span>
                     </td>
                     <td className="px-5 py-4 text-right">
                       {(rental.rentalStatus === 'COMPLETED' || rental.returnDate) ? (
                         <span className="badge text-xs bg-gray-100 text-gray-500">
-                          ✓ Đã trả {rental.returnDate ? formatDate(rental.returnDate) : ''}
+                          Đã trả {rental.returnDate ? formatDate(rental.returnDate) : ''}
                         </span>
                       ) : rental.rentalStatus === 'PENDING_PAYMENT' ? (
-                        <span className="badge text-xs bg-blue-100 text-blue-700">💳 Chờ khách chuyển khoản</span>
+                        <span className="badge text-xs bg-blue-100 text-blue-700">Chờ khách chuyển khoản</span>
                       ) : rental.rentalStatus === 'PENDING_ADMIN_CONFIRM' ? (
-                        <span className="badge text-xs bg-amber-100 text-amber-700">⏳ Chờ admin xác nhận</span>
+                        <span className="badge text-xs bg-amber-100 text-amber-700">Chờ admin xác nhận</span>
                       ) : rental.rentalStatus === 'CONFIRMED' ? (
-                        <span className="badge text-xs bg-green-100 text-green-700">✅ Đã xác nhận</span>
+                        <span className="badge text-xs bg-green-100 text-green-700">Đã xác nhận</span>
                       ) : (
                         <span className="badge text-xs bg-green-100 text-green-700">
-                          🚗 Đang thuê
+                          Đang thuê
                         </span>
                       )}
                     </td>

@@ -29,7 +29,7 @@ const ManageUsers = () => {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="font-heading font-bold text-2xl text-navy">Người dùng</h1>
+          <h1 className="font-heading font-bold text-2xl text-navy">Quản lý người dùng</h1>
           <p className="text-gray-400 text-sm mt-1">{usersArr.length} tài khoản</p>
         </div>
       </div>

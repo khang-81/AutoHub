@@ -51,6 +51,7 @@ public class RentalManager implements RentalService {
             rule.checkEndDate(request.getStartDate(), request.getEndDate());
             rule.existsUserById(request.getUserId());
             rule.existsCarById(request.getCarId());
+            rule.checkCarAvailability(request.getCarId(), request.getStartDate(), request.getEndDate());
         }
 
         // When renting, the StartKilometer should be taken from the Kilometer field of
@@ -182,11 +183,7 @@ public class RentalManager implements RentalService {
 
     public List<GetRentalByUserIdResponse> getByUserId(int userId) {
         List<Rental> rentals = rentalRepository.findByUserId(userId);
-
-        if (rentals.isEmpty()) {
-            throw new NotFoundException(messageService.getMessage(Messages.Rental.getRentalNotFoundMessage));
-        }
-
+        // Return empty list for users with no rentals so client pages can render gracefully.
         List<GetRentalByUserIdResponse> rentalsByUserId = rentals.stream()
                 .map(rental -> this.modelMapperService.forResponse()
                         .map(rental, GetRentalByUserIdResponse.class))
