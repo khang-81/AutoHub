@@ -8,12 +8,13 @@ import {
   CheckCircle, Car, MapPin, Fuel, CreditCard
 } from 'lucide-react';
 import { getCarByIdApi } from '../../api/cars';
+import { getAllRentalsApi } from '../../api/rentals';
 import { addRentalApi } from '../../api/rentals';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../components/ui/Toast';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { formatCurrency, calculateTotalPrice, formatDateForApi, CAR_PLACEHOLDER } from '../../utils/helpers';
-import type { Car as CarType } from '../../types';
+import type { Car as CarType, Rental } from '../../types';
 
 const CarDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +31,26 @@ const CarDetail = () => {
     queryFn: () => getCarByIdApi(Number(id)),
     enabled: !!id,
   });
+  const { data: rentals = [] } = useQuery<Rental[]>({ queryKey: ['rentals'], queryFn: getAllRentalsApi });
+
+  const bookedRanges = rentals
+    .filter((r) =>
+      r.car?.id === Number(id) &&
+      !r.returnDate &&
+      r.rentalStatus !== 'COMPLETED' &&
+      r.rentalStatus !== 'CANCELLED' &&
+      !!r.startDate &&
+      !!r.endDate
+    )
+    .map((r) => ({
+      start: new Date(`${r.startDate}T00:00:00`),
+      end: new Date(`${r.endDate}T00:00:00`),
+      label: `${r.startDate} - ${r.endDate}`,
+    }));
+
+  const isBookedDate = (date: Date) =>
+    bookedRanges.some((range) => date >= range.start && date <= range.end);
+  const getDayClassName = (date: Date) => (isBookedDate(date) ? 'booked-day' : '');
 
   const totalPrice = startDate && endDate && car
     ? calculateTotalPrice(car.dailyPrice, startDate, endDate)
@@ -44,10 +65,8 @@ const CarDetail = () => {
     onSuccess: (res) => {
       // Backend returns { id, result: { success, message } }
       if (res?.id) {
-        showToast(`Đặt xe thành công! Mã đơn: #${res.id}`, 'success');
         navigate(`/dashboard/payment/${res.id}`);
       } else {
-        showToast(res?.result?.message || 'Đặt xe thành công!', 'success');
         navigate('/dashboard/rentals');
       }
     },
@@ -236,6 +255,8 @@ const CarDetail = () => {
                     dateFormat="dd/MM/yyyy"
                     placeholderText="Chọn ngày nhận xe"
                     className="input-field"
+                    dayClassName={getDayClassName}
+                    filterDate={(date) => !isBookedDate(date)}
                   />
                 </div>
 
@@ -255,7 +276,19 @@ const CarDetail = () => {
                     placeholderText="Chọn ngày trả xe"
                     className="input-field"
                     disabled={!startDate}
+                    dayClassName={getDayClassName}
+                    filterDate={(date) => !isBookedDate(date)}
                   />
+                </div>
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center gap-2 text-red-600">
+                    <span className="inline-block w-3 h-3 rounded-full bg-red-500" />
+                    <span>Xe đã đặt</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-amber-600">
+                    <span className="inline-block w-3 h-3 rounded-full bg-amber-400" />
+                    <span>Xe có sẵn</span>
+                  </div>
                 </div>
               </div>
 

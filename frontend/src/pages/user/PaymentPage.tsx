@@ -9,9 +9,11 @@ import { formatCurrency } from '../../utils/helpers';
 import type { Rental } from '../../types';
 
 const BANK_INFO = {
-  bankName: 'MB Bank',
-  accountName: 'AUTOHUB RENTAL',
-  accountNumber: '123456789',
+  bankCode: 'TCB',
+  bankName: 'Techcombank',
+  accountName: 'TA DUC KHANG',
+  accountNumber: '19073286543012',
+  accountNumberDisplay: '1907 3286 5430 12',
 };
 
 const PaymentPage = () => {
@@ -28,7 +30,7 @@ const PaymentPage = () => {
   const transferMutation = useMutation({
     mutationFn: (id: number) => submitTransferApi(id),
     onSuccess: () => {
-      showToast('Da ghi nhan thong tin chuyen khoan. Vui long cho admin xac nhan.', 'success');
+      showToast(`Đặt xe thành công! Đơn #${rental?.id} đang chờ admin xác nhận.`, 'success');
       navigate('/dashboard/rentals');
     },
     onError: (err: unknown) => {
@@ -39,7 +41,7 @@ const PaymentPage = () => {
 
   const qrUrl = useMemo(() => {
     if (!rental?.id || !rental?.totalPrice) return '';
-    return `https://img.vietqr.io/image/MB-${BANK_INFO.accountNumber}-compact2.png?amount=${Math.round(
+    return `https://img.vietqr.io/image/${BANK_INFO.bankCode}-${BANK_INFO.accountNumber}-compact2.png?amount=${Math.round(
       rental.totalPrice
     )}&addInfo=THUEXE-${rental.id}&accountName=${encodeURIComponent(BANK_INFO.accountName)}`;
   }, [rental]);
@@ -71,22 +73,19 @@ const PaymentPage = () => {
             <div className="space-y-3 text-sm text-gray-700">
               <p className="flex items-center gap-2"><Landmark className="w-4 h-4 text-primary" /> Ngan hang: {BANK_INFO.bankName}</p>
               <p>Chu tai khoan: <strong>{BANK_INFO.accountName}</strong></p>
-              <p>So tai khoan: <strong>{BANK_INFO.accountNumber}</strong></p>
+              <p>So tai khoan: <strong>{BANK_INFO.accountNumberDisplay}</strong></p>
               <p>Noi dung CK: <strong>THUEXE-{rental.id}</strong></p>
               <p className="text-amber-600">Sau khi chuyen khoan, bam nut ben duoi de gui xac nhan cho admin.</p>
             </div>
           </div>
 
-          <div className="flex gap-3 mt-6">
+          <div className="flex justify-center mt-8">
             <button
               onClick={() => transferMutation.mutate(rental.id)}
               disabled={transferMutation.isPending}
-              className="btn-primary"
+              className="btn-primary min-w-[260px] text-center"
             >
-              {transferMutation.isPending ? 'Dang gui...' : 'Toi da chuyen khoan'}
-            </button>
-            <button onClick={() => navigate('/dashboard/rentals')} className="btn-outline">
-              Ve lich su don
+              {transferMutation.isPending ? 'Dang gui...' : 'Xác nhận chuyển khoản'}
             </button>
           </div>
         </div>

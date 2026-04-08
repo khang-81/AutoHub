@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Car, Calendar, DollarSign, FileText, Eye, X, Receipt } from 'lucide-react';
 import { getRentalsByUserIdApi, deleteRentalApi } from '../../api/rentals';
@@ -26,6 +26,12 @@ const RentalHistory = () => {
     queryFn: getMyInvoicesApi,
   });
 
+  const sortedRentals = useMemo(
+    () =>
+      [...rentals].sort((a, b) => b.id - a.id),
+    [rentals]
+  );
+
   const cancelMutation = useMutation({
     mutationFn: deleteRentalApi,
     onSuccess: () => {
@@ -37,7 +43,7 @@ const RentalHistory = () => {
   });
 
   const selectedInvoice = invoices.find((inv) => (inv.rental?.id ?? inv.rentalId) === invoiceRentalId) || null;
-  const totalSpent = rentals.reduce((sum, r) => sum + (r.totalPrice || 0), 0);
+  const totalSpent = sortedRentals.reduce((sum, r) => sum + (r.totalPrice || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -48,7 +54,7 @@ const RentalHistory = () => {
           <h1 className="font-heading font-bold text-xl text-navy">Lịch sử thuê xe</h1>
         </div>
         <p className="text-gray-400 text-sm">
-          Tổng {rentals.length} lần thuê • Chi tiêu: {formatCurrency(totalSpent)}
+          Tổng {sortedRentals.length} lần thuê • Chi tiêu: {formatCurrency(totalSpent)}
         </p>
       </div>
 
@@ -56,7 +62,7 @@ const RentalHistory = () => {
         <div className="bg-white rounded-2xl shadow-sm p-8">
           <LoadingSpinner />
         </div>
-      ) : rentals.length === 0 ? (
+      ) : sortedRentals.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
           <Car className="w-16 h-16 text-gray-200 mx-auto mb-4" />
           <h3 className="font-heading font-semibold text-navy text-lg mb-2">Chưa có đơn thuê nào</h3>
@@ -68,7 +74,7 @@ const RentalHistory = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {rentals.map((rental) => {
+          {sortedRentals.map((rental) => {
             const hasInvoice = invoices.some((inv) => (inv.rental?.id ?? inv.rentalId) === rental.id);
             const canCancel = !rental.returnDate;
             return (
