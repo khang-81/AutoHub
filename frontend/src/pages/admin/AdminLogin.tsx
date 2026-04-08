@@ -6,7 +6,6 @@ import { z } from 'zod';
 import { Car, Lock, Mail, Eye, EyeOff, ShieldCheck, AlertCircle } from 'lucide-react';
 import { loginApi } from '../../api/auth';
 import { getUserRolesApi } from '../../api/users';
-import { useAuthStore } from '../../store/authStore';
 import { getUserIdFromToken, getEmailFromToken } from '../../utils/helpers';
 
 const schema = z.object({
@@ -18,7 +17,6 @@ type FormData = z.infer<typeof schema>;
 
 const AdminLogin = () => {
   const navigate = useNavigate();
-  const { login } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -57,7 +55,9 @@ const AdminLogin = () => {
         return;
       }
 
-      login(token, userId, email, roles);
+      // Lưu phiên admin độc lập
+      localStorage.setItem('autohub_admin_token', token);
+      localStorage.setItem('autohub_admin_user', JSON.stringify({ id: userId, email, roles }));
       navigate('/admin');
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
@@ -123,11 +123,10 @@ const AdminLogin = () => {
                   {...register('email')}
                   type="email"
                   placeholder="admin@autohub.com"
-                  className={`w-full bg-white/5 border rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all ${
-                    errors.email
+                  className={`w-full bg-white/5 border rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all ${errors.email
                       ? 'border-red-500/50 focus:ring-red-500/30'
                       : 'border-white/10 focus:border-primary/50 focus:ring-primary/20'
-                  }`}
+                    }`}
                 />
               </div>
               {errors.email && (
@@ -146,11 +145,10 @@ const AdminLogin = () => {
                   {...register('password')}
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
-                  className={`w-full bg-white/5 border rounded-xl pl-10 pr-11 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all ${
-                    errors.password
+                  className={`w-full bg-white/5 border rounded-xl pl-10 pr-11 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all ${errors.password
                       ? 'border-red-500/50 focus:ring-red-500/30'
                       : 'border-white/10 focus:border-primary/50 focus:ring-primary/20'
-                  }`}
+                    }`}
                 />
                 <button
                   type="button"

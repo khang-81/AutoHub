@@ -65,3 +65,13 @@ export const returnCarApi = async (data: {
   const res = await axiosInstance.put('/api/rentals/update', data);
   return res.data;
 };
+
+export const confirmRentalApi = async (id: number) => {
+  const res = await axiosInstance.put(`/api/rentals/confirm/${id}`);
+  return res.data;
+};
+
+export const submitTransferApi = async (id: number) => {
+  const res = await axiosInstance.put(`/api/rentals/submitTransfer/${id}`);
+  return res.data;
+};

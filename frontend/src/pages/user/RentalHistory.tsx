@@ -96,11 +96,10 @@ const RentalHistory = () => {
                         <p className="text-gray-400 text-sm">#{rental.id}</p>
                       </div>
                       <span
-                        className={`badge text-sm ${
-                          rental.returnDate
-                            ? 'bg-gray-100 text-gray-500'
-                            : 'bg-green-100 text-green-700'
-                        }`}
+                        className={`badge text-sm ${rental.returnDate
+                          ? 'bg-gray-100 text-gray-500'
+                          : 'bg-green-100 text-green-700'
+                          }`}
                       >
                         {rental.returnDate ? '✓ Đã trả xe' : '🚗 Đang thuê'}
                       </span>
@@ -128,6 +127,15 @@ const RentalHistory = () => {
                           <p className="font-bold text-primary">{formatCurrency(rental.totalPrice)}</p>
                         </div>
                       </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 mb-4">
+                      <span className="badge text-xs bg-blue-100 text-blue-700">
+                        Thanh toán: {rental.paymentMethod || 'BANK_TRANSFER'} / {rental.paymentStatus || 'UNPAID'}
+                      </span>
+                      <span className="badge text-xs bg-amber-100 text-amber-700">
+                        Trạng thái đơn: {rental.rentalStatus || (rental.returnDate ? 'COMPLETED' : 'PENDING_ADMIN_CONFIRM')}
+                      </span>
                     </div>
 
                     {/* Actions */}

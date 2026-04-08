@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trash2, Search, FileText, CheckCircle, Download } from 'lucide-react';
-import { getAllRentalsApi, deleteRentalApi, returnCarApi } from '../../api/rentals';
+import { getAllRentalsApi, deleteRentalApi, returnCarApi, confirmRentalApi } from '../../api/rentals';
 import { useToast } from '../../components/ui/Toast';
 import Modal from '../../components/ui/Modal';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -12,7 +12,7 @@ const ManageRentals = () => {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'returned'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'confirmed' | 'returned'>('all');
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [returnRental, setReturnRental] = useState<Rental | null>(null);
 
@@ -41,6 +41,15 @@ const ManageRentals = () => {
     onError: () => showToast('Lỗi khi xác nhận trả xe', 'error'),
   });
 
+  const confirmMutation = useMutation({
+    mutationFn: confirmRentalApi,
+    onSuccess: () => {
+      showToast('Đã xác nhận đơn thuê', 'success');
+      queryClient.invalidateQueries({ queryKey: ['rentals'] });
+    },
+    onError: () => showToast('Lỗi khi xác nhận đơn', 'error'),
+  });
+
   const handleReturnCar = () => {
     if (!returnRental) return;
     const today = new Date().toISOString().slice(0, 10);
@@ -65,7 +74,7 @@ const ManageRentals = () => {
       r.startDate,
       r.endDate,
       r.totalPrice,
-      r.returnDate ? 'Đã trả' : 'Đang thuê',
+      r.rentalStatus || (r.returnDate ? 'COMPLETED' : 'PENDING_ADMIN_CONFIRM'),
     ]);
     const csv = [header, ...rows].map((row) => row.join(',')).join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -85,8 +94,13 @@ const ManageRentals = () => {
       String(r.id).includes(q);
     const matchStatus =
       filterStatus === 'all' ||
-      (filterStatus === 'active' && !r.returnDate) ||
-      (filterStatus === 'returned' && !!r.returnDate);
+      (filterStatus === 'pending' && (
+        r.rentalStatus === 'PENDING_PAYMENT' ||
+        r.rentalStatus === 'PENDING_ADMIN_CONFIRM' ||
+        (!r.returnDate && !r.rentalStatus)
+      )) ||
+      (filterStatus === 'confirmed' && r.rentalStatus === 'CONFIRMED') ||
+      (filterStatus === 'returned' && (r.rentalStatus === 'COMPLETED' || !!r.returnDate));
     return matchSearch && matchStatus;
   });
 
@@ -123,17 +137,16 @@ const ManageRentals = () => {
           />
         </div>
         <div className="flex items-center gap-2">
-          {(['all', 'active', 'returned'] as const).map((s) => (
+          {(['all', 'pending', 'confirmed', 'returned'] as const).map((s) => (
             <button
               key={s}
               onClick={() => setFilterStatus(s)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-                filterStatus === s
-                  ? 'bg-primary text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${filterStatus === s
+                ? 'bg-primary text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
             >
-              {s === 'all' ? 'Tất cả' : s === 'active' ? '🟢 Đang thuê' : '⚫ Đã trả'}
+              {s === 'all' ? 'Tất cả' : s === 'pending' ? '🟡 Chờ duyệt' : s === 'confirmed' ? '🟢 Đã duyệt' : '⚫ Đã trả'}
             </button>
           ))}
         </div>
@@ -154,6 +167,7 @@ const ManageRentals = () => {
                   <th className="text-left px-5 py-4 font-medium">Ngày thuê</th>
                   <th className="text-left px-5 py-4 font-medium">Ngày trả (kế hoạch)</th>
                   <th className="text-right px-5 py-4 font-medium">Giá</th>
+                  <th className="text-right px-5 py-4 font-medium">Thanh toán</th>
                   <th className="text-right px-5 py-4 font-medium">Trạng thái</th>
                   <th className="text-right px-5 py-4 font-medium">Thao tác</th>
                 </tr>
@@ -186,10 +200,21 @@ const ManageRentals = () => {
                       {formatCurrency(rental.totalPrice)}
                     </td>
                     <td className="px-5 py-4 text-right">
-                      {rental.returnDate ? (
+                      <span className="badge text-xs bg-blue-100 text-blue-700">
+                        {rental.paymentMethod || 'BANK_TRANSFER'} / {rental.paymentStatus || 'UNPAID'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      {(rental.rentalStatus === 'COMPLETED' || rental.returnDate) ? (
                         <span className="badge text-xs bg-gray-100 text-gray-500">
-                          ✓ Đã trả {formatDate(rental.returnDate)}
+                          ✓ Đã trả {rental.returnDate ? formatDate(rental.returnDate) : ''}
                         </span>
+                      ) : rental.rentalStatus === 'PENDING_PAYMENT' ? (
+                        <span className="badge text-xs bg-blue-100 text-blue-700">💳 Chờ khách chuyển khoản</span>
+                      ) : rental.rentalStatus === 'PENDING_ADMIN_CONFIRM' ? (
+                        <span className="badge text-xs bg-amber-100 text-amber-700">⏳ Chờ admin xác nhận</span>
+                      ) : rental.rentalStatus === 'CONFIRMED' ? (
+                        <span className="badge text-xs bg-green-100 text-green-700">✅ Đã xác nhận</span>
                       ) : (
                         <span className="badge text-xs bg-green-100 text-green-700">
                           🚗 Đang thuê
@@ -198,6 +223,15 @@ const ManageRentals = () => {
                     </td>
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {rental.rentalStatus === 'PENDING_ADMIN_CONFIRM' && (
+                          <button
+                            onClick={() => confirmMutation.mutate(rental.id)}
+                            className="p-2 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors"
+                            title="Xác nhận đơn"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                          </button>
+                        )}
                         {!rental.returnDate && (
                           <button
                             onClick={() => setReturnRental(rental)}

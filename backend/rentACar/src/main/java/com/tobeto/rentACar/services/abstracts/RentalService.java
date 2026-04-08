@@ -22,5 +22,7 @@ public interface RentalService {
 
 
     List<GetRentalByUserIdResponse> getByUserId(int userId);
+    Result submitTransfer(int id, int userId);
+    Result confirmByAdmin(int id);
 
 }

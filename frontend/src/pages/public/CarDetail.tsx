@@ -5,7 +5,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import {
   Calendar, Gauge, Tag, Palette, Shield, Star, ArrowLeft,
-  CheckCircle, Car, MapPin, Fuel
+  CheckCircle, Car, MapPin, Fuel, CreditCard
 } from 'lucide-react';
 import { getCarByIdApi } from '../../api/cars';
 import { addRentalApi } from '../../api/rentals';
@@ -23,6 +23,7 @@ const CarDetail = () => {
 
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'BANK_TRANSFER'>('BANK_TRANSFER');
 
   const { data: car, isLoading } = useQuery<CarType>({
     queryKey: ['car', id],
@@ -44,7 +45,7 @@ const CarDetail = () => {
       // Backend returns { id, result: { success, message } }
       if (res?.id) {
         showToast(`Đặt xe thành công! Mã đơn: #${res.id}`, 'success');
-        navigate('/dashboard/rentals');
+        navigate(`/dashboard/payment/${res.id}`);
       } else {
         showToast(res?.result?.message || 'Đặt xe thành công!', 'success');
         navigate('/dashboard/rentals');
@@ -72,6 +73,7 @@ const CarDetail = () => {
       endDate: formatDateForApi(endDate),
       carId: car.id,
       userId: userId!,
+      paymentMethod,
     });
   };
 
@@ -256,6 +258,25 @@ const CarDetail = () => {
                   </div>
                 </div>
               )}
+
+              {/* Payment method */}
+              <div className="mb-5">
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-primary" />
+                  Phuong thuc thanh toan
+                </label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value as 'CASH' | 'BANK_TRANSFER')}
+                  className="input-field"
+                >
+                  <option value="BANK_TRANSFER">Chuyen khoan ngan hang</option>
+                  <option value="CASH">Tien mat khi nhan xe</option>
+                </select>
+                <p className="text-xs text-gray-400 mt-2">
+                  Sau khi dat xe, ban se duoc chuyen den trang thanh toan theo phuong thuc da chon.
+                </p>
+              </div>
 
               {/* Book button */}
               <button
