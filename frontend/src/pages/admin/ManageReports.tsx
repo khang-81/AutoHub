@@ -7,8 +7,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   PieChart,
   Pie,
   Cell,
@@ -137,8 +137,8 @@ const ManageReports = () => {
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
               <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 12 }} />
               <Tooltip
-                formatter={(value) => [formatCurrency(Number(value)), 'Doanh thu']}
-                labelFormatter={(label) => `Tháng ${label}`}
+                formatter={((value) => [formatCurrency(Number(value)), 'Doanh thu']) as any}
+                labelFormatter={((label) => `Tháng ${label}`) as any}
               />
               <Bar dataKey="revenue" fill="#C9A227" radius={[6, 6, 0, 0]} />
             </BarChart>
@@ -150,25 +150,24 @@ const ManageReports = () => {
         )}
       </div>
 
-      {/* Rental count line chart */}
+      {/* Rental count area chart */}
       <div className="bg-white rounded-2xl shadow-sm p-6">
         <h2 className="font-heading font-semibold text-navy text-lg mb-6">Số lượng đơn thuê theo tháng</h2>
         {monthlyData.length > 0 ? (
           <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={monthlyData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+            <AreaChart data={monthlyData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+              <defs>
+                <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#1B2A4A" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#1B2A4A" stopOpacity={0} />
+                </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip formatter={(value) => [Number(value), 'Số đơn']} />
-              <Line
-                type="monotone"
-                dataKey="count"
-                stroke="#1B2A4A"
-                strokeWidth={2.5}
-                dot={{ fill: '#1B2A4A', r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
+              <Tooltip formatter={((value) => [Number(value), 'Số đơn']) as any} />
+              <Area type="monotone" dataKey="count" stroke="#1B2A4A" strokeWidth={2.5} fillOpacity={1} fill="url(#colorCount)" />
+            </AreaChart>
           </ResponsiveContainer>
         ) : (
           <div className="h-52 flex items-center justify-center text-gray-400">
@@ -189,9 +188,10 @@ const ManageReports = () => {
                   data={brandData}
                   cx="50%"
                   cy="50%"
+                  innerRadius={50}
                   outerRadius={90}
                   dataKey="value"
-                  label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                  label={(({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`) as any}
                   labelLine={false}
                 >
                   {brandData.map((_, index) => (
@@ -199,7 +199,7 @@ const ManageReports = () => {
                   ))}
                 </Pie>
                 <Legend />
-                <Tooltip formatter={(value) => [`${value} xe`, '']} />
+                <Tooltip formatter={((value) => [`${value} xe`, '']) as any} />
               </PieChart>
             </ResponsiveContainer>
           ) : (
@@ -227,7 +227,7 @@ const ManageReports = () => {
                     <Cell fill="#10B981" />
                     <Cell fill="#6B7280" />
                   </Pie>
-                  <Tooltip formatter={(value) => [`${value} đơn`, '']} />
+                  <Tooltip formatter={((value) => [`${value} đơn`, '']) as any} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>

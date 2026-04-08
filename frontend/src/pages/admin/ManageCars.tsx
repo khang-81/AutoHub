@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, Search, Car, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Car } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { getAllCarsApi, addCarApi, updateCarApi, deleteCarApi } from '../../api/cars';
+import { getAllRentalsApi } from '../../api/rentals';
 import { getAllModelsApi } from '../../api/models';
 import { getAllColorsApi } from '../../api/colors';
 import { useToast } from '../../components/ui/Toast';
@@ -26,11 +27,7 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-const DISABLED_CARS_KEY = 'autohub_disabled_cars';
-
-const getDisabledCars = (): number[] => {
-  try { return JSON.parse(localStorage.getItem(DISABLED_CARS_KEY) || '[]'); } catch { return []; }
-};
+// Legacy local availability (removed)
 
 const ManageCars = () => {
   const queryClient = useQueryClient();
@@ -39,21 +36,12 @@ const ManageCars = () => {
   const [editCar, setEditCar] = useState<CarType | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
-  const [disabledCars, setDisabledCars] = useState<number[]>(getDisabledCars);
+  // legacy local availability kept for future use (currently unused)
 
-  const toggleAvailability = (carId: number) => {
-    setDisabledCars((prev) => {
-      const next = prev.includes(carId) ? prev.filter((id) => id !== carId) : [...prev, carId];
-      localStorage.setItem(DISABLED_CARS_KEY, JSON.stringify(next));
-      showToast(
-        prev.includes(carId) ? 'Xe đã được bật cho thuê' : 'Xe đã tạm dừng cho thuê',
-        'success'
-      );
-      return next;
-    });
-  };
+  // toggleAvailability removed (không còn dùng trong UI trạng thái)
 
   const { data: cars = [], isLoading } = useQuery<CarType[]>({ queryKey: ['cars'], queryFn: getAllCarsApi });
+  const { data: rentals = [] } = useQuery<any[]>({ queryKey: ['rentals-for-cars'], queryFn: getAllRentalsApi });
   const { data: models = [] } = useQuery<CarModel[]>({ queryKey: ['models'], queryFn: getAllModelsApi });
   const { data: colors = [] } = useQuery<Color[]>({ queryKey: ['colors'], queryFn: getAllColorsApi });
 
@@ -170,7 +158,7 @@ const ManageCars = () => {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr className="text-gray-500">
-                  <th className="text-left px-5 py-4 font-medium">#</th>
+                  <th className="text-left px-5 py-4 font-medium">STT</th>
                   <th className="text-left px-5 py-4 font-medium">Xe</th>
                   <th className="text-left px-5 py-4 font-medium">Biển số</th>
                   <th className="text-left px-5 py-4 font-medium">Năm</th>
@@ -181,66 +169,74 @@ const ManageCars = () => {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((car) => (
-                  <tr key={car.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-4 text-gray-400">{car.id}</td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={car.imagePath || CAR_PLACEHOLDER}
-                          alt={car.model?.name}
-                          className="w-12 h-9 object-cover rounded-lg flex-shrink-0"
-                          onError={(e) => { (e.target as HTMLImageElement).src = CAR_PLACEHOLDER; }}
-                        />
-                        <div>
-                          <p className="font-medium text-navy">{car.model?.brand?.name} {car.model?.name}</p>
-                          <p className="text-gray-400 text-xs">{(car.kilometer / 1000).toFixed(0)}k km</p>
+                {filtered.map((car, idx) => {
+                  const toLocalStartOfDay = (d?: string | null) => {
+                    if (!d) return null;
+                    const dt = new Date(d);
+                    dt.setHours(0, 0, 0, 0);
+                    return dt.getTime();
+                  };
+                  const todayTs = (() => { const t = new Date(); t.setHours(0, 0, 0, 0); return t.getTime(); })();
+                  const busy = rentals.some((r) => {
+                    if (r.car?.id !== car.id) return false;
+                    if (r.rentalStatus === 'COMPLETED') return false;
+                    const s = toLocalStartOfDay(r.startDate);
+                    const e = toLocalStartOfDay(r.endDate);
+                    if (s === null || e === null) return false;
+                    return s <= todayTs && todayTs <= e;
+                  });
+                  return (
+                    <tr key={car.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                      <td className="px-5 py-4 text-gray-400">{idx + 1}</td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={car.imagePath || CAR_PLACEHOLDER}
+                            alt={car.model?.name}
+                            className="w-12 h-9 object-cover rounded-lg flex-shrink-0"
+                            onError={(e) => { (e.target as HTMLImageElement).src = CAR_PLACEHOLDER; }}
+                          />
+                          <div>
+                            <p className="font-medium text-navy">{car.model?.brand?.name} {car.model?.name}</p>
+                            <p className="text-gray-400 text-xs">{(car.kilometer / 1000).toFixed(0)}k km</p>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 font-mono text-gray-600">{car.plate}</td>
-                    <td className="px-5 py-4 text-gray-600">{car.modelYear}</td>
-                    <td className="px-5 py-4">
-                      <span className="badge bg-gray-100 text-gray-600">{car.color?.name}</span>
-                    </td>
-                    <td className="px-5 py-4 text-right font-semibold text-primary">
-                      {formatCurrency(car.dailyPrice)}
-                    </td>
-                    <td className="px-5 py-4 text-center">
-                      <button
-                        onClick={() => toggleAvailability(car.id)}
-                        className={`flex items-center gap-1.5 mx-auto px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                          disabledCars.includes(car.id)
-                            ? 'bg-red-50 text-red-500 hover:bg-red-100'
-                            : 'bg-green-50 text-green-600 hover:bg-green-100'
-                        }`}
-                        title={disabledCars.includes(car.id) ? 'Bật cho thuê' : 'Tạm dừng'}
-                      >
-                        {disabledCars.includes(car.id) ? (
-                          <><ToggleLeft className="w-4 h-4" /> Tạm dừng</>
-                        ) : (
-                          <><ToggleRight className="w-4 h-4" /> Hoạt động</>
-                        )}
-                      </button>
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => openEdit(car)}
-                          className="p-2 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors"
+                      </td>
+                      <td className="px-5 py-4 font-mono text-gray-600">{car.plate}</td>
+                      <td className="px-5 py-4 text-gray-600">{car.modelYear}</td>
+                      <td className="px-5 py-4">
+                        <span className="badge bg-gray-100 text-gray-600">{car.color?.name}</span>
+                      </td>
+                      <td className="px-5 py-4 text-right font-semibold text-primary">
+                        {formatCurrency(car.dailyPrice)}
+                      </td>
+                      <td className="px-5 py-4 text-center">
+                        <span
+                          className={`inline-flex items-center gap-1.5 mx-auto px-3 py-1.5 rounded-lg text-xs font-medium ${busy ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'
+                            }`}
                         >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteId(car.id)}
-                          className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {busy ? 'Đang thuê' : 'Trống'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => openEdit(car)}
+                            className="p-2 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setDeleteId(car.id)}
+                            className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
             {filtered.length === 0 && (
