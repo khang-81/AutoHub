@@ -3,9 +3,11 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Car, Lock, Mail, Eye, EyeOff, ShieldCheck, AlertCircle, FlaskConical } from 'lucide-react';
+import { Car, Lock, Mail, Eye, EyeOff, ShieldCheck, AlertCircle } from 'lucide-react';
 import { loginApi } from '../../api/auth';
+import { getUserRolesApi } from '../../api/users';
 import { useAuthStore } from '../../store/authStore';
+import { getUserIdFromToken, getEmailFromToken } from '../../utils/helpers';
 
 const schema = z.object({
   email: z.string().email('Email không hợp lệ'),
@@ -25,18 +27,29 @@ const AdminLogin = () => {
     resolver: zodResolver(schema),
   });
 
-  // Demo login for testing (no backend needed)
-  const handleDemoAdmin = () => {
-    login('demo-token-admin', 1, 'admin@autohub.com', ['ROLE_ADMIN']);
-    navigate('/admin');
-  };
-
   const onSubmit = async (data: FormData) => {
     try {
       setIsLoading(true);
       setError('');
       const res = await loginApi(data);
-      const roles: string[] = res.roles || [];
+      if (!res.success) {
+        setError(res.message || 'Email hoặc mật khẩu không đúng.');
+        return;
+      }
+
+      // Extract token from nested loginResponse
+      const token = res.loginResponse?.token || res.data || res.token;
+      if (!token) {
+        setError('Không nhận được token từ server.');
+        return;
+      }
+
+      const userId = getUserIdFromToken(token) ?? 0;
+      const email = getEmailFromToken(token) ?? data.email;
+
+      // Fetch roles from API
+      const rolesData = userId ? await getUserRolesApi(userId) : [];
+      const roles = rolesData.map((r) => r.name);
 
       const isAdmin = roles.some((r) => r.toLowerCase().includes('admin'));
       if (!isAdmin) {
@@ -44,7 +57,7 @@ const AdminLogin = () => {
         return;
       }
 
-      login(res.token, res.userId, res.email, roles);
+      login(token, userId, email, roles);
       navigate('/admin');
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
@@ -171,28 +184,6 @@ const AdminLogin = () => {
               )}
             </button>
           </form>
-
-          {/* Demo account */}
-          <div className="mt-6 pt-5 border-t border-white/10">
-            <div className="flex items-center gap-2 mb-3">
-              <FlaskConical className="w-4 h-4 text-amber-400" />
-              <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Tài khoản Demo (Test)</span>
-            </div>
-            <button
-              type="button"
-              onClick={handleDemoAdmin}
-              className="w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 transition-all duration-200 group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold">A</div>
-                <div className="text-left">
-                  <p className="text-sm font-semibold text-primary">Admin Demo</p>
-                  <p className="text-xs text-gray-400">admin@autohub.com</p>
-                </div>
-              </div>
-              <span className="text-xs text-gray-400 group-hover:text-primary font-medium transition-colors">Đăng nhập →</span>
-            </button>
-          </div>
 
           {/* Back link */}
           <div className="mt-5 pt-5 border-t border-white/10 text-center">
