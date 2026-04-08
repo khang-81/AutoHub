@@ -14,6 +14,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -79,6 +80,20 @@ public class RentalsController {
         int userID = jwtService.extractUserId(token);
 
         return rentalService.getByUserId(userID);
+    }
+
+    @PutMapping("/submitTransfer/{id}")
+    public Result submitTransfer(@PathVariable int id, HttpServletRequest request) {
+        String tokenWithPrefix = request.getHeader("Authorization");
+        String token = tokenWithPrefix.replace("Bearer ", "");
+        int userID = jwtService.extractUserId(token);
+        return rentalService.submitTransfer(id, userID);
+    }
+
+    @PreAuthorize("hasRole('admin')")
+    @PutMapping("/confirm/{id}")
+    public Result confirmByAdmin(@PathVariable int id) {
+        return rentalService.confirmByAdmin(id);
     }
 
 }

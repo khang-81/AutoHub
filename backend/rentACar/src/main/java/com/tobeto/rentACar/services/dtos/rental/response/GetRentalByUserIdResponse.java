@@ -16,5 +16,8 @@ public class GetRentalByUserIdResponse {
     private LocalDate endDate;
     private LocalDate returnDate;
     private double totalPrice;
+    private String paymentMethod;
+    private String paymentStatus;
+    private String rentalStatus;
     private GetCarByIdResponse car;
 }

@@ -1,6 +1,7 @@
 package com.tobeto.rentACar.services.concretes;
 
 import com.tobeto.rentACar.core.exceptions.types.NotFoundException;
+import com.tobeto.rentACar.core.exceptions.types.BusinessException;
 import com.tobeto.rentACar.core.utilities.messages.MessageService;
 import com.tobeto.rentACar.core.utilities.mappers.ModelMapperService;
 import com.tobeto.rentACar.core.utilities.results.Result;
@@ -19,7 +20,6 @@ import com.tobeto.rentACar.services.dtos.rental.request.FindRentalIdRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.UpdateRentalRequest;
 import com.tobeto.rentACar.services.dtos.rental.response.*;
 
-
 import com.tobeto.rentACar.services.rules.RentalBusinessRule;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Optional;
 
 import java.util.stream.Collectors;
-
 
 @Service
 @AllArgsConstructor
@@ -54,7 +53,8 @@ public class RentalManager implements RentalService {
             rule.existsCarById(request.getCarId());
         }
 
-        //When renting, the StartKilometer should be taken from the Kilometer field of the vehicle to be rented.
+        // When renting, the StartKilometer should be taken from the Kilometer field of
+        // the vehicle to be rented.
         GetCarByIdResponse car = carService.getById(request.getCarId());
         Long currentCarKilometer = car.getKilometer();
 
@@ -71,9 +71,17 @@ public class RentalManager implements RentalService {
         Rental rental = modelMapperService.forRequest().map(request, Rental.class);
         rental.setStartKilometer(currentCarKilometer);
         rental.setTotalPrice(totalPrice);
+        if ("BANK_TRANSFER".equals(request.getPaymentMethod())) {
+            rental.setPaymentStatus("PENDING_TRANSFER");
+            rental.setRentalStatus("PENDING_PAYMENT");
+        } else {
+            rental.setPaymentStatus("UNPAID");
+            rental.setRentalStatus("PENDING_ADMIN_CONFIRM");
+        }
         Rental savedRental = rentalRepository.save(rental);
 
-        // Auto-create invoice right after successful booking so user pages can show invoice data immediately.
+        // Auto-create invoice right after successful booking so user pages can show
+        // invoice data immediately.
         AddInvoiceRequest invoiceRequest = new AddInvoiceRequest();
         invoiceRequest.setInvoiceNo("INV-" + savedRental.getId() + "-" + System.currentTimeMillis());
         invoiceRequest.setTotalPrice((float) totalPrice);
@@ -95,7 +103,7 @@ public class RentalManager implements RentalService {
     @Override
     public Result update(UpdateRentalRequest request) {
 
-        for (RentalBusinessRule rule : rentalBusinessRules ) {
+        for (RentalBusinessRule rule : rentalBusinessRules) {
             rule.existsRentalById(request.getId());
             rule.checkRentalPeriod(request.getStartDate(), request.getEndDate());
             rule.checkStartDate(request.getStartDate());
@@ -104,10 +112,19 @@ public class RentalManager implements RentalService {
             rule.existsCarById(request.getCarId());
         }
 
-        //Mapping
-        Rental rental = modelMapperService.forRequest().map(request, Rental.class);
+        Rental existingRental = rentalRepository.findById(request.getId()).orElseThrow(
+                () -> new NotFoundException(messageService.getMessage(Messages.Rental.getRentalNotFoundMessage)));
 
-        //Updating
+        // Mapping
+        Rental rental = modelMapperService.forRequest().map(request, Rental.class);
+        rental.setPaymentMethod(existingRental.getPaymentMethod());
+        rental.setPaymentStatus(existingRental.getPaymentStatus());
+        rental.setRentalStatus(existingRental.getRentalStatus());
+
+        // Updating
+        if (request.getReturnDate() != null) {
+            rental.setRentalStatus("COMPLETED");
+        }
         rentalRepository.save(rental);
 
         return new SuccessResult(messageService.getMessage(Messages.Rental.rentalUpdateSuccess));
@@ -121,7 +138,7 @@ public class RentalManager implements RentalService {
 
         rule.existsRentalById(request.getId());
 
-        //Deleting
+        // Deleting
         rentalRepository.deleteById(request.getId());
 
         return new SuccessResult(messageService.getMessage(Messages.Rental.rentalDeleteSuccess));
@@ -133,17 +150,18 @@ public class RentalManager implements RentalService {
         List<Rental> rentals = rentalRepository.findAll();
         List<GetAllRentalsResponse> rentalsResponse = rentals.stream()
                 .map(rental -> this.modelMapperService.forResponse()
-                        .map(rental, GetAllRentalsResponse.class)).toList();
+                        .map(rental, GetAllRentalsResponse.class))
+                .toList();
         return rentalsResponse;
     }
 
     @Override
     public GetRentalByIdResponse getById(int id) {
 
-        Rental rental = rentalRepository.findById(id).orElseThrow(() ->
-                new NotFoundException(messageService.getMessage(Messages.Rental.getRentalNotFoundMessage)));
+        Rental rental = rentalRepository.findById(id).orElseThrow(
+                () -> new NotFoundException(messageService.getMessage(Messages.Rental.getRentalNotFoundMessage)));
 
-        //Mapping the object to the response object
+        // Mapping the object to the response object
         return this.modelMapperService.forResponse()
                 .map(rental, GetRentalByIdResponse.class);
     }
@@ -171,10 +189,48 @@ public class RentalManager implements RentalService {
 
         List<GetRentalByUserIdResponse> rentalsByUserId = rentals.stream()
                 .map(rental -> this.modelMapperService.forResponse()
-                        .map(rental, GetRentalByUserIdResponse.class)).toList();
+                        .map(rental, GetRentalByUserIdResponse.class))
+                .toList();
         return rentalsByUserId;
     }
 
+    @Override
+    public Result submitTransfer(int id, int userId) {
+        Rental rental = rentalRepository.findById(id).orElseThrow(
+                () -> new NotFoundException(messageService.getMessage(Messages.Rental.getRentalNotFoundMessage)));
 
+        if (rental.getUser() == null || rental.getUser().getId() != userId) {
+            throw new BusinessException("You are not allowed to update this rental.");
+        }
+        if (!"BANK_TRANSFER".equals(rental.getPaymentMethod())) {
+            throw new BusinessException("This rental is not using bank transfer.");
+        }
+        if (!"PENDING_PAYMENT".equals(rental.getRentalStatus())) {
+            throw new BusinessException("Rental is not in pending payment status.");
+        }
+
+        rental.setPaymentStatus("PENDING_CONFIRM");
+        rental.setRentalStatus("PENDING_ADMIN_CONFIRM");
+        rentalRepository.save(rental);
+        return new SuccessResult("Transfer submitted. Waiting for admin confirmation.");
+    }
+
+    @Override
+    public Result confirmByAdmin(int id) {
+        Rental rental = rentalRepository.findById(id).orElseThrow(
+                () -> new NotFoundException(messageService.getMessage(Messages.Rental.getRentalNotFoundMessage)));
+
+        if ("BANK_TRANSFER".equals(rental.getPaymentMethod())) {
+            if (!"PENDING_CONFIRM".equals(rental.getPaymentStatus())) {
+                throw new BusinessException("Bank transfer has not been submitted by customer.");
+            }
+            rental.setPaymentStatus("PAID");
+        } else if ("CASH".equals(rental.getPaymentMethod())) {
+            rental.setPaymentStatus("UNPAID");
+        }
+        rental.setRentalStatus("CONFIRMED");
+        rentalRepository.save(rental);
+        return new SuccessResult("Rental confirmed by admin.");
+    }
 
 }

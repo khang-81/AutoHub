@@ -25,6 +25,12 @@ public class GetRentalByIdResponse {
 
     private double totalPrice;
 
+    private String paymentMethod;
+
+    private String paymentStatus;
+
+    private String rentalStatus;
+
     private GetCarByIdResponse car;
 
     private GetUserByIdResponse user;
