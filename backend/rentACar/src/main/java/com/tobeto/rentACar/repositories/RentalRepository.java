@@ -14,7 +14,7 @@ public interface RentalRepository extends JpaRepository<Rental, Integer> {
 
     @Query("select case when count(r)>0 then true else false end from Rental r " +
             "where r.car.id = :carId and r.startDate <= :endDate and r.endDate >= :startDate " +
-            "and (r.rentalStatus is null or r.rentalStatus <> 'COMPLETED')")
+            "and (r.rentalStatus is null or (r.rentalStatus <> 'COMPLETED' and r.rentalStatus <> 'CANCELLED'))")
     boolean existsActiveOverlap(@Param("carId") int carId,
                                 @Param("startDate") java.time.LocalDate startDate,
                                 @Param("endDate") java.time.LocalDate endDate);

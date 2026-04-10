@@ -17,6 +17,10 @@ public class Car extends BaseEntity {
     @Column(name="model_year")
     private short modelYear;
 
+    /** Dịch vụ tại một thành phố (đồ án: Hà Nội) */
+    @Column(name = "service_city", length = 128)
+    private String serviceCity;
+
     @Column(name="plate")
     private String plate;
 
