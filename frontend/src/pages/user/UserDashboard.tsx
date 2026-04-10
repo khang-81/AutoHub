@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Car, FileText, User, ArrowRight, TrendingUp } from 'lucide-react';
+import { Car, FileText, User, ArrowRight, TrendingUp, ShieldAlert } from 'lucide-react';
 import { getRentalsByUserIdApi } from '../../api/rentals';
+import { getProfileApi } from '../../api/users';
 import { useAuthStore } from '../../store/authStore';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate, CAR_PLACEHOLDER } from '../../utils/helpers';
@@ -13,6 +14,11 @@ const UserDashboard = () => {
   const { data: rentals = [], isLoading } = useQuery<RentalByUser[]>({
     queryKey: ['myRentals'],
     queryFn: getRentalsByUserIdApi,
+  });
+
+  const { data: profile } = useQuery({
+    queryKey: ['profile'],
+    queryFn: getProfileApi,
   });
 
   const totalSpent = rentals.reduce((sum, r) => sum + (r.totalPrice || 0), 0);
@@ -38,6 +44,23 @@ const UserDashboard = () => {
           </div>
         </div>
       </div>
+
+      {profile && profile.kycStatus !== 'APPROVED' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-amber-900 text-sm">Hoàn tất xác minh CCCD & GPLX</p>
+              <p className="text-amber-800/90 text-xs mt-0.5">
+                Bạn cần được duyệt giấy tờ trước khi đặt xe.
+              </p>
+            </div>
+          </div>
+          <Link to="/dashboard/kyc" className="btn-primary text-sm py-2 px-4 whitespace-nowrap text-center">
+            Đi tới xác minh
+          </Link>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">

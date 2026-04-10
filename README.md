@@ -1,115 +1,122 @@
-# Rent-A-Car Web Application Backend Project | Java Spring Boot Project
+# Rent-A-Car (AutoHub)
 
-## Overview
+Ứng dụng thuê xe full-stack: **Spring Boot** (API) + **React / Vite** (giao diện), SQL Server, JWT, KYC, đặt xe / cọc / đánh giá.
 
-This repository hosts the backend codebase for rent a car, a sophisticated Rent-A-Car web application crafted as a pivotal component of the [TOBETO](https://www.linkedin.com/company/tobeto/) Java-React Full-Stack Developer program. This meticulously engineered application empowers users to seamlessly peruse, explore, and lease vehicles from an extensive catalog within a virtual car rental ecosystem.
+---
 
-## Backend Operations
+## Chạy toàn bộ bằng Docker (khuyến nghị)
 
-### Database Connection
+Không cần cài Maven hay `npm install` trên máy — Docker build **backend** và **frontend** trong image.
 
-The backend handles database operations using Java Spring Boot and Hibernate ORM. It establishes a connection to the PostgreSQL database, where vehicle information, user data, and rental history are stored.
+### Yêu cầu
 
-### CRUD Operations
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (hoặc Docker Engine + Compose v2)
 
-The backend facilitates basic CRUD (Create, Read, Update, Delete) operations to interact with the database:
+### Các bước
 
-- **Create**: Enables the addition of new vehicles, user accounts, and rental records.
-- **Read**: Retrieves vehicle information, user details, and rental history.
-- **Update**: Allows modification of vehicle details, user profiles, and rental information.
-- **Delete**: Permits the removal of vehicles from the catalog, user accounts, and rental records.
+1. **Clone** repo và vào thư mục gốc (nơi có `docker-compose.yml`).
 
-These operations ensure the smooth functioning of the Rent-A-Car platform, providing users with a seamless experience while managing data efficiently.
+2. **Tạo file `.env`** từ mẫu:
 
+   ```bash
+   cp docker-compose.env.example .env
+   ```
 
-For further insights, we invite you to explore the [frontend repository](https://github.com/EarthCaspian/project-rbride).
+   Chỉnh tối thiểu:
+
+   | Biến | Ý nghĩa |
+   |------|---------|
+   | `MSSQL_SA_PASSWORD` | Mật khẩu SA SQL Server (đủ mạnh theo yêu cầu Microsoft) |
+   | `JWT_KEY` | Secret JWT dạng Base64 (giống `jwt.key` khi dev) |
+   | `VITE_API_URL` | URL API mà **trình duyệt** gọi — local thường là `http://localhost:8081` |
+   | `APP_CORS_ALLOWED_ORIGINS` | Origin trang web, phân cách bằng dấu phẩy — với Nginx mặc định: `http://localhost:8080,http://127.0.0.1:8080` |
+
+3. **Build và chạy**:
+
+   ```bash
+   docker compose up --build
+   ```
+
+4. **Mở ứng dụng**
+
+   - Giao diện: **http://localhost:8080** (đổi bằng `WEB_PORT` trong `.env` nếu cần)
+   - API: **http://localhost:8081** (đổi bằng `API_PORT`)
+
+### Dịch vụ trong Compose
+
+| Service | Mô tả |
+|---------|--------|
+| `db` | SQL Server 2022 (`linux/amd64`), cổng host mặc định **1433** |
+| `db-init` | Chạy một lần: tạo database `rentacar` nếu chưa có |
+| `api` | Spring Boot, profile **`prod`**, volume `uploads_data` cho file KYC |
+| `web` | Static React + **Nginx** (SPA routing) |
+
+**Đổi `VITE_API_URL`:** phải build lại image web:
+
+```bash
+docker compose build web --no-cache && docker compose up -d
+```
+
+**Apple Silicon:** image dùng `platform: linux/amd64` — có thể chậm hơn do emulation.
+
+**Lỗi `db-init`:** nếu không build được (mạng tới repo Microsoft), tạo DB `rentacar` thủ công rồi chỉnh `depends_on` trong `docker-compose.yml` (xem comment trong file).
+
+---
+
+## CORS & bảo mật API
+
+- Trên server thật, thêm origin frontend vào **`app.cors.allowed-origins`** (khi không dùng Compose: `application.properties` / env).
+- Với Compose, dùng **`APP_CORS_ALLOWED_ORIGINS`** trong `.env` (đã map vào container `api`).
+
+---
+
+## Chạy API production không Docker (tùy chọn)
+
+Khi không dùng Compose, set **`SPRING_PROFILES_ACTIVE=prod`** và các biến trong `backend/rentACar/application-prod.properties` / `env.example`.
+
+---
+
+## Phát triển local (không Docker)
+
+Chỉ dùng khi sửa code và cần hot-reload.
+
+| Thành phần | Lệnh |
+|-------------|------|
+| Backend | `cd backend/rentACar` → `mvn spring-boot:run` (cần SQL Server local, xem `application.properties`) |
+| Frontend | `cd frontend` → `npm install` → `npm run dev` (Vite, thường cổng 3000/5173 tùy cấu hình) |
+
+`VITE_API_URL` trong `frontend/.env` trỏ tới API (mặc định code: `http://localhost:8081`).
+
+---
+
+## Cấu hình & bí mật
+
+- Không commit API key / mật khẩu thật. Xem `backend/rentACar/env.example`, `docker-compose.env.example`, `application-local.properties.example` (file `application-local.properties` đã gitignore).
+
+---
+
+## Kiểm thử & CI
+
+- **CI (GitHub Actions):** `mvn compile` + `npm run build` — `.github/workflows/ci.yml`
+- **Smoke API (khi API đã chạy):** `powershell -File scripts/smoke-test.ps1` — thêm `-LoginEmail` / `-LoginPassword` để thử đăng nhập
+
+---
+
+## Kiến trúc & công nghệ
+
+- **Backend:** Spring Boot, JPA/Hibernate, SQL Server, JWT, Lombok, ModelMapper  
+- **Frontend:** React 19, Vite, TanStack Query, Tailwind  
+- **Deploy:** Docker Compose (SQL Server + API + Nginx)
+
+---
 
 ## Contributors
+
 - [Hazar Akatay](https://github.com/EarthCaspian)
 - [Senem Yılmaz](https://github.com/senemyilmazz)
 - [Duygu Şen Tosunoğlu](https://github.com/duygusen)
 - [İnci Gülçin Durak Yolcu](https://github.com/InciGulcinDY)
 
-## N-Layered Architecture
-
-Our project is structured with an N-layered architecture, meticulously designed to promote clean code and scalability. This architectural approach allows for the separation of concerns and modularization of components, ensuring ease of maintenance, extensibility, and testability.
-
-### Key Layers:
-
-- **Controller Layer**: Responsible for handling user interaction and interface rendering. It includes components such as controllers, views, and UI-related logic.
-
-- **Business Layer**: Contains the core business logic and rules of the application. This layer orchestrates data processing, validation, and business workflows.
-
-- **Data Access Layer**: Handles interactions with the database and data persistence. It encapsulates database operations and ensures data integrity and consistency.
-
-- **Entity Layer**:  The Entity Layer represents the domain model of our application, encapsulating the business entities and their relationships. These entities are the building blocks of our data model and closely mirror the real-world objects and concepts our application deals with.
-
-### Benefits:
-
-- **Modularity**: Each layer is self-contained, promoting code reusability and maintainability. New features or changes can be implemented with minimal impact on other layers.
-
-- **Scalability**: The architecture accommodates growth and evolution by allowing additional layers or components to be seamlessly integrated.
-
-- **Clean Code**: Clear separation of concerns and well-defined boundaries between layers result in cleaner, more readable code. This fosters collaboration and simplifies debugging and troubleshooting.
-
-- **Flexibility**: The layered structure facilitates the adoption of new technologies or frameworks. Adding new databases, integrating external services, or adopting microservices architecture becomes straightforward, thanks to the clear separation of concerns and modular design.
-
-By adhering to this robust N-layered architecture, our project exemplifies a commitment to best practices, ensuring a solid foundation for current and future development endeavors.
-
-## Technologies Used
-
-### Development Tools
-- Java
-- Spring
-
-### DataBase
-- PostgreSQL 
-
-### Libraries
-- JPA
-- Hibernate
-- Lombok
-- Model Mapper
-- Json Web Token
-
-## Getting Started
-
-### Prerequisites
-Before proceeding, ensure you have the following installed on your system:
-- Java Development Kit (JDK)
-- Maven
-- PostgreSQL database
-
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/EarthCaspian/rentACar/tree/main
-2. Navigate to the project directory:
-    ```bash
-    cd rent-a-car
-3. Set up the database:
-- Create a PostgreSQL database named rent_a_car
-- Create application.properties with your database credentials
-4. Build and Run the Backend:
-    ```bash
-    cd backend
-    mvn spring-boot:run
-5. Install Frontend Dependencies:
-    ```bash
-    cd frontend
-    npm install
-6. Start the Frontend Server:
-    ```bash
-    npm start
-7. Access the application at http://localhost:3000 in your web browser.
-
-### Usage
-Once the application is running, you can sign up for an account, browse available vehicles, search for specific vehicles, reserve them for specific dates, and view your rental history.
-
-### Additional Notes
-Ensure that the backend server is running before starting the frontend server to enable communication between the frontend and backend.
-Make sure to configure any necessary environment variables or settings according to your specific development environment.
-
 ## Acknowledgements
-We extend our sincere appreciation to [Halit Enes Kalaycı](https://github.com/halitkalayci) for his invaluable guidance throughout the [TOBETO](https://www.linkedin.com/company/tobeto/) Java-React Full-Stack Developer program, conducted under the auspices of the [İstanbul Kodluyor Project](https://www.linkedin.com/in/istanbul-kodluyor-09b981288/).
+
+Thanks to [Halit Enes Kalaycı](https://github.com/halitkalayci) and the [TOBETO](https://www.linkedin.com/company/tobeto/) / [İstanbul Kodluyor](https://www.linkedin.com/in/istanbul-kodluyor-09b981288/) program.

@@ -25,4 +25,7 @@ public interface RentalService {
     Result submitTransfer(int id, int userId);
     Result confirmByAdmin(int id);
 
+    /** user hoặc admin hủy đơn; actorUserId từ JWT */
+    Result cancel(int rentalId, int actorUserId, boolean isAdmin, String reason);
+
 }

@@ -32,6 +32,7 @@ import RentalHistory from './pages/user/RentalHistory';
 import MyInvoices from './pages/user/MyInvoices';
 import ChangePassword from './pages/user/ChangePassword';
 import PaymentPage from './pages/user/PaymentPage';
+import KycVerification from './pages/user/KycVerification';
 
 // Admin pages
 import AdminLogin from './pages/admin/AdminLogin';
@@ -42,6 +43,7 @@ import ManageRentals from './pages/admin/ManageRentals';
 import ManageInvoices from './pages/admin/ManageInvoices';
 import ManageUsers from './pages/admin/ManageUsers';
 import ManageReports from './pages/admin/ManageReports';
+import ManageKyc from './pages/admin/ManageKyc';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -89,6 +91,7 @@ function RoutesWithChatbot() {
           <Route path="payment/:rentalId" element={<PaymentPage />} />
           <Route path="invoices" element={<MyInvoices />} />
           <Route path="change-password" element={<ChangePassword />} />
+          <Route path="kyc" element={<KycVerification />} />
         </Route>
 
         {/* Admin routes - protected by AdminProtectedRoute */}
@@ -107,6 +110,7 @@ function RoutesWithChatbot() {
           <Route path="invoices" element={<ManageInvoices />} />
           <Route path="users" element={<ManageUsers />} />
           <Route path="reports" element={<ManageReports />} />
+          <Route path="kyc" element={<ManageKyc />} />
         </Route>
 
         {/* Catch all */}

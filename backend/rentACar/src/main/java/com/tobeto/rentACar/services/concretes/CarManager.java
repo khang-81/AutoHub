@@ -7,6 +7,7 @@ import com.tobeto.rentACar.core.utilities.results.Result;
 import com.tobeto.rentACar.core.utilities.results.SuccessResult;
 import com.tobeto.rentACar.entities.concretes.Car;
 import com.tobeto.rentACar.repositories.CarRepository;
+import com.tobeto.rentACar.repositories.ReviewRepository;
 import com.tobeto.rentACar.services.abstracts.CarService;
 import com.tobeto.rentACar.services.constants.Messages;
 import com.tobeto.rentACar.services.dtos.car.request.AddCarRequest;
@@ -21,13 +22,16 @@ import lombok.AllArgsConstructor;
 
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 
 @Service
 @AllArgsConstructor
 public class CarManager implements CarService {
     private final CarRepository carRepository;
+    private final ReviewRepository reviewRepository;
     private final ModelMapperService modelMapperService;
     private final CarBusinessRule carBusinessRule;
     private final ModelBusinessRule modelBusinessRule;
@@ -37,7 +41,12 @@ public class CarManager implements CarService {
     @Override
     public List<GetAllCarsResponse> getAll() {
         List<Car> cars = carRepository.findAll();
-        return cars.stream().map((car) -> this.modelMapperService.forResponse().map(car, GetAllCarsResponse.class)).toList();
+        Map<Integer, double[]> ratingByCar = buildRatingStatsMap();
+        return cars.stream().map((car) -> {
+            GetAllCarsResponse r = this.modelMapperService.forResponse().map(car, GetAllCarsResponse.class);
+            applyRatingStats(r, car.getId(), ratingByCar);
+            return r;
+        }).toList();
     }
 
     @Override
@@ -46,9 +55,38 @@ public class CarManager implements CarService {
         Car car = carRepository.findById(id).orElseThrow(() ->
                 new NotFoundException(messageService.getMessage(Messages.Car.getCarNotFoundMessage)));
 
-        //Mapping the object to the response object
-        return this.modelMapperService.forResponse()
+        GetCarByIdResponse r = this.modelMapperService.forResponse()
                 .map(car, GetCarByIdResponse.class);
+        Map<Integer, double[]> ratingByCar = buildRatingStatsMap();
+        applyRatingStats(r, id, ratingByCar);
+        return r;
+    }
+
+    private Map<Integer, double[]> buildRatingStatsMap() {
+        Map<Integer, double[]> map = new HashMap<>();
+        for (Object[] row : reviewRepository.findAverageRatingStatsByCar()) {
+            Integer carId = (Integer) row[0];
+            double avg = ((Number) row[1]).doubleValue();
+            long count = ((Number) row[2]).longValue();
+            map.put(carId, new double[]{avg, count});
+        }
+        return map;
+    }
+
+    private static void applyRatingStats(GetAllCarsResponse dto, int carId, Map<Integer, double[]> ratingByCar) {
+        double[] s = ratingByCar.get(carId);
+        if (s != null) {
+            dto.setAverageRating(Math.round(s[0] * 10.0) / 10.0);
+            dto.setReviewCount((int) s[1]);
+        }
+    }
+
+    private static void applyRatingStats(GetCarByIdResponse dto, int carId, Map<Integer, double[]> ratingByCar) {
+        double[] s = ratingByCar.get(carId);
+        if (s != null) {
+            dto.setAverageRating(Math.round(s[0] * 10.0) / 10.0);
+            dto.setReviewCount((int) s[1]);
+        }
     }
 
     @Override
@@ -62,6 +100,9 @@ public class CarManager implements CarService {
         colorBusinessRule.existsColorById(request.getColorId());
 
         Car car = this.modelMapperService.forRequest().map(request, Car.class);
+        if (car.getServiceCity() == null || car.getServiceCity().isBlank()) {
+            car.setServiceCity("Hà Nội");
+        }
 
         carRepository.save(car);
 

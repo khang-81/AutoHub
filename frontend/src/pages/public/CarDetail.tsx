@@ -1,22 +1,31 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import {
   Calendar, Gauge, Tag, Palette, Shield, Star, ArrowLeft,
-  CheckCircle, Car, MapPin, Fuel, CreditCard
+  CheckCircle, Car, MapPin, Fuel, CreditCard, Scale
 } from 'lucide-react';
 import { getCarByIdApi } from '../../api/cars';
-import { getAllRentalsApi } from '../../api/rentals';
-import { addRentalApi } from '../../api/rentals';
+import { getAllRentalsApi, getInsuranceOptionsApi, addRentalApi } from '../../api/rentals';
+import { getProfileApi } from '../../api/users';
+import { getReviewsByCarIdApi } from '../../api/reviews';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../components/ui/Toast';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import { formatCurrency, calculateTotalPrice, formatDateForApi, CAR_PLACEHOLDER } from '../../utils/helpers';
+import {
+  formatCurrency,
+  calculateRentalDays,
+  formatDateForApi,
+  formatDate,
+  CAR_PLACEHOLDER,
+} from '../../utils/helpers';
+import { HANOI_DISTRICTS } from '../../data/hanoiDistricts';
 import type { Car as CarType, Rental } from '../../types';
 
 const CarDetail = () => {
+  const queryClient = useQueryClient();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated, userId } = useAuthStore();
@@ -25,6 +34,9 @@ const CarDetail = () => {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'BANK_TRANSFER'>('BANK_TRANSFER');
+  const [insuranceCode, setInsuranceCode] = useState('NONE');
+  const [pickupDistrict, setPickupDistrict] = useState('');
+  const [extraFeesAmount, setExtraFeesAmount] = useState('');
 
   const { data: car, isLoading } = useQuery<CarType>({
     queryKey: ['car', id],
@@ -32,6 +44,23 @@ const CarDetail = () => {
     enabled: !!id,
   });
   const { data: rentals = [] } = useQuery<Rental[]>({ queryKey: ['rentals'], queryFn: getAllRentalsApi });
+
+  const { data: insuranceOptions = [] } = useQuery({
+    queryKey: ['insuranceOptions'],
+    queryFn: getInsuranceOptionsApi,
+  });
+
+  const { data: profile, isLoading: profileLoading } = useQuery({
+    queryKey: ['profile'],
+    queryFn: getProfileApi,
+    enabled: isAuthenticated,
+  });
+
+  const { data: reviews = [], isLoading: reviewsLoading } = useQuery({
+    queryKey: ['reviews', id],
+    queryFn: () => getReviewsByCarIdApi(Number(id)),
+    enabled: !!id,
+  });
 
   const bookedRanges = rentals
     .filter((r) =>
@@ -52,17 +81,26 @@ const CarDetail = () => {
     bookedRanges.some((range) => date >= range.start && date <= range.end);
   const getDayClassName = (date: Date) => (isBookedDate(date) ? 'booked-day' : '');
 
-  const totalPrice = startDate && endDate && car
-    ? calculateTotalPrice(car.dailyPrice, startDate, endDate)
-    : 0;
+  const rentalDays =
+    startDate && endDate && car ? calculateRentalDays(startDate, endDate) : 0;
 
-  const days = startDate && endDate
-    ? Math.max(Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)), 1)
-    : 0;
+  const selectedOption = insuranceOptions.find((o) => o.code === insuranceCode);
+  const insuranceFeePerDay = selectedOption?.feePerDay ?? 0;
+
+  const baseRental =
+    startDate && endDate && car ? car.dailyPrice * rentalDays : 0;
+  const insuranceTotal = rentalDays > 0 ? insuranceFeePerDay * rentalDays : 0;
+  const extrasNum = Math.max(0, parseFloat(extraFeesAmount.replace(/,/g, '')) || 0);
+  const totalPrice = baseRental + insuranceTotal + extrasNum;
+  const depositEstimate = totalPrice > 0 ? Math.max(500_000, totalPrice * 0.15) : 0;
 
   const rentalMutation = useMutation({
     mutationFn: addRentalApi,
     onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['rentals'] });
+      queryClient.invalidateQueries({ queryKey: ['myRentals'] });
+      queryClient.invalidateQueries({ queryKey: ['reviews'] });
+      queryClient.invalidateQueries({ queryKey: ['car', id] });
       // Backend returns { id, result: { success, message } }
       if (res?.id) {
         navigate(`/dashboard/payment/${res.id}`);
@@ -106,12 +144,29 @@ const CarDetail = () => {
     }
     if (!car) return;
 
+    if (isAuthenticated) {
+      if (profileLoading) {
+        showToast('Đang kiểm tra hồ sơ...', 'info');
+        return;
+      }
+      if (profile?.kycStatus !== 'APPROVED') {
+        showToast('Vui lòng đăng tải và được duyệt CCCD + GPLX trước khi đặt xe.', 'info');
+        navigate('/dashboard/kyc');
+        return;
+      }
+    }
+
+    const extrasNum = Math.max(0, parseFloat(extraFeesAmount.replace(/,/g, '')) || 0);
+
     rentalMutation.mutate({
       startDate: formatDateForApi(startDate),
       endDate: formatDateForApi(endDate),
       carId: car.id,
       userId,
       paymentMethod,
+      insuranceCode: insuranceCode || 'NONE',
+      extraFeesAmount: extrasNum,
+      pickupDistrict: pickupDistrict || undefined,
     });
   };
 
@@ -163,7 +218,14 @@ const CarDetail = () => {
                 </div>
                 <div className="absolute top-4 right-4 flex items-center gap-1 bg-white/90 rounded-full px-3 py-1">
                   <Star className="w-4 h-4 text-primary fill-primary" />
-                  <span className="text-sm font-semibold">4.9</span>
+                  <span className="text-sm font-semibold">
+                    {car.reviewCount != null && car.reviewCount > 0 && car.averageRating != null
+                      ? car.averageRating.toFixed(1)
+                      : '—'}
+                  </span>
+                  {car.reviewCount != null && car.reviewCount > 0 && (
+                    <span className="text-xs text-gray-500">({car.reviewCount})</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -175,7 +237,10 @@ const CarDetail = () => {
                   <h1 className="font-heading font-bold text-2xl md:text-3xl text-navy">
                     {car.model?.brand?.name} {car.model?.name}
                   </h1>
-                  <p className="text-gray-500 mt-1">{car.color?.name} • {car.modelYear}</p>
+                  <p className="text-gray-500 mt-1">
+                    {car.color?.name} • {car.modelYear}
+                    {car.serviceCity ? ` • ${car.serviceCity}` : ' • Hà Nội'}
+                  </p>
                 </div>
                 <div className="text-right">
                   <p className="font-heading font-bold text-3xl text-primary">
@@ -228,12 +293,83 @@ const CarDetail = () => {
                 ))}
               </div>
             </div>
+
+            {/* Cancel & deposit policy */}
+            <div className="card p-6 border border-amber-100 bg-amber-50/40">
+              <h2 className="font-heading font-semibold text-navy text-lg mb-3 flex items-center gap-2">
+                <Scale className="w-5 h-5 text-amber-700" />
+                Hủy đơn & hoàn cọc
+              </h2>
+              <p className="text-sm text-gray-700 mb-3">
+                Tiền cọc được tính tối thiểu <strong>500.000đ</strong> hoặc <strong>15%</strong> giá trị chuyến (tùy mức nào cao hơn).
+              </p>
+              <ul className="space-y-2 text-sm text-gray-600 list-disc pl-5">
+                <li>
+                  Tính theo thời điểm hủy so với <strong>0h ngày nhận xe</strong>: còn trên <strong>48 giờ</strong> — hoàn{' '}
+                  <strong>100%</strong> cọc; từ <strong>24–48 giờ</strong> — hoàn <strong>50%</strong>; dưới <strong>24 giờ</strong> —{' '}
+                  <strong>không hoàn</strong> cọc.
+                </li>
+                <li>
+                  Sau khi đã nhận xe hoặc quá thời hạn trên, điều kiện áp dụng theo đơn và xác nhận từ công ty.
+                </li>
+              </ul>
+            </div>
+
+            {/* Reviews */}
+            <div className="card p-6">
+              <h2 className="font-heading font-semibold text-navy text-lg mb-5">
+                Đánh giá từ khách hàng
+                {car.reviewCount != null && car.reviewCount > 0 && car.averageRating != null && (
+                  <span className="text-primary font-bold ml-2">
+                    {car.averageRating.toFixed(1)} / 5 ({car.reviewCount} lượt)
+                  </span>
+                )}
+              </h2>
+              {reviewsLoading ? (
+                <p className="text-gray-400 text-sm">Đang tải đánh giá...</p>
+              ) : reviews.length === 0 ? (
+                <p className="text-gray-500 text-sm">Chưa có đánh giá cho xe này.</p>
+              ) : (
+                <ul className="space-y-5">
+                  {reviews.map((rev) => (
+                    <li key={rev.id} className="border-b border-gray-100 last:border-0 pb-5 last:pb-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <span className="text-amber-500 tracking-tight">
+                          {Array.from({ length: rev.rating }).map((_, i) => (
+                            <Star key={i} className="w-4 h-4 inline fill-amber-500 text-amber-500" />
+                          ))}
+                        </span>
+                        <span className="text-xs text-gray-500">{rev.authorLabel}</span>
+                        <span className="text-xs text-gray-400">
+                          {formatDate(rev.createdDate)}
+                        </span>
+                      </div>
+                      {rev.comment ? (
+                        <p className="text-sm text-gray-700 leading-relaxed">{rev.comment}</p>
+                      ) : (
+                        <p className="text-xs text-gray-400 italic">Không có nhận xét thêm</p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
 
           {/* Right: Booking */}
           <div className="lg:col-span-1">
             <div className="card p-6 sticky top-24">
               <h2 className="font-heading font-semibold text-navy text-lg mb-5">Đặt xe</h2>
+
+              {isAuthenticated && !profileLoading && profile?.kycStatus !== 'APPROVED' && (
+                <div className="mb-5 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm">
+                  <p className="font-medium mb-1">Cần xác minh danh tính</p>
+                  <p className="text-gray-700 mb-2">Tải CCCD và GPLX để đặt xe.</p>
+                  <Link to="/dashboard/kyc" className="text-primary font-semibold hover:underline">
+                    Đi tới xác minh →
+                  </Link>
+                </div>
+              )}
 
               {/* Date pickers */}
               <div className="space-y-4 mb-5">
@@ -292,21 +428,83 @@ const CarDetail = () => {
                 </div>
               </div>
 
+              {/* Location & extras */}
+              <div className="space-y-4 mb-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-primary" />
+                    Quận nhận xe (Hà Nội)
+                  </label>
+                  <select
+                    value={pickupDistrict}
+                    onChange={(e) => setPickupDistrict(e.target.value)}
+                    className="input-field"
+                  >
+                    <option value="">— Chọn quận —</option>
+                    {HANOI_DISTRICTS.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Gói bảo hiểm thêm</label>
+                  <select
+                    value={insuranceCode}
+                    onChange={(e) => setInsuranceCode(e.target.value)}
+                    className="input-field"
+                  >
+                    {insuranceOptions.map((o) => (
+                      <option key={o.code} value={o.code}>
+                        {o.name}
+                        {o.feePerDay > 0 ? ` (+${formatCurrency(o.feePerDay)}/ngày)` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Phụ phí khác (VNĐ)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1000}
+                    value={extraFeesAmount}
+                    onChange={(e) => setExtraFeesAmount(e.target.value)}
+                    placeholder="0"
+                    className="input-field"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Giao xe tận nơi, phát sinh khác (nếu có)</p>
+                </div>
+              </div>
+
               {/* Price breakdown */}
-              {days > 0 && (
+              {rentalDays > 0 && (
                 <div className="bg-gray-50 rounded-xl p-4 mb-5 space-y-2">
                   <div className="flex justify-between text-sm text-gray-600">
-                    <span>{formatCurrency(car.dailyPrice)} × {days} ngày</span>
-                    <span>{formatCurrency(totalPrice)}</span>
+                    <span>Thuê xe × {rentalDays} ngày</span>
+                    <span>{formatCurrency(baseRental)}</span>
                   </div>
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>Phí dịch vụ</span>
-                    <span className="text-green-600">Miễn phí</span>
-                  </div>
+                  {insuranceTotal > 0 && (
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>Bảo hiểm ({selectedOption?.name || insuranceCode})</span>
+                      <span>{formatCurrency(insuranceTotal)}</span>
+                    </div>
+                  )}
+                  {extrasNum > 0 && (
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>Phụ phí</span>
+                      <span>{formatCurrency(extrasNum)}</span>
+                    </div>
+                  )}
                   <hr className="border-gray-200" />
                   <div className="flex justify-between font-semibold text-navy">
-                    <span>Tổng cộng</span>
+                    <span>Tổng thanh toán dự kiến</span>
                     <span className="text-primary text-lg">{formatCurrency(totalPrice)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500 pt-1">
+                    <span>Tiền cọc (ước tính)</span>
+                    <span>{formatCurrency(depositEstimate)}</span>
                   </div>
                 </div>
               )}

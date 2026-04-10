@@ -2,9 +2,11 @@ package com.tobeto.rentACar.services.rules;
 
 import com.tobeto.rentACar.core.utilities.messages.MessageService;
 import com.tobeto.rentACar.core.exceptions.types.BusinessException;
+import com.tobeto.rentACar.entities.concretes.User;
 import com.tobeto.rentACar.repositories.CarRepository;
 import com.tobeto.rentACar.repositories.RentalRepository;
 import com.tobeto.rentACar.repositories.UserRepository;
+import com.tobeto.rentACar.services.constants.KycConstants;
 import com.tobeto.rentACar.services.constants.Messages;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -63,6 +65,16 @@ public class RentalBusinessRule {
         boolean overlap = rentalRepository.existsActiveOverlap(carId, startDate, endDate);
         if (overlap) {
             throw new BusinessException("Xe đang được thuê trong khoảng thời gian này.");
+        }
+    }
+
+    public void checkUserKycApprovedForRental(int userId) {
+        User user = userRepository.findById(userId).orElseThrow(
+                () -> new BusinessException(messageService.getMessage(Messages.User.getUserNotFoundMessage)));
+        String k = user.getKycStatus();
+        if (k == null || !KycConstants.USER_KYC_APPROVED.equals(k)) {
+            throw new BusinessException(
+                    "Vui lòng tải lên và được duyệt CCCD cùng GPLX trước khi đặt xe.");
         }
     }
 

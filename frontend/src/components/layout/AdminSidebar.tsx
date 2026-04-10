@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Receipt,
   BarChart3,
+  ShieldCheck,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
@@ -20,6 +21,7 @@ const navItems = [
   { label: 'Tổng quan', to: '/admin', icon: LayoutDashboard, exact: true },
   { label: 'Quản lý xe', to: '/admin/cars', icon: Car },
   { label: 'Quản lý người dùng', to: '/admin/users', icon: Users },
+  { label: 'Duyệt KYC', to: '/admin/kyc', icon: ShieldCheck },
   { label: 'Thương hiệu & Model', to: '/admin/brands', icon: Tag },
   { label: 'Quản lý đơn thuê', to: '/admin/rentals', icon: FileText },
   { label: 'Quản lý hóa đơn', to: '/admin/invoices', icon: Receipt },
