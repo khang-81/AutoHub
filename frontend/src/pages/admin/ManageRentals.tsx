@@ -11,6 +11,13 @@ import type { Rental } from '../../types';
 const ManageRentals = () => {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+
+  const invalidateRentalRelated = () => {
+    queryClient.invalidateQueries({ queryKey: ['rentals'] });
+    queryClient.invalidateQueries({ queryKey: ['myRentals'] });
+    queryClient.invalidateQueries({ queryKey: ['reviews'] });
+    queryClient.invalidateQueries({ queryKey: ['car'] });
+  };
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'confirmed' | 'returned'>('all');
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -25,7 +32,7 @@ const ManageRentals = () => {
     mutationFn: deleteRentalApi,
     onSuccess: () => {
       showToast('Đã xóa đơn thuê', 'success');
-      queryClient.invalidateQueries({ queryKey: ['rentals'] });
+      invalidateRentalRelated();
       setDeleteId(null);
     },
     onError: () => showToast('Lỗi khi xóa', 'error'),
@@ -35,7 +42,7 @@ const ManageRentals = () => {
     mutationFn: returnCarApi,
     onSuccess: () => {
       showToast('Xác nhận trả xe thành công!', 'success');
-      queryClient.invalidateQueries({ queryKey: ['rentals'] });
+      invalidateRentalRelated();
       setReturnRental(null);
     },
     onError: () => showToast('Lỗi khi xác nhận trả xe', 'error'),
@@ -45,7 +52,7 @@ const ManageRentals = () => {
     mutationFn: confirmRentalApi,
     onSuccess: () => {
       showToast('Đã xác nhận đơn thuê', 'success');
-      queryClient.invalidateQueries({ queryKey: ['rentals'] });
+      invalidateRentalRelated();
     },
     onError: () => showToast('Lỗi khi xác nhận đơn', 'error'),
   });

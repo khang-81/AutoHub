@@ -49,14 +49,53 @@ const PaymentPage = () => {
   if (isLoading) return <LoadingSpinner />;
   if (!rental) return <div className="text-center text-gray-500">Không tìm thấy đơn thuê.</div>;
 
+  const insLabel =
+    !rental.insuranceCode || rental.insuranceCode === 'NONE'
+      ? 'Không mua thêm'
+      : rental.insuranceCode;
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-2xl shadow-sm p-6">
         <h1 className="font-heading font-bold text-xl text-navy mb-1">Thanh toán đơn thuê #{rental.id}</h1>
         <p className="text-gray-500 text-sm">
-          Xe: {rental.car?.model?.brand?.name} {rental.car?.model?.name} - Biển số {rental.car?.plate}
+          Xe: {rental.car?.model?.brand?.name} {rental.car?.model?.name} — Biển {rental.car?.plate}
+          {rental.pickupDistrict ? ` — Nhận xe: ${rental.pickupDistrict}, Hà Nội` : ''}
         </p>
-        <p className="text-primary font-bold text-lg mt-2">Tổng tiền: {formatCurrency(rental.totalPrice)}</p>
+
+        <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50/80 p-4 space-y-2 text-sm">
+          <div className="flex justify-between text-gray-700">
+            <span>Tổng giá trị chuyến (thuê + bảo hiểm + phụ phí)</span>
+            <span className="font-semibold text-navy">{formatCurrency(rental.totalPrice)}</span>
+          </div>
+          {(rental.insuranceFeeAmount != null && rental.insuranceFeeAmount > 0) && (
+            <div className="flex justify-between text-gray-500 text-xs">
+              <span>Trong đó phí bảo hiểm ({insLabel})</span>
+              <span>{formatCurrency(rental.insuranceFeeAmount)}</span>
+            </div>
+          )}
+          {(rental.extraFeesAmount != null && rental.extraFeesAmount > 0) && (
+            <div className="flex justify-between text-gray-500 text-xs">
+              <span>Phụ phí khác</span>
+              <span>{formatCurrency(rental.extraFeesAmount)}</span>
+            </div>
+          )}
+          {rental.depositAmount != null && rental.depositAmount > 0 && (
+            <div className="flex justify-between text-amber-800 text-xs pt-2 border-t border-amber-100">
+              <span>Tiền cọc (tham khảo — xử lý theo chính sách khi nhận xe)</span>
+              <span className="font-medium">{formatCurrency(rental.depositAmount)}</span>
+            </div>
+          )}
+        </div>
+
+        <p className="text-primary font-bold text-lg mt-4">
+          Số tiền cần chuyển khoản (toàn bộ chuyến):{' '}
+          <span className="text-navy">{formatCurrency(rental.totalPrice)}</span>
+        </p>
+        <p className="text-xs text-gray-500 mt-2">
+          QR VietQR bên dưới quét đúng số tiền <strong>{formatCurrency(rental.totalPrice)}</strong> với nội dung{' '}
+          <strong>THUEXE-{rental.id}</strong>.
+        </p>
       </div>
 
       {rental.paymentMethod === 'BANK_TRANSFER' ? (

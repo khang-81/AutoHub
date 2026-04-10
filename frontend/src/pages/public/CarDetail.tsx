@@ -5,7 +5,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import {
   Calendar, Gauge, Tag, Palette, Shield, Star, ArrowLeft,
-  CheckCircle, Car, MapPin, Fuel, CreditCard
+  CheckCircle, Car, MapPin, Fuel, CreditCard, Scale
 } from 'lucide-react';
 import { getCarByIdApi } from '../../api/cars';
 import { getAllRentalsApi, getInsuranceOptionsApi, addRentalApi } from '../../api/rentals';
@@ -292,6 +292,27 @@ const CarDetail = () => {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Cancel & deposit policy */}
+            <div className="card p-6 border border-amber-100 bg-amber-50/40">
+              <h2 className="font-heading font-semibold text-navy text-lg mb-3 flex items-center gap-2">
+                <Scale className="w-5 h-5 text-amber-700" />
+                Hủy đơn & hoàn cọc
+              </h2>
+              <p className="text-sm text-gray-700 mb-3">
+                Tiền cọc được tính tối thiểu <strong>500.000đ</strong> hoặc <strong>15%</strong> giá trị chuyến (tùy mức nào cao hơn).
+              </p>
+              <ul className="space-y-2 text-sm text-gray-600 list-disc pl-5">
+                <li>
+                  Tính theo thời điểm hủy so với <strong>0h ngày nhận xe</strong>: còn trên <strong>48 giờ</strong> — hoàn{' '}
+                  <strong>100%</strong> cọc; từ <strong>24–48 giờ</strong> — hoàn <strong>50%</strong>; dưới <strong>24 giờ</strong> —{' '}
+                  <strong>không hoàn</strong> cọc.
+                </li>
+                <li>
+                  Sau khi đã nhận xe hoặc quá thời hạn trên, điều kiện áp dụng theo đơn và xác nhận từ công ty.
+                </li>
+              </ul>
             </div>
 
             {/* Reviews */}
