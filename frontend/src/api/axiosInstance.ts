@@ -1,9 +1,8 @@
 import axios from 'axios';
-
-const BASE_URL = 'http://localhost:8081';
+import { API_BASE_URL } from '../config/api';
 
 const axiosInstance = axios.create({
-  baseURL: BASE_URL,
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -12,6 +11,9 @@ const axiosInstance = axios.create({
 // Request interceptor – attach JWT token
 axiosInstance.interceptors.request.use(
   (config) => {
+    if (config.data instanceof FormData) {
+      delete (config.headers as Record<string, string>)['Content-Type'];
+    }
     // Ưu tiên token admin khi đang ở /admin/*
     let token = localStorage.getItem('autohub_token');
     try {
@@ -19,7 +21,9 @@ axiosInstance.interceptors.request.use(
       if (isAdminRoute) {
         token = localStorage.getItem('autohub_admin_token') || token;
       }
-    } catch { }
+    } catch {
+      /* window/localStorage không khả dụng (SSR) */
+    }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

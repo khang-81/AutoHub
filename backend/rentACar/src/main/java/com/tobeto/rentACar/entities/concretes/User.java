@@ -37,6 +37,10 @@ public class User extends BaseEntity implements UserDetails {
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> authorities;
 
+    /** KYC aggregate: NOT_SUBMITTED | PENDING | APPROVED | REJECTED */
+    @Column(name = "kyc_status", length = 32)
+    @Builder.Default
+    private String kycStatus = "NOT_SUBMITTED";
 
     @Override
     public String getUsername() {

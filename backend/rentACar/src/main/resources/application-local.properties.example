@@ -1,0 +1,7 @@
+# Sao chép thành application-local.properties trong cùng thư mục (src/main/resources/).
+# File application-local.properties đã gitignore — dùng để ghi đè mail/Gemini/DB cục bộ.
+# Được nạp tự động nhờ spring.config.import trong application.properties (optional).
+
+# MAIL_USERNAME=
+# MAIL_PASSWORD=
+# GEMINI_API_KEY=

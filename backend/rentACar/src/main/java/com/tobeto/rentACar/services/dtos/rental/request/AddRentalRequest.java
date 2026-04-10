@@ -32,4 +32,13 @@ public class AddRentalRequest {
     @Pattern(regexp = "CASH|BANK_TRANSFER", message = "Invalid payment method")
     private String paymentMethod;
 
+    /** NONE | BASIC | STANDARD | PREMIUM — bỏ trống = NONE */
+    private String insuranceCode;
+
+    /** Phụ phí giao xe / khác (VNĐ), mặc định 0 */
+    private Double extraFeesAmount;
+
+    /** Quận nhận xe (Hà Nội) */
+    private String pickupDistrict;
+
 }

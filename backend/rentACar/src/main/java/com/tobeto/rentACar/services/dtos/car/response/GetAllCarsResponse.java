@@ -15,6 +15,8 @@ public class GetAllCarsResponse {
 
     private short modelYear;
 
+    private String serviceCity;
+
     private String plate;
 
     private short minFindeksRate;
@@ -28,5 +30,8 @@ public class GetAllCarsResponse {
     private GetModelByIdResponse model;
 
     private GetColorByIdResponse color;
+
+    private Double averageRating;
+    private Integer reviewCount;
 
 }

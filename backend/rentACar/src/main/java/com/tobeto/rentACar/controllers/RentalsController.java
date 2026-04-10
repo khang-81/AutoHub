@@ -1,9 +1,11 @@
 package com.tobeto.rentACar.controllers;
 
+import com.tobeto.rentACar.core.exceptions.types.BusinessException;
 import com.tobeto.rentACar.core.services.JwtService;
 import com.tobeto.rentACar.core.utilities.results.Result;
 import com.tobeto.rentACar.services.abstracts.RentalService;
 import com.tobeto.rentACar.services.dtos.rental.request.AddRentalRequest;
+import com.tobeto.rentACar.services.dtos.rental.request.CancelRentalRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.DeleteRentalRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.FindRentalIdRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.UpdateRentalRequest;
@@ -15,6 +17,7 @@ import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -94,6 +97,33 @@ public class RentalsController {
     @PutMapping("/confirm/{id}")
     public Result confirmByAdmin(@PathVariable int id) {
         return rentalService.confirmByAdmin(id);
+    }
+
+    @GetMapping("/insurance-options")
+    public List<InsuranceOptionResponse> insuranceOptions() {
+        return List.of(
+                new InsuranceOptionResponse("NONE", "Không mua thêm", 0),
+                new InsuranceOptionResponse("BASIC", "Gói cơ bản", 80_000),
+                new InsuranceOptionResponse("STANDARD", "Gói tiêu chuẩn", 120_000),
+                new InsuranceOptionResponse("PREMIUM", "Gói cao cấp", 180_000)
+        );
+    }
+
+    @PutMapping("/cancel/{id}")
+    public Result cancel(
+            @PathVariable int id,
+            @RequestBody(required = false) CancelRentalRequest body,
+            HttpServletRequest request) {
+        String tokenWithPrefix = request.getHeader("Authorization");
+        if (tokenWithPrefix == null || !tokenWithPrefix.startsWith("Bearer ")) {
+            throw new BusinessException("Yêu cầu đăng nhập.");
+        }
+        String token = tokenWithPrefix.replace("Bearer ", "");
+        int userId = jwtService.extractUserId(token);
+        boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .anyMatch(a -> "ROLE_admin".equals(a.getAuthority()) || "admin".equals(a.getAuthority()));
+        String reason = body != null ? body.getReason() : null;
+        return rentalService.cancel(id, userId, isAdmin, reason);
     }
 
 }

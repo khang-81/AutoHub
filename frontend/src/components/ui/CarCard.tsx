@@ -28,7 +28,14 @@ const CarCard = ({ car }: CarCardProps) => {
         <div className="absolute top-3 right-3">
           <div className="flex items-center gap-1 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1">
             <Star className="w-3.5 h-3.5 text-primary fill-primary" />
-            <span className="text-xs font-semibold text-gray-700">4.8</span>
+            <span className="text-xs font-semibold text-gray-700">
+              {car.reviewCount != null && car.reviewCount > 0 && car.averageRating != null
+                ? car.averageRating.toFixed(1)
+                : '—'}
+            </span>
+            {car.reviewCount != null && car.reviewCount > 0 && (
+              <span className="text-[10px] text-gray-500">({car.reviewCount})</span>
+            )}
           </div>
         </div>
       </div>

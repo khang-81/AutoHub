@@ -1,6 +1,17 @@
 import axiosInstance from './axiosInstance';
 import type { AddRentalRequest } from '../types';
 
+export interface InsuranceOptionDto {
+  code: string;
+  name: string;
+  feePerDay: number;
+}
+
+export const getInsuranceOptionsApi = async (): Promise<InsuranceOptionDto[]> => {
+  const res = await axiosInstance.get('/api/rentals/insurance-options');
+  return res.data;
+};
+
 export const getAllRentalsApi = async () => {
   const res = await axiosInstance.get('/api/rentals/getAll');
   return res.data;
@@ -73,5 +84,10 @@ export const confirmRentalApi = async (id: number) => {
 
 export const submitTransferApi = async (id: number) => {
   const res = await axiosInstance.put(`/api/rentals/submitTransfer/${id}`);
+  return res.data;
+};
+
+export const cancelRentalApi = async (id: number, reason?: string) => {
+  const res = await axiosInstance.put(`/api/rentals/cancel/${id}`, reason ? { reason } : {});
   return res.data;
 };
