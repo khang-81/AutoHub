@@ -148,9 +148,33 @@ For deployment, run the API with **`SPRING_PROFILES_ACTIVE=prod`**. Settings in 
 
 Optional: `JWT_EXPIRATION`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `GEMINI_API_KEY`, `PORT`, `APP_UPLOAD_ROOT`, `JPA_DDL_AUTO` (first deploy may use `update`, then prefer `validate`).
 
-Copy `backend/rentACar/env.example` as a checklist for your host. **Docker Compose** is a natural next step: it can inject the same variables into the container.
+Copy `backend/rentACar/env.example` as a checklist for your host.
 
-Example:
+### Docker Compose (SQL Server + API)
+
+From the **repository root** (where `docker-compose.yml` lives):
+
+1. Copy `docker-compose.env.example` to **`.env`** and set at least `MSSQL_SA_PASSWORD`, `JWT_KEY`, and `APP_CORS_ALLOWED_ORIGINS` (must match your frontend origin).
+2. Run:
+
+   ```bash
+   docker compose up --build
+   ```
+
+Services:
+
+- **`db`**: Microsoft SQL Server 2022 (`linux/amd64`), port **1433** by default (`MSSQL_PORT` in `.env` to change the host mapping).
+- **`db-init`**: one-shot container that waits for SQL Server and runs `CREATE DATABASE rentacar` if missing (uses `docker/sqlserver-init`).
+- **`api`**: Spring Boot on port **8081** (`API_PORT` to remap), profile **`prod`**, upload files under a Docker volume `uploads_data`.
+- **`web`**: React build served by **Nginx** (default host port **8080** → `WEB_PORT`). Built with `VITE_API_URL` from `.env` (must be an URL your **browser** can reach — usually `http://localhost:8081` when API is published on the same machine).
+
+**Frontend + API in Docker:** set `VITE_API_URL` to the API origin as seen from the browser (e.g. `http://localhost:8081` if `API_PORT` is 8081). Set `APP_CORS_ALLOWED_ORIGINS` to include the **exact** frontend origin you open (e.g. `http://localhost:8080` when `WEB_PORT=8080`). Rebuild `web` after changing `VITE_API_URL` (`docker compose build web --no-cache`).
+
+**Frontend without Docker:** run `npm run dev` locally; default API URL stays `http://localhost:8081` unless `VITE_API_URL` is set.
+
+**Notes:** SQL Server and the init image target **amd64** (`platform: linux/amd64`). On Apple Silicon this uses emulation and may be slower. If `db-init` fails (network to Microsoft apt repos), create the `rentacar` database manually and comment out the `depends_on` / `db-init` service in `docker-compose.yml` as a fallback.
+
+Example (non-Docker prod):
 
 ```bash
 cd backend/rentACar
