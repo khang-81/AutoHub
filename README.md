@@ -8,7 +8,7 @@ This repository hosts the backend codebase for rent a car, a sophisticated Rent-
 
 ### Database Connection
 
-The backend handles database operations using Java Spring Boot and Hibernate ORM. It establishes a connection to the PostgreSQL database, where vehicle information, user data, and rental history are stored.
+The backend handles database operations using Java Spring Boot and Hibernate ORM. It connects to a SQL Server database (configurable), where vehicle information, user data, and rental history are stored.
 
 ### CRUD Operations
 
@@ -62,8 +62,8 @@ By adhering to this robust N-layered architecture, our project exemplifies a com
 - Java
 - Spring
 
-### DataBase
-- PostgreSQL 
+### Database
+- SQL Server (configurable in `application.properties`)
 
 ### Libraries
 - JPA
@@ -78,7 +78,7 @@ By adhering to this robust N-layered architecture, our project exemplifies a com
 Before proceeding, ensure you have the following installed on your system:
 - Java Development Kit (JDK)
 - Maven
-- PostgreSQL database
+- SQL Server (or adjust `application.properties` for your database)
 
 ### Installation
 
@@ -88,28 +88,86 @@ Before proceeding, ensure you have the following installed on your system:
 2. Navigate to the project directory:
     ```bash
     cd rent-a-car
-3. Set up the database:
-- Create a PostgreSQL database named rent_a_car
-- Create application.properties with your database credentials
-4. Build and Run the Backend:
+3. Set up the database (this project uses **SQL Server** by default — see `backend/rentACar/src/main/resources/application.properties` for URL, username, and password).
+4. Build and run the backend (default API port **8081** — see `backend/rentACar/src/main/resources/application.properties`):
     ```bash
-    cd backend
+    cd backend/rentACar
     mvn spring-boot:run
-5. Install Frontend Dependencies:
+    ```
+5. Install frontend dependencies:
     ```bash
     cd frontend
     npm install
-6. Start the Frontend Server:
+    ```
+6. Start the frontend dev server (Vite):
     ```bash
-    npm start
-7. Access the application at http://localhost:3000 in your web browser.
+    npm run dev
+    ```
+7. Open the URL shown in the terminal (typically **http://localhost:5173**).
+
+### Frontend environment (`VITE_API_URL`)
+
+The React app reads the API base URL from Vite env vars (`src/config/api.ts`).
+
+| Environment | What to set |
+|-------------|----------------|
+| Local dev | Optional. If omitted, the client defaults to `http://localhost:8081`. |
+| Production / staging | Set **`VITE_API_URL`** to your deployed API origin, **no trailing slash**, e.g. `https://your-domain.com` or `https://api.your-domain.com`. |
+
+Steps:
+
+1. Copy `frontend/.env.example` to `frontend/.env`.
+2. Set `VITE_API_URL=https://...` to match where Spring Boot is reachable from the browser (same host/CORS as configured on the server).
+3. Run `npm run build` and serve the `frontend/dist` folder with your static host (Nginx, Netlify, Vercel, etc.).
+
+Rebuild the frontend whenever you change `VITE_API_URL`, because Vite inlines these values at build time.
+
+### Backend CORS (`app.cors.allowed-origins`)
+
+The API only accepts browser requests from origins listed in **`app.cors.allowed-origins`** (comma-separated, no spaces required after commas). Defaults include common local dev URLs (`http://localhost:5173`, etc.).
+
+When you deploy the frontend to a public URL, add that **exact origin** (scheme + host + port, no path), for example:
+
+```properties
+app.cors.allowed-origins=http://localhost:5173,https://your-app.example.com
+```
+
+Restart the Spring Boot process after changing this file. The frontend origin must match what users open in the browser; it should correspond to the site built with `VITE_API_URL` pointing at this API.
+
+### Production profile (`prod`) & environment variables
+
+For deployment, run the API with **`SPRING_PROFILES_ACTIVE=prod`**. Settings in `backend/rentACar/src/main/resources/application-prod.properties` expect **secrets from the environment**, not committed files.
+
+| Variable | Required (prod) | Purpose |
+|----------|-------------------|---------|
+| `SPRING_DATASOURCE_URL` | Yes | JDBC URL for SQL Server |
+| `SPRING_DATASOURCE_USERNAME` | Yes | DB user |
+| `SPRING_DATASOURCE_PASSWORD` | Yes | DB password |
+| `JWT_KEY` | Yes | Base64 JWT secret (same rules as dev `jwt.key` in code) |
+| `APP_CORS_ALLOWED_ORIGINS` | Yes | Comma-separated frontend origins (see CORS section above) |
+
+Optional: `JWT_EXPIRATION`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `GEMINI_API_KEY`, `PORT`, `APP_UPLOAD_ROOT`, `JPA_DDL_AUTO` (first deploy may use `update`, then prefer `validate`).
+
+Copy `backend/rentACar/env.example` as a checklist for your host. **Docker Compose** is a natural next step: it can inject the same variables into the container.
+
+Example:
+
+```bash
+cd backend/rentACar
+set SPRING_PROFILES_ACTIVE=prod
+set SPRING_DATASOURCE_URL=jdbc:sqlserver://...
+set JWT_KEY=...
+set APP_CORS_ALLOWED_ORIGINS=https://your-app.example.com
+mvn spring-boot:run
+```
+
+(On Linux/macOS use `export` instead of `set`.)
 
 ### Usage
 Once the application is running, you can sign up for an account, browse available vehicles, search for specific vehicles, reserve them for specific dates, and view your rental history.
 
 ### Additional Notes
-Ensure that the backend server is running before starting the frontend server to enable communication between the frontend and backend.
-Make sure to configure any necessary environment variables or settings according to your specific development environment.
+Start the backend before the frontend so API calls succeed. Configure the database and JWT settings in `application.properties` (or profile-specific files) for your machine.
 
 ## Acknowledgements
 We extend our sincere appreciation to [Halit Enes Kalaycı](https://github.com/halitkalayci) for his invaluable guidance throughout the [TOBETO](https://www.linkedin.com/company/tobeto/) Java-React Full-Stack Developer program, conducted under the auspices of the [İstanbul Kodluyor Project](https://www.linkedin.com/in/istanbul-kodluyor-09b981288/).
