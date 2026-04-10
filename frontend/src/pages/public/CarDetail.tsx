@@ -10,6 +10,7 @@ import {
 import { getCarByIdApi } from '../../api/cars';
 import { getAllRentalsApi, getInsuranceOptionsApi, addRentalApi } from '../../api/rentals';
 import { getProfileApi } from '../../api/users';
+import { getReviewsByCarIdApi } from '../../api/reviews';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../components/ui/Toast';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -17,6 +18,7 @@ import {
   formatCurrency,
   calculateRentalDays,
   formatDateForApi,
+  formatDate,
   CAR_PLACEHOLDER,
 } from '../../utils/helpers';
 import { HANOI_DISTRICTS } from '../../data/hanoiDistricts';
@@ -52,6 +54,12 @@ const CarDetail = () => {
     queryKey: ['profile'],
     queryFn: getProfileApi,
     enabled: isAuthenticated,
+  });
+
+  const { data: reviews = [], isLoading: reviewsLoading } = useQuery({
+    queryKey: ['reviews', id],
+    queryFn: () => getReviewsByCarIdApi(Number(id)),
+    enabled: !!id,
   });
 
   const bookedRanges = rentals
@@ -91,6 +99,8 @@ const CarDetail = () => {
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['rentals'] });
       queryClient.invalidateQueries({ queryKey: ['myRentals'] });
+      queryClient.invalidateQueries({ queryKey: ['reviews'] });
+      queryClient.invalidateQueries({ queryKey: ['car', id] });
       // Backend returns { id, result: { success, message } }
       if (res?.id) {
         navigate(`/dashboard/payment/${res.id}`);
@@ -208,7 +218,14 @@ const CarDetail = () => {
                 </div>
                 <div className="absolute top-4 right-4 flex items-center gap-1 bg-white/90 rounded-full px-3 py-1">
                   <Star className="w-4 h-4 text-primary fill-primary" />
-                  <span className="text-sm font-semibold">4.9</span>
+                  <span className="text-sm font-semibold">
+                    {car.reviewCount != null && car.reviewCount > 0 && car.averageRating != null
+                      ? car.averageRating.toFixed(1)
+                      : '—'}
+                  </span>
+                  {car.reviewCount != null && car.reviewCount > 0 && (
+                    <span className="text-xs text-gray-500">({car.reviewCount})</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -275,6 +292,46 @@ const CarDetail = () => {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Reviews */}
+            <div className="card p-6">
+              <h2 className="font-heading font-semibold text-navy text-lg mb-5">
+                Đánh giá từ khách hàng
+                {car.reviewCount != null && car.reviewCount > 0 && car.averageRating != null && (
+                  <span className="text-primary font-bold ml-2">
+                    {car.averageRating.toFixed(1)} / 5 ({car.reviewCount} lượt)
+                  </span>
+                )}
+              </h2>
+              {reviewsLoading ? (
+                <p className="text-gray-400 text-sm">Đang tải đánh giá...</p>
+              ) : reviews.length === 0 ? (
+                <p className="text-gray-500 text-sm">Chưa có đánh giá cho xe này.</p>
+              ) : (
+                <ul className="space-y-5">
+                  {reviews.map((rev) => (
+                    <li key={rev.id} className="border-b border-gray-100 last:border-0 pb-5 last:pb-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <span className="text-amber-500 tracking-tight">
+                          {Array.from({ length: rev.rating }).map((_, i) => (
+                            <Star key={i} className="w-4 h-4 inline fill-amber-500 text-amber-500" />
+                          ))}
+                        </span>
+                        <span className="text-xs text-gray-500">{rev.authorLabel}</span>
+                        <span className="text-xs text-gray-400">
+                          {formatDate(rev.createdDate)}
+                        </span>
+                      </div>
+                      {rev.comment ? (
+                        <p className="text-sm text-gray-700 leading-relaxed">{rev.comment}</p>
+                      ) : (
+                        <p className="text-xs text-gray-400 italic">Không có nhận xét thêm</p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
 

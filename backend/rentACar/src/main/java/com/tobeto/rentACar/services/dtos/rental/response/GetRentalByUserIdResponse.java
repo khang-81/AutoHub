@@ -30,5 +30,6 @@ public class GetRentalByUserIdResponse {
     private String cancellationReason;
     private Double refundDepositAmount;
     private Double cancellationFeeAmount;
+    private Boolean hasReview;
     private GetCarByIdResponse car;
 }

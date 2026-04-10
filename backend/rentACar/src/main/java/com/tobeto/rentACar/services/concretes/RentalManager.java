@@ -9,6 +9,7 @@ import com.tobeto.rentACar.core.utilities.results.SuccessResult;
 import com.tobeto.rentACar.entities.concretes.Rental;
 import com.tobeto.rentACar.repositories.CarRepository;
 import com.tobeto.rentACar.repositories.RentalRepository;
+import com.tobeto.rentACar.repositories.ReviewRepository;
 import com.tobeto.rentACar.repositories.UserRepository;
 import com.tobeto.rentACar.services.abstracts.CarService;
 import com.tobeto.rentACar.services.abstracts.InvoiceService;
@@ -39,6 +40,7 @@ public class RentalManager implements RentalService {
     private final RentalRepository rentalRepository;
     private final UserRepository userRepository;
     private final CarRepository carRepository;
+    private final ReviewRepository reviewRepository;
     private final ModelMapperService modelMapperService;
     private final CarService carService;
     private final InvoiceService invoiceService;
@@ -210,12 +212,14 @@ public class RentalManager implements RentalService {
 
     public List<GetRentalByUserIdResponse> getByUserId(int userId) {
         List<Rental> rentals = rentalRepository.findByUserId(userId);
-        // Return empty list for users with no rentals so client pages can render gracefully.
-        List<GetRentalByUserIdResponse> rentalsByUserId = rentals.stream()
-                .map(rental -> this.modelMapperService.forResponse()
-                        .map(rental, GetRentalByUserIdResponse.class))
+        return rentals.stream()
+                .map(rental -> {
+                    GetRentalByUserIdResponse dto = this.modelMapperService.forResponse()
+                            .map(rental, GetRentalByUserIdResponse.class);
+                    dto.setHasReview(reviewRepository.existsByRental_Id(rental.getId()));
+                    return dto;
+                })
                 .toList();
-        return rentalsByUserId;
     }
 
     @Override

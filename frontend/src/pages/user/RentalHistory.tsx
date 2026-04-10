@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Car, Calendar, DollarSign, FileText, Eye, X, Receipt } from 'lucide-react';
+import { Car, Calendar, DollarSign, FileText, Eye, X, Receipt, Star } from 'lucide-react';
 import { getRentalsByUserIdApi, cancelRentalApi } from '../../api/rentals';
+import { addReviewApi } from '../../api/reviews';
 import { getMyInvoicesApi } from '../../api/invoices';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Modal from '../../components/ui/Modal';
@@ -16,6 +17,9 @@ const RentalHistory = () => {
   const [cancelId, setCancelId] = useState<number | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [invoiceRentalId, setInvoiceRentalId] = useState<number | null>(null);
+  const [reviewRentalId, setReviewRentalId] = useState<number | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
 
   const { data: rentals = [], isLoading } = useQuery<RentalByUser[]>({
     queryKey: ['myRentals'],
@@ -45,6 +49,29 @@ const RentalHistory = () => {
     onError: (err: unknown) => {
       const e = err as { response?: { data?: { message?: string } } };
       showToast(e?.response?.data?.message || 'Lỗi khi hủy đơn thuê', 'error');
+    },
+  });
+
+  const reviewMutation = useMutation({
+    mutationFn: () =>
+      addReviewApi({
+        rentalId: reviewRentalId!,
+        rating: reviewRating,
+        comment: reviewComment.trim() || undefined,
+      }),
+    onSuccess: (data: { message?: string }) => {
+      showToast(data?.message || 'Đã gửi đánh giá', 'success');
+      queryClient.invalidateQueries({ queryKey: ['myRentals'] });
+      queryClient.invalidateQueries({ queryKey: ['cars'] });
+      queryClient.invalidateQueries({ queryKey: ['reviews'] });
+      queryClient.invalidateQueries({ queryKey: ['car'] });
+      setReviewRentalId(null);
+      setReviewComment('');
+      setReviewRating(5);
+    },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { message?: string } } };
+      showToast(e?.response?.data?.message || 'Không thể gửi đánh giá', 'error');
     },
   });
 
@@ -108,6 +135,8 @@ const RentalHistory = () => {
               status !== 'CANCELLED' &&
               status !== 'COMPLETED' &&
               !rental.returnDate;
+            const canReview =
+              status === 'COMPLETED' && rental.hasReview !== true;
             return (
               <div key={rental.id} className="bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                 <div className="flex flex-col sm:flex-row">
@@ -195,6 +224,20 @@ const RentalHistory = () => {
                           Xem hóa đơn
                         </button>
                       )}
+                      {canReview && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReviewRentalId(rental.id);
+                            setReviewRating(5);
+                            setReviewComment('');
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors text-xs font-medium"
+                        >
+                          <Star className="w-3.5 h-3.5" />
+                          Đánh giá
+                        </button>
+                      )}
                       {canCancel && (
                         <button
                           onClick={() => setCancelId(rental.id)}
@@ -219,6 +262,64 @@ const RentalHistory = () => {
           })}
         </div>
       )}
+
+      {/* Review modal */}
+      <Modal
+        isOpen={!!reviewRentalId}
+        onClose={() => {
+          setReviewRentalId(null);
+          setReviewComment('');
+          setReviewRating(5);
+        }}
+        title="Đánh giá chuyến đi"
+        size="sm"
+      >
+        <p className="text-sm text-gray-600 mb-4">Đơn #{reviewRentalId}</p>
+        <p className="text-sm text-gray-700 mb-2">Số sao (1–5)</p>
+        <div className="flex gap-2 mb-4">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setReviewRating(n)}
+              className={`p-2 rounded-lg transition-colors ${
+                n <= reviewRating ? 'text-amber-500' : 'text-gray-300'
+              }`}
+              aria-label={`${n} sao`}
+            >
+              <Star className={`w-8 h-8 ${n <= reviewRating ? 'fill-current' : ''}`} />
+            </button>
+          ))}
+        </div>
+        <label className="block text-sm text-gray-700 mb-2">Nhận xét (không bắt buộc)</label>
+        <textarea
+          value={reviewComment}
+          onChange={(e) => setReviewComment(e.target.value)}
+          className="input-field w-full min-h-[100px] mb-4"
+          placeholder="Chia sẻ trải nghiệm của bạn..."
+          maxLength={2000}
+        />
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => reviewMutation.mutate()}
+            disabled={reviewMutation.isPending}
+            className="btn-primary flex-1"
+          >
+            {reviewMutation.isPending ? 'Đang gửi...' : 'Gửi đánh giá'}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setReviewRentalId(null);
+              setReviewComment('');
+            }}
+            className="btn-outline flex-1"
+          >
+            Hủy
+          </button>
+        </div>
+      </Modal>
 
       {/* Cancel modal */}
       <Modal isOpen={!!cancelId} onClose={() => setCancelId(null)} title="Hủy đơn thuê" size="sm">
