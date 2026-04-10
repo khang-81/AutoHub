@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- useToast dùng chung với ToastProvider */
 import { useState, createContext, useContext, useCallback } from 'react';
 import { CheckCircle, XCircle, AlertCircle, X } from 'lucide-react';
 

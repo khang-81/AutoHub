@@ -51,8 +51,8 @@ public class DemoDataInitializer implements CommandLineRunner {
         Role userRole = ensureRole("user");
         Role adminRole = ensureRole("admin");
 
-        ensureUser("demo.admin@localhost", "Demo@12345", adminRole);
-        ensureUserApproved("demo.user@localhost", "Demo@12345", userRole);
+        ensureUser("demo.admin@example.com", "Demo@12345", adminRole);
+        ensureUserApproved("demo.user@example.com", "Demo@12345", userRole);
 
         if (carRepository.existsCarByPlate(DEMO_PLATE)) {
             log.info("[demo] Xe demo đã tồn tại ({}), bỏ qua seed xe.", DEMO_PLATE);
@@ -99,7 +99,7 @@ public class DemoDataInitializer implements CommandLineRunner {
         car.setColor(color);
         carRepository.save(car);
 
-        log.info("[demo] Đã tạo xe demo {} — đăng nhập admin: demo.admin@localhost / Demo@12345", DEMO_PLATE);
+        log.info("[demo] Đã tạo xe demo {} — admin: demo.admin@example.com / Demo@12345", DEMO_PLATE);
     }
 
     private Role ensureRole(String name) {
