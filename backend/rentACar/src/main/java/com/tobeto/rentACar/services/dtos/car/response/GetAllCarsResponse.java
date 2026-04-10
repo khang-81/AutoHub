@@ -15,6 +15,8 @@ public class GetAllCarsResponse {
 
     private short modelYear;
 
+    private String serviceCity;
+
     private String plate;
 
     private short minFindeksRate;

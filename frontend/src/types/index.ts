@@ -50,6 +50,7 @@ export interface Color {
 export interface Car {
   id: number;
   modelYear: number;
+  serviceCity?: string;
   plate: string;
   minFindeksRate: number;
   kilometer: number;
@@ -127,13 +128,18 @@ export interface AddRentalRequest {
   carId: number;
   userId: number;
   paymentMethod: 'CASH' | 'BANK_TRANSFER';
+  insuranceCode?: string;
+  extraFeesAmount?: number;
+  pickupDistrict?: string;
 }
 
 export interface AddRentalResponse {
-  success: boolean;
-  message: string;
+  id?: number;
+  success?: boolean;
+  message?: string;
   rentalId?: number;
   totalPrice?: number;
+  result?: { success?: boolean; message?: string };
 }
 
 export interface RentalByUser {
@@ -143,9 +149,19 @@ export interface RentalByUser {
   returnDate: string | null;
   totalPrice: number;
   paymentMethod?: 'CASH' | 'BANK_TRANSFER';
-  paymentStatus?: 'PENDING_TRANSFER' | 'PENDING_CONFIRM' | 'PAID' | 'UNPAID' | 'FAILED';
+  paymentStatus?: 'PENDING_TRANSFER' | 'PENDING_CONFIRM' | 'PAID' | 'UNPAID' | 'FAILED' | 'CANCELLED';
   rentalStatus?: 'PENDING_PAYMENT' | 'PENDING_ADMIN_CONFIRM' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
   car: Car;
+  depositAmount?: number;
+  depositStatus?: string;
+  insuranceCode?: string;
+  insuranceFeeAmount?: number;
+  extraFeesAmount?: number;
+  pickupDistrict?: string;
+  cancelledAt?: string | null;
+  cancellationReason?: string | null;
+  refundDepositAmount?: number;
+  cancellationFeeAmount?: number;
 }
 
 // ─── Invoice ─────────────────────────────────────────────────────────────────

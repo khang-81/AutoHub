@@ -42,7 +42,8 @@ public class SecurityConfiguration {
             "/api/roles/**",
             "/api/brands/**",
             "/api/contact/**",
-            "/api/ai/**"
+            "/api/ai/**",
+            "/files/**"
 
     };
 

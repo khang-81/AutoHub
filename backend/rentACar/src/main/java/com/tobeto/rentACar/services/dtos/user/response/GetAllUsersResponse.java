@@ -17,4 +17,6 @@ public class GetAllUsersResponse {
 
     private String password;
 
+    private String kycStatus;
+
 }

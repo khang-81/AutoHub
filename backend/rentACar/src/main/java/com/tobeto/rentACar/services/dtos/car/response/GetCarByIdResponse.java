@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 public class GetCarByIdResponse {
     private Integer id;
     private short modelYear;
+    private String serviceCity;
     private String plate;
     private short minFindeksRate;
     private Long kilometer;
