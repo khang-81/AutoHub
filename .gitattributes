@@ -1,0 +1,1 @@
+docker/sqlserver-init/entrypoint.sh text eol=lf
