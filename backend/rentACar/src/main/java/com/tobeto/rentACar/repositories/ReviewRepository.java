@@ -12,6 +12,11 @@ public interface ReviewRepository extends JpaRepository<Review, Integer> {
 
     Optional<Review> findByRental_Id(int rentalId);
 
-    @Query("select r from Review r where r.rental.car.id = :carId")
-    List<Review> findByCarId(@Param("carId") int carId);
+    boolean existsByRental_Id(int rentalId);
+
+    @Query("select r from Review r join fetch r.user join fetch r.rental where r.rental.car.id = :carId order by r.createdDate desc")
+    List<Review> findByCarIdOrderByCreatedDateDesc(@Param("carId") int carId);
+
+    @Query("select r.rental.car.id, avg(r.rating), count(r) from Review r group by r.rental.car.id")
+    List<Object[]> findAverageRatingStatsByCar();
 }

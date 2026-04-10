@@ -20,4 +20,7 @@ public class GetCarByIdResponse {
     private String imagePath;
     private GetModelByIdResponse model;
     private GetColorByIdResponse color;
+
+    private Double averageRating;
+    private Integer reviewCount;
 }

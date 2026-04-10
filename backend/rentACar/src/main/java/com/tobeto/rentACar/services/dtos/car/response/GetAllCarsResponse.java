@@ -31,4 +31,7 @@ public class GetAllCarsResponse {
 
     private GetColorByIdResponse color;
 
+    private Double averageRating;
+    private Integer reviewCount;
+
 }

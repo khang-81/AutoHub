@@ -51,6 +51,8 @@ export interface Car {
   id: number;
   modelYear: number;
   serviceCity?: string;
+  averageRating?: number;
+  reviewCount?: number;
   plate: string;
   minFindeksRate: number;
   kilometer: number;
@@ -162,6 +164,7 @@ export interface RentalByUser {
   cancellationReason?: string | null;
   refundDepositAmount?: number;
   cancellationFeeAmount?: number;
+  hasReview?: boolean;
 }
 
 // ─── Invoice ─────────────────────────────────────────────────────────────────
