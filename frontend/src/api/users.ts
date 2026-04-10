@@ -1,5 +1,17 @@
 import axiosInstance from './axiosInstance';
 
+export interface ProfileResponse {
+  id: number;
+  email: string;
+  password?: string;
+  kycStatus?: string;
+}
+
+export const getProfileApi = async (): Promise<ProfileResponse> => {
+  const res = await axiosInstance.get('/api/users/getProfile');
+  return res.data;
+};
+
 export const getAllUsersApi = async () => {
   const res = await axiosInstance.get('/api/users/getAll');
   return res.data;

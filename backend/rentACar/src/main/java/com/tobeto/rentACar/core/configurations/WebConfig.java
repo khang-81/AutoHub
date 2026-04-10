@@ -1,11 +1,29 @@
 package com.tobeto.rentACar.core.configurations;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.nio.file.Path;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
+
+    @Value("${app.upload.root:uploads}")
+    private String uploadRoot;
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        Path root = Path.of(uploadRoot).toAbsolutePath().normalize();
+        String loc = root.toUri().toString();
+        if (!loc.endsWith("/")) {
+            loc = loc + "/";
+        }
+        registry.addResourceHandler("/files/**")
+                .addResourceLocations(loc);
+    }
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {

@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
@@ -30,6 +31,18 @@ public class GetAllRentalsResponse {
     private String paymentStatus;
 
     private String rentalStatus;
+
+    private Double depositAmount;
+    private String depositStatus;
+    private String insuranceCode;
+    private Double insuranceFeeAmount;
+    private Double extraFeesAmount;
+    private String pickupDistrict;
+    private LocalDateTime cancelledAt;
+    private String cancelledBy;
+    private String cancellationReason;
+    private Double cancellationFeeAmount;
+    private Double refundDepositAmount;
 
     private GetCarByIdResponse car;
 

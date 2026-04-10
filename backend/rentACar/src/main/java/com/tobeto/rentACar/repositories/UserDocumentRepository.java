@@ -11,4 +11,6 @@ public interface UserDocumentRepository extends JpaRepository<UserDocument, Inte
     List<UserDocument> findByUser_Id(int userId);
 
     Optional<UserDocument> findByUser_IdAndDocumentType(int userId, String documentType);
+
+    List<UserDocument> findByStatus(String status);
 }

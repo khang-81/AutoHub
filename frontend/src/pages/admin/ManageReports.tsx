@@ -137,8 +137,8 @@ const ManageReports = () => {
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
               <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 12 }} />
               <Tooltip
-                formatter={((value) => [formatCurrency(Number(value)), 'Doanh thu']) as any}
-                labelFormatter={((label) => `Tháng ${label}`) as any}
+                formatter={(value: unknown) => [formatCurrency(Number(value)), 'Doanh thu']}
+                labelFormatter={(label: unknown) => `Tháng ${String(label)}`}
               />
               <Bar dataKey="revenue" fill="#C9A227" radius={[6, 6, 0, 0]} />
             </BarChart>
@@ -165,7 +165,7 @@ const ManageReports = () => {
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip formatter={((value) => [Number(value), 'Số đơn']) as any} />
+              <Tooltip formatter={(value: unknown) => [Number(value), 'Số đơn']} />
               <Area type="monotone" dataKey="count" stroke="#1B2A4A" strokeWidth={2.5} fillOpacity={1} fill="url(#colorCount)" />
             </AreaChart>
           </ResponsiveContainer>
@@ -191,7 +191,8 @@ const ManageReports = () => {
                   innerRadius={50}
                   outerRadius={90}
                   dataKey="value"
-                  label={(({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`) as any}
+                  label={({ name, percent }: { name?: string; percent?: number }) =>
+                    `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}
                   labelLine={false}
                 >
                   {brandData.map((_, index) => (
@@ -199,7 +200,7 @@ const ManageReports = () => {
                   ))}
                 </Pie>
                 <Legend />
-                <Tooltip formatter={((value) => [`${value} xe`, '']) as any} />
+                <Tooltip formatter={(value: unknown) => [`${value} xe`, '']} />
               </PieChart>
             </ResponsiveContainer>
           ) : (
@@ -227,7 +228,7 @@ const ManageReports = () => {
                     <Cell fill="#10B981" />
                     <Cell fill="#6B7280" />
                   </Pie>
-                  <Tooltip formatter={((value) => [`${value} đơn`, '']) as any} />
+                  <Tooltip formatter={(value: unknown) => [`${value} đơn`, '']} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>

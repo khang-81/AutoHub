@@ -62,6 +62,9 @@ public class CarManager implements CarService {
         colorBusinessRule.existsColorById(request.getColorId());
 
         Car car = this.modelMapperService.forRequest().map(request, Car.class);
+        if (car.getServiceCity() == null || car.getServiceCity().isBlank()) {
+            car.setServiceCity("Hà Nội");
+        }
 
         carRepository.save(car);
 
