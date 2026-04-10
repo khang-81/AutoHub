@@ -206,20 +206,44 @@ On push/PR to `main`, `master`, or `develop`, GitHub Actions runs backend `mvn c
 For grading / quick testing, run the API with **`SPRING_PROFILES_ACTIVE=demo`** (or `mvn spring-boot:run -Dspring-boot.run.profiles=demo`). On first boot, seed data creates:
 
 - Roles **`user`** and **`admin`** (if missing).
-- **`demo.admin@localhost`** / **`Demo@12345`** — admin.
-- **`demo.user@localhost`** / **`Demo@12345`** — customer with **KYC APPROVED** (can rent without uploading KYC).
+- **`demo.admin@example.com`** / **`Demo@12345`** — admin.
+- **`demo.user@example.com`** / **`Demo@12345`** — customer with **KYC APPROVED** (can rent without uploading KYC).
 - One car **Toyota Vios**, plate **`HN-DEMO-01`**, **Hà Nội**.
 
 Re-run is safe: users are skipped if emails already exist; the car is skipped if plate `HN-DEMO-01` exists.
 
 **Do not** enable `demo` on production.
 
+### Automated checks (developer machine)
+
+| Kiểm tra | Kết quả mong đợi |
+|----------|------------------|
+| `mvn test` (backend) | PASS (unit rules) |
+| `npm run lint` + `npm run build` (frontend) | PASS |
+
+Script nhanh (cần backend đang chạy): `powershell -File scripts/smoke-test.ps1`
+
+**Lưu ý:** Đã tách **`SecurityFilterChain` riêng** cho `/api/auth/**` (đăng nhập/đăng ký). Nếu trước đó `POST /api/auth/login` trả **403**, **khởi động lại** backend sau khi cập nhật code.
+
 ### Manual smoke test (checklist)
 
 1. Backend + frontend (or Docker `web` + `api`).
-2. Login as `demo.admin@localhost` → open admin area (cars, rentals, KYC).
-3. Login as `demo.user@localhost` → browse cars → book a rental → payment flow if applicable.
+2. Login as `demo.admin@example.com` → open admin area (cars, rentals, KYC).
+3. Login as `demo.user@example.com` → browse cars → book a rental → payment flow if applicable.
 4. (Optional) Register a new user and complete KYC flow.
+
+### Checklist hoàn tất đồ án (tóm tắt)
+
+| Hạng mục | Trạng thái |
+|----------|------------|
+| Chức năng nghiệp vụ (thuê xe, KYC, cọc/hủy, bảo hiểm, đánh giá, …) | Trong code |
+| Cấu hình môi trường / bí mật không commit cứng | `application.properties` + `env.example` |
+| Profile `prod` + Docker Compose (DB + API + Nginx) | Có |
+| Dữ liệu demo (`demo`) + tài khoản thử | `SPRING_PROFILES_ACTIVE=demo` |
+| CI (compile backend + build frontend) | `.github/workflows/ci.yml` |
+| Hướng dẫn chạy & deploy | README |
+
+**Ghi chú:** Docker Compose dùng profile **`prod`** cho API. Seed **demo** chỉ bật khi chạy backend **local** với `demo` — không gắn `demo` vào Compose để tránh tạo tài khoản mẫu trên môi trường giống production.
 
 ## Acknowledgements
 We extend our sincere appreciation to [Halit Enes Kalaycı](https://github.com/halitkalayci) for his invaluable guidance throughout the [TOBETO](https://www.linkedin.com/company/tobeto/) Java-React Full-Stack Developer program, conducted under the auspices of the [İstanbul Kodluyor Project](https://www.linkedin.com/in/istanbul-kodluyor-09b981288/).

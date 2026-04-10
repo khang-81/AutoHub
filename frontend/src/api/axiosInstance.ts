@@ -21,7 +21,9 @@ axiosInstance.interceptors.request.use(
       if (isAdminRoute) {
         token = localStorage.getItem('autohub_admin_token') || token;
       }
-    } catch { }
+    } catch {
+      /* window/localStorage không khả dụng (SSR) */
+    }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

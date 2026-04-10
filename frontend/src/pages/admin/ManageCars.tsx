@@ -12,7 +12,7 @@ import { useToast } from '../../components/ui/Toast';
 import Modal from '../../components/ui/Modal';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { formatCurrency, CAR_PLACEHOLDER } from '../../utils/helpers';
-import type { Car as CarType, CarModel, Color } from '../../types';
+import type { Car as CarType, CarModel, Color, Rental } from '../../types';
 
 const schema = z.object({
   plate: z.string().min(1, 'Nhập biển số'),
@@ -27,8 +27,6 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-// Legacy local availability (removed)
-
 const ManageCars = () => {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
@@ -36,12 +34,9 @@ const ManageCars = () => {
   const [editCar, setEditCar] = useState<CarType | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
-  // legacy local availability kept for future use (currently unused)
-
-  // toggleAvailability removed (không còn dùng trong UI trạng thái)
 
   const { data: cars = [], isLoading } = useQuery<CarType[]>({ queryKey: ['cars'], queryFn: getAllCarsApi });
-  const { data: rentals = [] } = useQuery<any[]>({ queryKey: ['rentals-for-cars'], queryFn: getAllRentalsApi });
+  const { data: rentals = [] } = useQuery<Rental[]>({ queryKey: ['rentals-for-cars'], queryFn: getAllRentalsApi });
   const { data: models = [] } = useQuery<CarModel[]>({ queryKey: ['models'], queryFn: getAllModelsApi });
   const { data: colors = [] } = useQuery<Color[]>({ queryKey: ['colors'], queryFn: getAllColorsApi });
 

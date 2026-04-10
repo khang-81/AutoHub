@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,7 +24,6 @@ const Profile = () => {
   const { userId, email } = useAuthStore();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
-  const [existingCustomer, setExistingCustomer] = useState<Customer | null>(null);
 
   const { data: customers = [], isLoading } = useQuery<Customer[]>({
     queryKey: ['customers'],
@@ -38,21 +37,21 @@ const Profile = () => {
     formState: { errors },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
+  const existingCustomer = useMemo(() => {
+    if (!userId) return null;
+    return customers.find((c) => c.userId === userId) ?? null;
+  }, [customers, userId]);
+
   useEffect(() => {
-    if (customers.length && userId) {
-      const found = customers.find((c) => c.userId === userId) || null;
-      setExistingCustomer(found);
-      if (found) {
-        reset({
-          firstName: found.firstName,
-          lastName: found.lastName,
-          birthdate: found.birthdate?.slice(0, 10) || '',
-          internationalId: found.internationalId || '',
-          licenceIssueDate: found.licenceIssueDate?.slice(0, 10) || '',
-        });
-      }
-    }
-  }, [customers, userId, reset]);
+    if (!existingCustomer) return;
+    reset({
+      firstName: existingCustomer.firstName,
+      lastName: existingCustomer.lastName,
+      birthdate: existingCustomer.birthdate?.slice(0, 10) || '',
+      internationalId: existingCustomer.internationalId || '',
+      licenceIssueDate: existingCustomer.licenceIssueDate?.slice(0, 10) || '',
+    });
+  }, [existingCustomer, reset]);
 
   const addMutation = useMutation({
     mutationFn: addCustomerApi,
