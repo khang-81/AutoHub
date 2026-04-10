@@ -118,8 +118,14 @@ export interface Rental {
   startKilometer: number;
   totalPrice: number;
   paymentMethod?: 'CASH' | 'BANK_TRANSFER';
-  paymentStatus?: 'PENDING_TRANSFER' | 'PENDING_CONFIRM' | 'PAID' | 'UNPAID' | 'FAILED';
+  paymentStatus?: 'PENDING_TRANSFER' | 'PENDING_CONFIRM' | 'PAID' | 'UNPAID' | 'FAILED' | 'CANCELLED';
   rentalStatus?: 'PENDING_PAYMENT' | 'PENDING_ADMIN_CONFIRM' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+  depositAmount?: number;
+  depositStatus?: string;
+  insuranceCode?: string;
+  insuranceFeeAmount?: number;
+  extraFeesAmount?: number;
+  pickupDistrict?: string;
   car: Car;
   user: User;
 }

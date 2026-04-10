@@ -1,6 +1,5 @@
 import axiosInstance from './axiosInstance';
-
-const BASE = 'http://localhost:8081';
+import { API_BASE_URL } from '../config/api';
 
 export interface UserDocumentDto {
   id: number;
@@ -47,5 +46,5 @@ export const rejectKycApi = async (id: number, adminNote?: string): Promise<User
 export function kycFileAbsoluteUrl(fileUrl: string): string {
   if (!fileUrl) return '';
   if (fileUrl.startsWith('http')) return fileUrl;
-  return `${BASE}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
+  return `${API_BASE_URL}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
 }
