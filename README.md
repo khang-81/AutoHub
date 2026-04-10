@@ -193,5 +193,33 @@ Once the application is running, you can sign up for an account, browse availabl
 ### Additional Notes
 Start the backend before the frontend so API calls succeed. Configure the database and JWT settings in `application.properties` (or profile-specific files) for your machine.
 
+### Secrets & local overrides
+
+Do **not** commit real API keys or mail passwords. The tracked `application.properties` uses environment variables (e.g. `MAIL_*`, `GEMINI_API_KEY`, `SPRING_DATASOURCE_*`, `JWT_KEY`) with safe dev defaults where appropriate. For overrides without exporting env vars, copy `application-local.properties.example` to `application-local.properties` under `backend/rentACar/src/main/resources/` (that filename is gitignored).
+
+### CI
+
+On push/PR to `main`, `master`, or `develop`, GitHub Actions runs backend `mvn compile` and frontend `npm run build` (see `.github/workflows/ci.yml`).
+
+### Demo data (profile `demo`)
+
+For grading / quick testing, run the API with **`SPRING_PROFILES_ACTIVE=demo`** (or `mvn spring-boot:run -Dspring-boot.run.profiles=demo`). On first boot, seed data creates:
+
+- Roles **`user`** and **`admin`** (if missing).
+- **`demo.admin@localhost`** / **`Demo@12345`** — admin.
+- **`demo.user@localhost`** / **`Demo@12345`** — customer with **KYC APPROVED** (can rent without uploading KYC).
+- One car **Toyota Vios**, plate **`HN-DEMO-01`**, **Hà Nội**.
+
+Re-run is safe: users are skipped if emails already exist; the car is skipped if plate `HN-DEMO-01` exists.
+
+**Do not** enable `demo` on production.
+
+### Manual smoke test (checklist)
+
+1. Backend + frontend (or Docker `web` + `api`).
+2. Login as `demo.admin@localhost` → open admin area (cars, rentals, KYC).
+3. Login as `demo.user@localhost` → browse cars → book a rental → payment flow if applicable.
+4. (Optional) Register a new user and complete KYC flow.
+
 ## Acknowledgements
 We extend our sincere appreciation to [Halit Enes Kalaycı](https://github.com/halitkalayci) for his invaluable guidance throughout the [TOBETO](https://www.linkedin.com/company/tobeto/) Java-React Full-Stack Developer program, conducted under the auspices of the [İstanbul Kodluyor Project](https://www.linkedin.com/in/istanbul-kodluyor-09b981288/).
