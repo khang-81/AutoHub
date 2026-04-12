@@ -40,6 +40,8 @@ const Footer = () => {
               {[
                 { label: 'Trang chủ', to: '/' },
                 { label: 'Thuê xe', to: '/cars' },
+                { label: 'Mua xe', to: '/cars/mua' },
+                { label: 'Tất cả xe', to: '/cars/tat-ca' },
                 { label: 'Giới thiệu', to: '/about' },
                 { label: 'Liên hệ', to: '/contact' },
                 { label: 'Điều khoản dịch vụ', to: '/terms' },

@@ -66,6 +66,8 @@ function RoutesWithChatbot() {
         {/* Public routes */}
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />
+          <Route path="/cars/tat-ca" element={<CarListing />} />
+          <Route path="/cars/mua" element={<CarListing />} />
           <Route path="/cars" element={<CarListing />} />
           <Route path="/cars/:id" element={<CarDetail />} />
           <Route path="/contact" element={<Contact />} />

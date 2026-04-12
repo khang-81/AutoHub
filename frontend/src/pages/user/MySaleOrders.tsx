@@ -55,7 +55,7 @@ const MySaleOrders = () => {
       {orders.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-sm p-12 text-center text-gray-500">
           Chưa có đơn mua.{' '}
-          <Link to="/cars" className="text-primary font-semibold">
+          <Link to="/cars/mua" className="text-primary font-semibold">
             Xem xe đang bán
           </Link>
         </div>

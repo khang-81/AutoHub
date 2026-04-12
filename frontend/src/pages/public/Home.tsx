@@ -199,7 +199,7 @@ const Home = () => {
               <h2 className="section-title mt-2">Xe được thuê nhiều nhất</h2>
             </div>
             <Link
-              to="/cars"
+              to="/cars/tat-ca"
               className="hidden sm:flex items-center gap-2 text-primary font-semibold hover:gap-3 transition-all"
             >
               Xem tất cả <ArrowRight className="w-5 h-5" />
@@ -217,7 +217,7 @@ const Home = () => {
           )}
 
           <div className="text-center mt-10 sm:hidden">
-            <Link to="/cars" className="btn-outline inline-flex items-center gap-2">
+            <Link to="/cars/tat-ca" className="btn-outline inline-flex items-center gap-2">
               Xem tất cả xe <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
@@ -328,12 +328,18 @@ const Home = () => {
           <p className="text-white/80 mb-8 text-lg">
             Hàng trăm xe chờ bạn khám phá. Đặt ngay hôm nay!
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center flex-wrap">
             <Link
-              to="/cars"
+              to="/cars/tat-ca"
               className="bg-white text-primary font-bold px-8 py-4 rounded-xl hover:bg-gray-50 transition-colors shadow-lg flex items-center justify-center gap-2"
             >
               Khám phá xe ngay <ChevronRight className="w-5 h-5" />
+            </Link>
+            <Link
+              to="/cars/mua"
+              className="border-2 border-white text-white font-bold px-8 py-4 rounded-xl hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
+            >
+              Mua xe
             </Link>
             <Link
               to="/contact"
