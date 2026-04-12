@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { getCarByIdApi } from '../../api/cars';
 import { getAllRentalsApi, getInsuranceOptionsApi, addRentalApi } from '../../api/rentals';
+import { addSaleOrderApi } from '../../api/saleOrders';
 import { getProfileApi } from '../../api/users';
 import { getReviewsByCarIdApi } from '../../api/reviews';
 import { useAuthStore } from '../../store/authStore';
@@ -34,6 +35,7 @@ const CarDetail = () => {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'BANK_TRANSFER'>('BANK_TRANSFER');
+  const [salePaymentMethod, setSalePaymentMethod] = useState<'CASH' | 'BANK_TRANSFER'>('BANK_TRANSFER');
   const [insuranceCode, setInsuranceCode] = useState('NONE');
   const [pickupDistrict, setPickupDistrict] = useState('');
   const [extraFeesAmount, setExtraFeesAmount] = useState('');
@@ -93,6 +95,46 @@ const CarDetail = () => {
   const extrasNum = Math.max(0, parseFloat(extraFeesAmount.replace(/,/g, '')) || 0);
   const totalPrice = baseRental + insuranceTotal + extrasNum;
   const depositEstimate = totalPrice > 0 ? Math.max(500_000, totalPrice * 0.15) : 0;
+
+  const listingType = (car?.listingType || 'RENT_ONLY').toUpperCase();
+  const canRent = !!car && (listingType === 'RENT_ONLY' || listingType === 'BOTH') && car.dailyPrice > 0;
+  const canBuy =
+    !!car &&
+    (listingType === 'SALE_ONLY' || listingType === 'BOTH') &&
+    car.saleStatus === 'AVAILABLE' &&
+    (car.salePrice ?? 0) > 0;
+
+  const saleMutation = useMutation({
+    mutationFn: (pm: 'CASH' | 'BANK_TRANSFER') =>
+      addSaleOrderApi({ carId: Number(id), paymentMethod: pm }),
+    onSuccess: (res, pm) => {
+      queryClient.invalidateQueries({ queryKey: ['cars'] });
+      queryClient.invalidateQueries({ queryKey: ['car', id] });
+      queryClient.invalidateQueries({ queryKey: ['mySaleOrders'] });
+      const newId = res?.id;
+      if (newId && pm === 'BANK_TRANSFER') {
+        navigate(`/dashboard/sale-payment/${newId}`);
+      } else if (newId) {
+        showToast('Đặt mua thành công! Đơn đang chờ admin xác nhận.', 'success');
+        navigate('/dashboard/sale-orders');
+      } else {
+        navigate('/dashboard/sale-orders');
+      }
+    },
+    onError: (error: unknown) => {
+      const apiError = error as { response?: { data?: { message?: string } | Record<string, string> } };
+      const data = apiError?.response?.data;
+      const message =
+        (typeof data === 'object' && data !== null && 'message' in data && typeof data.message === 'string'
+          ? data.message
+          : null) ||
+        (typeof data === 'object' && data !== null
+          ? Object.values(data).find((v) => typeof v === 'string')
+          : null) ||
+        'Không thể đặt mua';
+      showToast(String(message), 'error');
+    },
+  });
 
   const rentalMutation = useMutation({
     mutationFn: addRentalApi,
@@ -170,6 +212,25 @@ const CarDetail = () => {
     });
   };
 
+  const handleBuySale = () => {
+    if (!isAuthenticated) {
+      showToast('Vui lòng đăng nhập để đặt mua', 'info');
+      navigate('/login', { state: { from: { pathname: `/cars/${id}` } } });
+      return;
+    }
+    if (!userId || !car) return;
+    if (profileLoading) {
+      showToast('Đang kiểm tra hồ sơ...', 'info');
+      return;
+    }
+    if (profile?.kycStatus !== 'APPROVED') {
+      showToast('Vui lòng xác minh CCCD + GPLX trước khi đặt mua.', 'info');
+      navigate('/dashboard/kyc');
+      return;
+    }
+    saleMutation.mutate(salePaymentMethod);
+  };
+
   if (isLoading) return (
     <div className="pt-20 min-h-screen flex items-center justify-center">
       <LoadingSpinner size="lg" text="Đang tải thông tin xe..." />
@@ -242,11 +303,23 @@ const CarDetail = () => {
                     {car.serviceCity ? ` • ${car.serviceCity}` : ' • Hà Nội'}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="font-heading font-bold text-3xl text-primary">
-                    {formatCurrency(car.dailyPrice)}
-                  </p>
-                  <p className="text-gray-400 text-sm">/ngày</p>
+                <div className="text-right space-y-1">
+                  {canRent && car.dailyPrice > 0 && (
+                    <div>
+                      <p className="font-heading font-bold text-2xl text-primary">
+                        {formatCurrency(car.dailyPrice)}
+                      </p>
+                      <p className="text-gray-400 text-sm">Thuê / ngày</p>
+                    </div>
+                  )}
+                  {canBuy && car.salePrice != null && (
+                    <div>
+                      <p className="font-heading font-bold text-2xl text-amber-700">
+                        {formatCurrency(car.salePrice)}
+                      </p>
+                      <p className="text-gray-400 text-sm">Giá mua</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -356,10 +429,11 @@ const CarDetail = () => {
             </div>
           </div>
 
-          {/* Right: Booking */}
-          <div className="lg:col-span-1">
+          {/* Right: Booking & Buy */}
+          <div className="lg:col-span-1 space-y-6">
+            {canRent && (
             <div className="card p-6 sticky top-24">
-              <h2 className="font-heading font-semibold text-navy text-lg mb-5">Đặt xe</h2>
+              <h2 className="font-heading font-semibold text-navy text-lg mb-5">Đặt thuê xe</h2>
 
               {isAuthenticated && !profileLoading && profile?.kycStatus !== 'APPROVED' && (
                 <div className="mb-5 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm">
@@ -559,6 +633,45 @@ const CarDetail = () => {
                 ))}
               </div>
             </div>
+            )}
+
+            {canBuy && (
+              <div className="card p-6 border-2 border-amber-100">
+                <h2 className="font-heading font-semibold text-navy text-lg mb-2">Mua xe</h2>
+                <p className="text-sm text-gray-500 mb-4">
+                  Giá niêm yết <span className="font-bold text-amber-700">{formatCurrency(car.salePrice!)}</span>
+                </p>
+                {isAuthenticated && !profileLoading && profile?.kycStatus !== 'APPROVED' && (
+                  <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm">
+                    <Link to="/dashboard/kyc" className="text-primary font-semibold hover:underline">
+                      Xác minh KYC để đặt mua →
+                    </Link>
+                  </div>
+                )}
+                <label className="block text-sm font-medium text-gray-700 mb-2">Thanh toán</label>
+                <select
+                  value={salePaymentMethod}
+                  onChange={(e) => setSalePaymentMethod(e.target.value as 'CASH' | 'BANK_TRANSFER')}
+                  className="input-field mb-4"
+                >
+                  <option value="BANK_TRANSFER">Chuyển khoản</option>
+                  <option value="CASH">Tiền mặt khi giao xe</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={handleBuySale}
+                  disabled={saleMutation.isPending}
+                  className="w-full py-3 rounded-xl font-semibold bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-60"
+                >
+                  {saleMutation.isPending ? 'Đang xử lý...' : 'Đặt mua xe'}
+                </button>
+                {!isAuthenticated && (
+                  <p className="text-center text-xs text-gray-400 mt-3">
+                    <Link to="/login" className="text-primary font-medium">Đăng nhập</Link> để đặt mua
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

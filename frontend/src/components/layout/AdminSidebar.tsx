@@ -13,6 +13,7 @@ import {
   Receipt,
   BarChart3,
   ShieldCheck,
+  ShoppingBag,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
@@ -24,6 +25,7 @@ const navItems = [
   { label: 'Duyệt KYC', to: '/admin/kyc', icon: ShieldCheck },
   { label: 'Thương hiệu & Model', to: '/admin/brands', icon: Tag },
   { label: 'Quản lý đơn thuê', to: '/admin/rentals', icon: FileText },
+  { label: 'Đơn mua xe', to: '/admin/sale-orders', icon: ShoppingBag },
   { label: 'Quản lý hóa đơn', to: '/admin/invoices', icon: Receipt },
   { label: 'Báo cáo', to: '/admin/reports', icon: BarChart3 },
 ];

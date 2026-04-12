@@ -25,6 +25,12 @@ public class GetAllCarsResponse {
 
     private Float dailyPrice;
 
+    private String listingType;
+
+    private Float salePrice;
+
+    private String saleStatus;
+
     private String imagePath;
 
     private GetModelByIdResponse model;

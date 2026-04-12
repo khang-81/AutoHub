@@ -1,6 +1,9 @@
-# Rent-A-Car: SQL Server + API (profile prod). Sao chép docker-compose.env.example -> .env
+# Rent-A-Car / AutoHub: SQL Server + API (profile prod). Sao chép docker-compose.env.example -> .env
 # Chạy: docker compose up --build
 # Lần đầu build db-init có thể mất vài phút (cài mssql-tools18).
+#
+# MSSQL_SA_PASSWORD trong .env phải đủ mạnh (Microsoft): ≥8 ký tự và gồm ít nhất 3 trong 4 nhóm
+# chữ hoa, chữ thường, số, ký tự đặc biệt. Mật khẩu kiểu 12345678 → container db exit 255.
 
 name: rentacar
 
@@ -15,11 +18,12 @@ services:
       - "${MSSQL_PORT:-1433}:1433"
     volumes:
       - mssql_data:/var/opt/mssql
+    # pgrep sqlservr báo healthy quá sớm (trước khi recovery xong) → db-init dùng retry trong entrypoint.sh.
     healthcheck:
       test: ["CMD-SHELL", "pgrep sqlservr || exit 1"]
-      interval: 5s
-      retries: 36
-      start_period: 45s
+      interval: 10s
+      retries: 30
+      start_period: 60s
 
   db-init:
     build:
@@ -27,7 +31,7 @@ services:
     platform: linux/amd64
     depends_on:
       db:
-        condition: service_healthy
+        condition: service_started
     environment:
       DB_HOST: db
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
@@ -39,14 +43,20 @@ services:
     platform: linux/amd64
     ports:
       - "${API_PORT:-8081}:8081"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8081/api/brands/getAll -o /dev/null"]
+      interval: 15s
+      timeout: 10s
+      retries: 25
+      start_period: 120s
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:sqlserver://db:1433;databaseName=rentacar;encrypt=false;trustServerCertificate=true
+      SPRING_DATASOURCE_URL: jdbc:sqlserver://db:1433;databaseName=autohub;encrypt=false;trustServerCertificate=true
       SPRING_DATASOURCE_USERNAME: sa
       SPRING_DATASOURCE_PASSWORD: ${MSSQL_SA_PASSWORD}
       JWT_KEY: ${JWT_KEY}
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
-      JPA_DDL_AUTO: ${JPA_DDL_AUTO:-update}
+      JPA_DDL_AUTO: ${JPA_DDL_AUTO:-validate}
       APP_UPLOAD_ROOT: /app/uploads
     volumes:
       - uploads_data:/app/uploads
@@ -58,12 +68,15 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8081}
+        # Luôn rỗng: SPA gọi /api/* qua Nginx → api:8081 (tránh ERR_CONNECTION_REFUSED tới localhost:8081 khi API không publish port)
+        VITE_API_URL: ""
     platform: linux/amd64
+    # Mặc định 3000 để trùng cổng Vite dev; đổi WEB_PORT trong .env nếu cổng bận (vd. 8080).
     ports:
-      - "${WEB_PORT:-8080}:80"
+      - "${WEB_PORT:-3000}:80"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
 volumes:
   mssql_data:

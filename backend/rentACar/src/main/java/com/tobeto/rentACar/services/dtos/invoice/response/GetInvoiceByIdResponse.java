@@ -1,6 +1,7 @@
 package com.tobeto.rentACar.services.dtos.invoice.response;
 
 import com.tobeto.rentACar.services.dtos.rental.response.GetRentalByIdResponse;
+import com.tobeto.rentACar.services.dtos.saleorder.response.GetAllSaleOrdersResponse;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,4 +16,6 @@ public class GetInvoiceByIdResponse {
     private Float discountRate;
     private Float taxRate;
     private GetRentalByIdResponse rental;
+
+    private GetAllSaleOrdersResponse saleOrder;
 }

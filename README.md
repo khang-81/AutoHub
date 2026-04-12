@@ -28,8 +28,8 @@ Không cần cài Maven hay `npm install` trên máy — Docker build **backend*
    |------|---------|
    | `MSSQL_SA_PASSWORD` | Mật khẩu SA SQL Server (đủ mạnh theo yêu cầu Microsoft) |
    | `JWT_KEY` | Secret JWT dạng Base64 (giống `jwt.key` khi dev) |
-   | `VITE_API_URL` | URL API mà **trình duyệt** gọi — local thường là `http://localhost:8081` |
-   | `APP_CORS_ALLOWED_ORIGINS` | Origin trang web, phân cách bằng dấu phẩy — với Nginx mặc định: `http://localhost:8080,http://127.0.0.1:8080` |
+   | `VITE_API_URL` | Chủ yếu cho **`npm run dev`** (file `frontend/.env`). Stack Docker: web image build với URL rỗng — trình duyệt gọi **`/api/...` trên cùng cổng** với Nginx (proxy tới container `api`) |
+   | `APP_CORS_ALLOWED_ORIGINS` | Origin trang web (phải **trùng** URL bạn mở). Docker web mặc định cổng **3000** — nên có `http://localhost:3000` trong danh sách |
 
 3. **Build và chạy**:
 
@@ -39,7 +39,7 @@ Không cần cài Maven hay `npm install` trên máy — Docker build **backend*
 
 4. **Mở ứng dụng**
 
-   - Giao diện: **http://localhost:8080** (đổi bằng `WEB_PORT` trong `.env` nếu cần)
+   - Giao diện (Nginx / static build): **http://localhost:3000** (mặc định `WEB_PORT=3000`; **không** phải chỉ có khi chạy `npm run dev` — đó là cùng cổng mặc định). Đổi cổng bằng `WEB_PORT` trong `.env` nếu bị trùng app khác.
    - API: **http://localhost:8081** (đổi bằng `API_PORT`)
 
 ### Dịch vụ trong Compose
@@ -47,11 +47,11 @@ Không cần cài Maven hay `npm install` trên máy — Docker build **backend*
 | Service | Mô tả |
 |---------|--------|
 | `db` | SQL Server 2022 (`linux/amd64`), cổng host mặc định **1433** |
-| `db-init` | Chạy một lần: tạo database `rentacar` nếu chưa có |
+| `db-init` | Chạy một lần: tạo database `autohub` và nạp `docker/sqlserver-init/autohub-full-schema.sql` nếu chưa có bảng |
 | `api` | Spring Boot, profile **`prod`**, volume `uploads_data` cho file KYC |
 | `web` | Static React + **Nginx** (SPA routing) |
 
-**Đổi `VITE_API_URL`:** phải build lại image web:
+**Sau khi sửa `nginx.conf` hoặc logic API URL:** build lại image web:
 
 ```bash
 docker compose build web --no-cache && docker compose up -d
@@ -59,7 +59,13 @@ docker compose build web --no-cache && docker compose up -d
 
 **Apple Silicon:** image dùng `platform: linux/amd64` — có thể chậm hơn do emulation.
 
-**Lỗi `db-init`:** nếu không build được (mạng tới repo Microsoft), tạo DB `rentacar` thủ công rồi chỉnh `depends_on` trong `docker-compose.yml` (xem comment trong file).
+**Lỗi `db-init`:** nếu không build được (mạng tới repo Microsoft), tạo DB `autohub` thủ công và chạy script SQL trong `docker/sqlserver-init/autohub-full-schema.sql`, rồi chỉnh `depends_on` trong `docker-compose.yml` nếu cần.
+
+**Container `db` thoát mã 255 / log `Password validation failed`:** `MSSQL_SA_PASSWORD` trong `.env` quá yếu. Đặt mật khẩu đủ phức tạp (ví dụ giống dòng mẫu trong `docker-compose.env.example`), sau đó `docker compose down -v` (xóa volume DB cũ nếu lần đầu đã hỏng) rồi `docker compose up --build` lại.
+
+**`db-init` exit 1 / Msg 904 / `Failed to open database autohub`:** thường do SQL Server chưa recovery xong nhưng init đã chạy. `entrypoint.sh` đã đợi `[autohub]` ONLINE và kiểm tra schema từ `[master]`. Nếu vẫn lỗi: `docker compose build db-init --no-cache` rồi `docker compose up` lại.
+
+**`502 Bad Gateway` trên `/api/...` (qua Nginx):** container `api` chưa sẵn sàng hoặc đã thoát. Xem log: `docker compose logs api --tail 100`. Nếu lỗi Hibernate **validate**, thử `JPA_DDL_AUTO=update` trong `.env` rồi `docker compose up -d api`. Stack hiện đợi `api` **healthy** trước khi chạy `web`.
 
 ---
 
@@ -83,9 +89,11 @@ Chỉ dùng khi sửa code và cần hot-reload.
 | Thành phần | Lệnh |
 |-------------|------|
 | Backend | `cd backend/rentACar` → `mvn spring-boot:run` (cần SQL Server local, xem `application.properties`) |
-| Frontend | `cd frontend` → `npm install` → `npm run dev` (Vite, thường cổng 3000/5173 tùy cấu hình) |
+| Frontend | `cd frontend` → `npm install` → `npm run dev` (Vite mặc định **http://localhost:3000**; nếu cổng bận Vite tự thử cổng khác) |
 
 `VITE_API_URL` trong `frontend/.env` trỏ tới API (mặc định code: `http://localhost:8081`).
+
+**Gỡ lỗi:** Nếu DevTools báo file kiểu `Cars.js` và gọi `http://localhost:4000/carType` — đó **không phải** frontend AutoHub (repo này dùng `CarListing.tsx` và API `/api/cars/...` trên cổng **8081**). Đóng app khác trên **:3000**, chạy `npm run dev` trong `frontend/`, mở đúng URL mà terminal in ra, bật API **8081**. Với Docker API, thêm origin dev vào `APP_CORS_ALLOWED_ORIGINS` (xem `docker-compose.env.example`).
 
 ---
 

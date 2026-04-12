@@ -32,6 +32,8 @@ import RentalHistory from './pages/user/RentalHistory';
 import MyInvoices from './pages/user/MyInvoices';
 import ChangePassword from './pages/user/ChangePassword';
 import PaymentPage from './pages/user/PaymentPage';
+import PaymentSalePage from './pages/user/PaymentSalePage';
+import MySaleOrders from './pages/user/MySaleOrders';
 import KycVerification from './pages/user/KycVerification';
 
 // Admin pages
@@ -44,6 +46,7 @@ import ManageInvoices from './pages/admin/ManageInvoices';
 import ManageUsers from './pages/admin/ManageUsers';
 import ManageReports from './pages/admin/ManageReports';
 import ManageKyc from './pages/admin/ManageKyc';
+import ManageSaleOrders from './pages/admin/ManageSaleOrders';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -89,6 +92,8 @@ function RoutesWithChatbot() {
           <Route path="profile" element={<Profile />} />
           <Route path="rentals" element={<RentalHistory />} />
           <Route path="payment/:rentalId" element={<PaymentPage />} />
+          <Route path="sale-payment/:saleOrderId" element={<PaymentSalePage />} />
+          <Route path="sale-orders" element={<MySaleOrders />} />
           <Route path="invoices" element={<MyInvoices />} />
           <Route path="change-password" element={<ChangePassword />} />
           <Route path="kyc" element={<KycVerification />} />
@@ -111,6 +116,7 @@ function RoutesWithChatbot() {
           <Route path="users" element={<ManageUsers />} />
           <Route path="reports" element={<ManageReports />} />
           <Route path="kyc" element={<ManageKyc />} />
+          <Route path="sale-orders" element={<ManageSaleOrders />} />
         </Route>
 
         {/* Catch all */}

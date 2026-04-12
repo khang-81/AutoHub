@@ -57,7 +57,8 @@ public class RentalManager implements RentalService {
             rule.existsUserById(request.getUserId());
             rule.existsCarById(request.getCarId());
             rule.checkCarAvailability(request.getCarId(), request.getStartDate(), request.getEndDate());
-            rule.checkUserKycApprovedForRental(request.getUserId());
+            rule.checkUserKycApproved(request.getUserId());
+            rule.checkCarAllowsRental(request.getCarId());
         }
 
         // When renting, the StartKilometer should be taken from the Kilometer field of
