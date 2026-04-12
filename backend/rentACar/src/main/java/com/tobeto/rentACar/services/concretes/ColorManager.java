@@ -14,8 +14,11 @@ import com.tobeto.rentACar.services.dtos.color.request.DeleteColorRequest;
 import com.tobeto.rentACar.services.dtos.color.request.UpdateColorRequest;
 import com.tobeto.rentACar.services.dtos.color.response.GetAllColorsResponse;
 import com.tobeto.rentACar.services.dtos.color.response.GetColorByIdResponse;
+import com.tobeto.rentACar.core.configurations.CacheConfig;
 import com.tobeto.rentACar.services.rules.ColorBusinessRule;
 import lombok.AllArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -40,6 +43,7 @@ public class ColorManager implements ColorService {
     }
 
     @Override
+    @Cacheable(cacheNames = CacheConfig.COLORS, key = "'all'")
     public List<GetAllColorsResponse> getAll() {
         List<Color> colors = colorRepository.findAll();
         return colors
@@ -51,6 +55,7 @@ public class ColorManager implements ColorService {
     }
 
     @Override
+    @CacheEvict(cacheNames = CacheConfig.COLORS, allEntries = true)
     public Result add(AddColorRequest request) {
 
         colorBusinessRule.existsColorByName(request.getName());
@@ -64,6 +69,7 @@ public class ColorManager implements ColorService {
     }
 
     @Override
+    @CacheEvict(cacheNames = CacheConfig.COLORS, allEntries = true)
     public Result update(UpdateColorRequest request) {
         colorBusinessRule.existsColorByName(request.getName());
         colorBusinessRule.existsColorById(request.getId());
@@ -78,6 +84,7 @@ public class ColorManager implements ColorService {
     }
 
     @Override
+    @CacheEvict(cacheNames = CacheConfig.COLORS, allEntries = true)
     public Result delete(DeleteColorRequest request) {
 
         colorBusinessRule.existsColorById(request.getId());
