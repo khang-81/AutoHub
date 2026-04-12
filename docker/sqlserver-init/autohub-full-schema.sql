@@ -21,7 +21,7 @@ SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
 
-/* ---------- roles (không kế thừa BaseEntity; id = GenerationType.AUTO → IDENTITY) ---------- */
+/* ---------- roles (không kế thừa BaseEntity; id = IDENTITY — khớp Role @GeneratedValue IDENTITY) ---------- */
 CREATE TABLE [dbo].[roles] (
     [id]   INT            IDENTITY (1, 1) NOT NULL,
     [name] NVARCHAR (255) NULL,
