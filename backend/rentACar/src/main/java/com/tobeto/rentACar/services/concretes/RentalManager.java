@@ -2,6 +2,7 @@ package com.tobeto.rentACar.services.concretes;
 
 import com.tobeto.rentACar.core.exceptions.types.NotFoundException;
 import com.tobeto.rentACar.core.exceptions.types.BusinessException;
+import com.tobeto.rentACar.core.services.BusinessMailNotificationSender;
 import com.tobeto.rentACar.core.utilities.messages.MessageService;
 import com.tobeto.rentACar.core.utilities.mappers.ModelMapperService;
 import com.tobeto.rentACar.core.utilities.results.Result;
@@ -45,6 +46,7 @@ public class RentalManager implements RentalService {
     private final CarService carService;
     private final InvoiceService invoiceService;
     private final List<RentalBusinessRule> rentalBusinessRules;
+    private final BusinessMailNotificationSender businessMailNotificationSender;
     private MessageService messageService;
 
     @Override
@@ -251,7 +253,19 @@ public class RentalManager implements RentalService {
         rental.setRentalStatus("CANCELLED");
         rental.setDepositStatus(deposit <= 0 ? "FORFEITED" : (refund <= 0.01 ? "FORFEITED" : "REFUNDED"));
         rental.setPaymentStatus("CANCELLED");
+        int rid = rental.getId();
         rentalRepository.save(rental);
+
+        rentalRepository.findUserEmailByRentalId(rid).ifPresent(email -> businessMailNotificationSender.sendHtmlToUser(
+                email,
+                "[Rent-A-Car] Đơn thuê đã hủy",
+                BusinessMailNotificationSender.simpleHtmlEmail(
+                        "Đơn thuê #" + rid + " đã hủy",
+                        "Đơn đã được hủy (" + rental.getCancelledBy() + ").\nLý do: "
+                                + (reason != null && !reason.isBlank() ? reason : "(không có)")
+                                + ".\nHoàn cọc dự kiến: " + String.format("%,.0f", refund) + " VNĐ."
+                )
+        ));
 
         return new SuccessResult(String.format(
                 "Đã hủy đơn. Hoàn cọc dự kiến: %,.0f VNĐ (phí giữ lại: %,.0f VNĐ).", refund, fee));
@@ -299,6 +313,18 @@ public class RentalManager implements RentalService {
         }
         rental.setRentalStatus("CONFIRMED");
         rentalRepository.save(rental);
+
+        rentalRepository.findUserEmailByRentalId(id).ifPresent(email -> businessMailNotificationSender.sendHtmlToUser(
+                email,
+                "[Rent-A-Car] Đơn thuê đã được xác nhận",
+                BusinessMailNotificationSender.simpleHtmlEmail(
+                        "Đơn thuê xe #" + id,
+                        "Đơn thuê của bạn đã được admin xác nhận.\nTừ ngày: " + rental.getStartDate()
+                                + "\nĐến ngày: " + rental.getEndDate()
+                                + "\nTổng tiền: " + String.format("%,.0f", rental.getTotalPrice()) + " VNĐ."
+                )
+        ));
+
         return new SuccessResult("Admin đã xác nhận đơn thuê.");
     }
 

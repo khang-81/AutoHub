@@ -2,6 +2,7 @@ package com.tobeto.rentACar.services.concretes;
 
 import com.tobeto.rentACar.core.exceptions.types.BusinessException;
 import com.tobeto.rentACar.core.exceptions.types.NotFoundException;
+import com.tobeto.rentACar.core.services.BusinessMailNotificationSender;
 import com.tobeto.rentACar.core.services.FileStorageService;
 import com.tobeto.rentACar.entities.concretes.User;
 import com.tobeto.rentACar.entities.concretes.UserDocument;
@@ -12,6 +13,7 @@ import com.tobeto.rentACar.services.constants.KycConstants;
 import com.tobeto.rentACar.services.dtos.kyc.response.UserDocumentResponse;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,6 +30,7 @@ public class UserDocumentManager implements UserDocumentService {
     private final UserDocumentRepository userDocumentRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final BusinessMailNotificationSender businessMailNotificationSender;
 
     @Override
     @Transactional
@@ -94,7 +97,21 @@ public class UserDocumentManager implements UserDocumentService {
         doc.setReviewedAt(LocalDateTime.now());
         doc.setAdminNote(null);
         userDocumentRepository.save(doc);
-        refreshUserKycStatus(doc.getUser().getId());
+        int uid = doc.getUser().getId();
+        refreshUserKycStatus(uid);
+        userRepository.findById(uid).ifPresent(refreshed -> {
+            if (StringUtils.hasText(refreshed.getEmail())
+                    && KycConstants.USER_KYC_APPROVED.equals(refreshed.getKycStatus())) {
+                businessMailNotificationSender.sendHtmlToUser(
+                        refreshed.getEmail(),
+                        "[Rent-A-Car] Xác minh danh tính hoàn tất",
+                        BusinessMailNotificationSender.simpleHtmlEmail(
+                                "KYC đã được duyệt",
+                                "Hồ sơ CCCD và GPLX của bạn đã được phê duyệt. Bạn có thể đặt thuê hoặc mua xe trên hệ thống."
+                        )
+                );
+            }
+        });
         return toResponse(doc);
     }
 
@@ -110,7 +127,22 @@ public class UserDocumentManager implements UserDocumentService {
         doc.setReviewedAt(LocalDateTime.now());
         doc.setAdminNote(adminNote);
         userDocumentRepository.save(doc);
-        refreshUserKycStatus(doc.getUser().getId());
+        int uid = doc.getUser().getId();
+        refreshUserKycStatus(uid);
+        String typeLabel = KycConstants.DOC_CCCD.equals(doc.getDocumentType()) ? "CCCD" : "GPLX";
+        userRepository.findById(uid).ifPresent(refreshed -> {
+            if (StringUtils.hasText(refreshed.getEmail())) {
+                businessMailNotificationSender.sendHtmlToUser(
+                        refreshed.getEmail(),
+                        "[Rent-A-Car] Cần cập nhật hồ sơ KYC",
+                        BusinessMailNotificationSender.simpleHtmlEmail(
+                                "Giấy tờ " + typeLabel + " cần bổ sung",
+                                "Hồ sơ của bạn chưa được chấp nhật.\nGhi chú từ admin: "
+                                        + (adminNote != null && !adminNote.isBlank() ? adminNote : "(không có ghi chú)")
+                        )
+                );
+            }
+        });
         return toResponse(doc);
     }
 
