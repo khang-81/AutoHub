@@ -17,6 +17,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.core.GrantedAuthorityDefaults;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.core.Ordered;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -44,13 +45,22 @@ public class SecurityConfiguration {
             "/api/contact/**",
             "/api/ai/**",
             "/files/**",
-            "/actuator/health",
-            "/actuator/health/**",
-            "/actuator/info"
+            "/actuator/**"
     };
 
+    /** Actuator: chain riêng (không gắn JWT) — tránh 403 health khi deploy. */
     @Bean
-    @Order(0)
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    public SecurityFilterChain actuatorSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/actuator/**")
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(x -> x.anyRequest().permitAll());
+        return http.build();
+    }
+
+    @Bean
+    @Order(1)
     public SecurityFilterChain authEndpointsFilterChain(HttpSecurity http) throws Exception {
         http
                 .securityMatcher("/api/auth/**")
@@ -62,7 +72,7 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    @Order(1)
+    @Order(2)
     public SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(Customizer.withDefaults())

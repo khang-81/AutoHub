@@ -22,10 +22,6 @@ function listingFromPathname(pathname: string): '' | 'rent' | 'sale' {
   return 'rent';
 }
 
-function brandQuerySuffix(brandId: string): string {
-  return brandId ? `?brand=${encodeURIComponent(brandId)}` : '';
-}
-
 /** Trang tối đa hiển thị dạng nút (mức C — danh sách lớn) */
 function buildPageItems(current: number, total: number): (number | 'ellipsis')[] {
   if (total <= 9) {
@@ -45,32 +41,24 @@ function buildPageItems(current: number, total: number): (number | 'ellipsis')[]
 }
 
 const CarListing = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
 
+  const listingMode = listingFromPathname(location.pathname);
+  const brandParam = searchParams.get('brand') || '';
+  const searchParamsStr = searchParams.toString();
+  const qs = useMemo(() => (searchParamsStr ? `?${searchParamsStr}` : ''), [searchParamsStr]);
+
   const [filters, setFilters] = useState({
-    brandId: searchParams.get('brand') || '',
     colorId: '',
     minPrice: '',
     maxPrice: '',
     minYear: '',
     search: '',
-    /** '' | rent | sale — đồng bộ với URL: /cars | /cars/mua | /cars/tat-ca */
-    listing: listingFromPathname(location.pathname) as '' | 'rent' | 'sale',
   });
-
-  const brandParam = searchParams.get('brand') || '';
-  useEffect(() => {
-    setFilters((prev) => ({
-      ...prev,
-      brandId: brandParam,
-      listing: listingFromPathname(location.pathname),
-    }));
-    setPage(1);
-  }, [location.pathname, brandParam]);
 
   const [debouncedSearch, setDebouncedSearch] = useState(filters.search);
   useEffect(() => {
@@ -85,15 +73,15 @@ const CarListing = () => {
     return {
       page,
       size: ITEMS_PER_PAGE,
-      brandId: filters.brandId ? Number(filters.brandId) : undefined,
+      brandId: brandParam ? Number(brandParam) : undefined,
       colorId: filters.colorId ? Number(filters.colorId) : undefined,
       minPrice: Number.isFinite(minP) ? minP : undefined,
       maxPrice: Number.isFinite(maxP) ? maxP : undefined,
       minYear: Number.isFinite(y) ? y : undefined,
-      listing: (filters.listing || undefined) as '' | 'rent' | 'sale' | undefined,
+      listing: (listingMode || undefined) as '' | 'rent' | 'sale' | undefined,
       q: debouncedSearch.trim() || undefined,
     };
-  }, [page, filters, debouncedSearch]);
+  }, [page, filters, debouncedSearch, brandParam, listingMode]);
 
   const { data, isLoading, isFetching } = useQuery<PagedCarsResponse>({
     queryKey: ['cars', 'search', searchParamsApi],
@@ -110,13 +98,13 @@ const CarListing = () => {
 
   const heroCopy = useMemo(() => {
     const n = totalElements;
-    if (filters.listing === 'sale') {
+    if (listingMode === 'sale') {
       return {
         title: 'Mua xe',
         subtitle: isLoading ? 'Đang tải…' : `Khám phá ${n} xe đang niêm yết bán`,
       };
     }
-    if (filters.listing === '') {
+    if (listingMode === '') {
       return {
         title: 'Thuê & mua xe',
         subtitle: isLoading ? 'Đang tải…' : `Khám phá ${n} xe — cho thuê và bán`,
@@ -126,7 +114,7 @@ const CarListing = () => {
       title: 'Thuê xe',
       subtitle: isLoading ? 'Đang tải…' : `Khám phá ${n} xe cho thuê`,
     };
-  }, [filters.listing, isLoading, totalElements]);
+  }, [listingMode, isLoading, totalElements]);
 
   const tabClass = ({ isActive }: { isActive: boolean }) =>
     `px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
@@ -134,10 +122,19 @@ const CarListing = () => {
     }`;
 
   const navigateListingMode = (listing: '' | 'rent' | 'sale') => {
-    const q = brandQuerySuffix(filters.brandId);
+    setPage(1);
+    const q = qs;
     if (listing === 'sale') navigate(`${PATH_CARS_SALE}${q}`);
     else if (listing === '') navigate(`${PATH_CARS_ALL}${q}`);
     else navigate(`${PATH_CARS_RENT}${q}`);
+  };
+
+  const setBrandFilter = (value: string) => {
+    setPage(1);
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set('brand', value);
+    else next.delete('brand');
+    setSearchParams(next, { replace: true });
   };
 
   const updateFilter = (key: string, value: string) => {
@@ -147,18 +144,18 @@ const CarListing = () => {
 
   const resetFilters = () => {
     setFilters({
-      brandId: '',
       colorId: '',
       minPrice: '',
       maxPrice: '',
       minYear: '',
       search: '',
-      listing: listingFromPathname(location.pathname),
     });
+    setSearchParams(new URLSearchParams(), { replace: true });
     setPage(1);
   };
 
   const activeFilterCount = [
+    brandParam,
     filters.colorId,
     filters.minPrice,
     filters.maxPrice,
@@ -174,13 +171,18 @@ const CarListing = () => {
           <h1 className="font-heading font-bold text-3xl text-white mb-2">{heroCopy.title}</h1>
           <p className="text-gray-300 mb-6">{heroCopy.subtitle}</p>
           <div className="flex flex-wrap gap-2">
-            <NavLink to={`${PATH_CARS_RENT}${brandQuerySuffix(filters.brandId)}`} className={tabClass} end>
+            <NavLink
+              to={`${PATH_CARS_RENT}${qs}`}
+              className={tabClass}
+              end
+              onClick={() => setPage(1)}
+            >
               Cho thuê
             </NavLink>
-            <NavLink to={`${PATH_CARS_SALE}${brandQuerySuffix(filters.brandId)}`} className={tabClass}>
+            <NavLink to={`${PATH_CARS_SALE}${qs}`} className={tabClass} onClick={() => setPage(1)}>
               Mua xe
             </NavLink>
-            <NavLink to={`${PATH_CARS_ALL}${brandQuerySuffix(filters.brandId)}`} className={tabClass}>
+            <NavLink to={`${PATH_CARS_ALL}${qs}`} className={tabClass} onClick={() => setPage(1)}>
               Tất cả
             </NavLink>
           </div>
@@ -239,7 +241,7 @@ const CarListing = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Loại hình</label>
                 <select
-                  value={filters.listing}
+                  value={listingMode}
                   onChange={(e) =>
                     navigateListingMode(e.target.value as '' | 'rent' | 'sale')
                   }
@@ -255,8 +257,8 @@ const CarListing = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Thương hiệu</label>
                 <select
-                  value={filters.brandId}
-                  onChange={(e) => updateFilter('brandId', e.target.value)}
+                  value={brandParam}
+                  onChange={(e) => setBrandFilter(e.target.value)}
                   className="input-field text-sm"
                 >
                   <option value="">Tất cả</option>
@@ -284,7 +286,7 @@ const CarListing = () => {
               {/* Price range */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {filters.listing === 'sale' ? 'Giá bán (VNĐ)' : 'Giá thuê/ngày (VNĐ)'}
+                  {listingMode === 'sale' ? 'Giá bán (VNĐ)' : 'Giá thuê/ngày (VNĐ)'}
                 </label>
                 <div className="flex gap-2">
                   <input
