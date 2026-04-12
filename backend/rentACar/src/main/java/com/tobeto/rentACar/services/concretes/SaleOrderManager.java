@@ -2,6 +2,7 @@ package com.tobeto.rentACar.services.concretes;
 
 import com.tobeto.rentACar.core.exceptions.types.BusinessException;
 import com.tobeto.rentACar.core.exceptions.types.NotFoundException;
+import com.tobeto.rentACar.core.services.BusinessMailNotificationSender;
 import com.tobeto.rentACar.core.utilities.messages.MessageService;
 import com.tobeto.rentACar.core.utilities.mappers.ModelMapperService;
 import com.tobeto.rentACar.core.utilities.results.Result;
@@ -38,6 +39,7 @@ public class SaleOrderManager implements SaleOrderService {
     private final InvoiceService invoiceService;
     private final RentalBusinessRule rentalBusinessRule;
     private final SaleBusinessRule saleBusinessRule;
+    private final BusinessMailNotificationSender businessMailNotificationSender;
     private MessageService messageService;
 
     @Override
@@ -157,6 +159,16 @@ public class SaleOrderManager implements SaleOrderService {
         car.setSaleStatus(ListingConstants.SALE_SOLD);
         carRepository.save(car);
 
+        saleOrderRepository.findUserEmailBySaleOrderId(id).ifPresent(email -> businessMailNotificationSender.sendHtmlToUser(
+                email,
+                "[Rent-A-Car] Đơn mua xe hoàn tất",
+                BusinessMailNotificationSender.simpleHtmlEmail(
+                        "Đơn mua #" + id,
+                        "Giao dịch mua xe đã được admin xác nhận.\nTổng tiền: "
+                                + String.format("%,.0f", order.getTotalPrice()) + " VNĐ."
+                )
+        ));
+
         return new SuccessResult("Admin đã xác nhận — giao dịch mua hoàn tất, xe đã bán.");
     }
 
@@ -187,6 +199,17 @@ public class SaleOrderManager implements SaleOrderService {
         }
         car.setSaleStatus(ListingConstants.SALE_AVAILABLE);
         carRepository.save(car);
+
+        int oid = order.getId();
+        saleOrderRepository.findUserEmailBySaleOrderId(oid).ifPresent(email -> businessMailNotificationSender.sendHtmlToUser(
+                email,
+                "[Rent-A-Car] Đơn mua đã hủy",
+                BusinessMailNotificationSender.simpleHtmlEmail(
+                        "Đơn mua #" + oid + " đã hủy",
+                        "Đơn mua đã được hủy (" + order.getCancelledBy() + ").\nLý do: "
+                                + (reason != null && !reason.isBlank() ? reason : "(không có)")
+                )
+        ));
 
         return new SuccessResult("Đã hủy đơn mua. Xe được mở bán lại.");
     }

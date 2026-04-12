@@ -72,6 +72,20 @@ public class MailService {
         javaMailSender.send(mimeMessage);
     }
 
+    /** Gửi HTML tới người dùng (from = mail.username). Dùng cho thông báo nghiệp vụ. */
+    public void sendHtmlTo(String toEmail, String subject, String htmlBody) throws MessagingException {
+        if (username == null || username.isBlank()) {
+            throw new IllegalStateException("Mail chưa được cấu hình (mail.username).");
+        }
+        MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+        helper.setFrom(username);
+        helper.setTo(toEmail);
+        helper.setSubject(subject);
+        helper.setText(htmlBody, true);
+        javaMailSender.send(mimeMessage);
+    }
+
     private String generateJoinUsMailContent(JoinUsMailRequest request) {
         return "<!DOCTYPE html>\n" +
                 "<html lang=\"tr\">\n" +

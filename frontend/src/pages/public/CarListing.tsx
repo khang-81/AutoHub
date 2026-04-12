@@ -1,15 +1,33 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, Search, X, ChevronLeft, ChevronRight, LayoutGrid, List } from 'lucide-react';
-import { getAllCarsApi } from '../../api/cars';
+import { searchCarsApi } from '../../api/cars';
 import { getAllBrandsApi } from '../../api/brands';
 import { getAllColorsApi } from '../../api/colors';
 import CarCard from '../../components/ui/CarCard';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import type { Car, Brand, Color } from '../../types';
+import type { Brand, Color, PagedCarsResponse } from '../../types';
 
 const ITEMS_PER_PAGE = 9;
+
+/** Trang tối đa hiển thị dạng nút (mức C — danh sách lớn) */
+function buildPageItems(current: number, total: number): (number | 'ellipsis')[] {
+  if (total <= 9) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const items: (number | 'ellipsis')[] = [];
+  const windowStart = Math.max(2, current - 1);
+  const windowEnd = Math.min(total - 1, current + 1);
+  items.push(1);
+  if (windowStart > 2) items.push('ellipsis');
+  for (let p = windowStart; p <= windowEnd; p++) {
+    if (p > 1 && p < total) items.push(p);
+  }
+  if (windowEnd < total - 1) items.push('ellipsis');
+  if (total > 1) items.push(total);
+  return items;
+}
 
 const CarListing = () => {
   const [searchParams] = useSearchParams();
@@ -27,54 +45,41 @@ const CarListing = () => {
     listing: (searchParams.get('listing') as '' | 'rent' | 'sale') || '',
   });
 
-  const { data: cars = [], isLoading } = useQuery<Car[]>({ queryKey: ['cars'], queryFn: getAllCarsApi });
+  const [debouncedSearch, setDebouncedSearch] = useState(filters.search);
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebouncedSearch(filters.search), 350);
+    return () => clearTimeout(id);
+  }, [filters.search]);
+
+  const searchParamsApi = useMemo(() => {
+    const minP = filters.minPrice.trim() ? Number(filters.minPrice) : undefined;
+    const maxP = filters.maxPrice.trim() ? Number(filters.maxPrice) : undefined;
+    const y = filters.minYear.trim() ? Number(filters.minYear) : undefined;
+    return {
+      page,
+      size: ITEMS_PER_PAGE,
+      brandId: filters.brandId ? Number(filters.brandId) : undefined,
+      colorId: filters.colorId ? Number(filters.colorId) : undefined,
+      minPrice: Number.isFinite(minP) ? minP : undefined,
+      maxPrice: Number.isFinite(maxP) ? maxP : undefined,
+      minYear: Number.isFinite(y) ? y : undefined,
+      listing: (filters.listing || undefined) as '' | 'rent' | 'sale' | undefined,
+      q: debouncedSearch.trim() || undefined,
+    };
+  }, [page, filters, debouncedSearch]);
+
+  const { data, isLoading, isFetching } = useQuery<PagedCarsResponse>({
+    queryKey: ['cars', 'search', searchParamsApi],
+    queryFn: () => searchCarsApi(searchParamsApi),
+  });
+
   const { data: brands = [] } = useQuery<Brand[]>({ queryKey: ['brands'], queryFn: getAllBrandsApi });
   const { data: colors = [] } = useQuery<Color[]>({ queryKey: ['colors'], queryFn: getAllColorsApi });
 
-  const filtered = useMemo(() => {
-    return cars.filter((car) => {
-      const lt = (car.listingType || 'RENT_ONLY').toUpperCase();
-      if (filters.listing === 'rent') {
-        if (lt !== 'RENT_ONLY' && lt !== 'BOTH') return false;
-      }
-      if (filters.listing === 'sale') {
-        if (lt !== 'SALE_ONLY' && lt !== 'BOTH') return false;
-      }
-      if (filters.brandId && car.model?.brand?.id !== Number(filters.brandId)) return false;
-      if (filters.colorId && car.color?.id !== Number(filters.colorId)) return false;
-      if (filters.minPrice) {
-        const minP = Number(filters.minPrice);
-        if (filters.listing === 'sale') {
-          const sp = car.salePrice ?? 0;
-          if (sp < minP) return false;
-        } else {
-          if (car.dailyPrice < minP) return false;
-        }
-      }
-      if (filters.maxPrice) {
-        const maxP = Number(filters.maxPrice);
-        if (filters.listing === 'sale') {
-          const sp = car.salePrice ?? 0;
-          if (sp > maxP) return false;
-        } else {
-          if (car.dailyPrice > maxP) return false;
-        }
-      }
-      if (filters.minYear && car.modelYear < Number(filters.minYear)) return false;
-      if (filters.search) {
-        const q = filters.search.toLowerCase();
-        const match =
-          car.model?.brand?.name?.toLowerCase().includes(q) ||
-          car.model?.name?.toLowerCase().includes(q) ||
-          car.plate?.toLowerCase().includes(q);
-        if (!match) return false;
-      }
-      return true;
-    });
-  }, [cars, filters]);
-
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-  const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  const paginated = data?.content ?? [];
+  const totalPages = data?.totalPages ?? 0;
+  const totalElements = data?.totalElements ?? 0;
+  const pageItems = totalPages > 0 ? buildPageItems(page, totalPages) : [];
 
   const updateFilter = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -94,7 +99,9 @@ const CarListing = () => {
       <div className="bg-navy py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="font-heading font-bold text-3xl text-white mb-2">Thuê & mua xe</h1>
-          <p className="text-gray-300">Khám phá {cars.length} xe — cho thuê và bán</p>
+          <p className="text-gray-300">
+            {isLoading ? 'Đang tải…' : `Khám phá ${totalElements} xe — cho thuê và bán`}
+          </p>
         </div>
       </div>
 
@@ -234,7 +241,18 @@ const CarListing = () => {
             {/* Results header */}
             <div className="flex items-center justify-between mb-5">
               <p className="text-gray-500 text-sm">
-                Hiển thị <span className="font-semibold text-navy">{paginated.length}</span> trong {filtered.length} xe
+                {totalElements === 0 ? (
+                  'Không có xe phù hợp'
+                ) : (
+                  <>
+                    Trang <span className="font-semibold text-navy">{page}</span> / {totalPages} —{' '}
+                    <span className="font-semibold text-navy">{paginated.length}</span> xe (tổng{' '}
+                    <span className="font-semibold text-navy">{totalElements}</span>)
+                  </>
+                )}
+                {isFetching && !isLoading ? (
+                  <span className="ml-2 text-primary text-xs">Đang cập nhật…</span>
+                ) : null}
               </p>
               <div className="flex gap-2">
                 <button className="p-2 rounded-lg bg-primary text-white">
@@ -264,28 +282,37 @@ const CarListing = () => {
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 mt-10">
+                  <div className="flex flex-wrap items-center justify-center gap-2 mt-10">
                     <button
+                      type="button"
                       onClick={() => setPage(Math.max(1, page - 1))}
                       disabled={page === 1}
                       className="p-2 rounded-lg border border-gray-200 disabled:opacity-40 hover:border-primary hover:text-primary transition-colors"
                     >
                       <ChevronLeft className="w-5 h-5" />
                     </button>
-                    {Array.from({ length: totalPages }).map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setPage(i + 1)}
-                        className={`w-10 h-10 rounded-lg font-medium text-sm transition-all ${
-                          page === i + 1
-                            ? 'bg-primary text-white shadow-md'
-                            : 'border border-gray-200 text-gray-600 hover:border-primary hover:text-primary'
-                        }`}
-                      >
-                        {i + 1}
-                      </button>
-                    ))}
+                    {pageItems.map((item, idx) =>
+                      item === 'ellipsis' ? (
+                        <span key={`e-${idx}`} className="px-1 text-gray-400">
+                          …
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          key={item}
+                          onClick={() => setPage(item)}
+                          className={`min-w-[2.5rem] h-10 px-2 rounded-lg font-medium text-sm transition-all ${
+                            page === item
+                              ? 'bg-primary text-white shadow-md'
+                              : 'border border-gray-200 text-gray-600 hover:border-primary hover:text-primary'
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      )
+                    )}
                     <button
+                      type="button"
                       onClick={() => setPage(Math.min(totalPages, page + 1))}
                       disabled={page === totalPages}
                       className="p-2 rounded-lg border border-gray-200 disabled:opacity-40 hover:border-primary hover:text-primary transition-colors"

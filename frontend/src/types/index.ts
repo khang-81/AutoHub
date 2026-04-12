@@ -67,6 +67,14 @@ export interface Car {
   color: Color;
 }
 
+export interface PagedCarsResponse {
+  content: Car[];
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  size: number;
+}
+
 export interface AddCarRequest {
   kilometer: number;
   plate: string;

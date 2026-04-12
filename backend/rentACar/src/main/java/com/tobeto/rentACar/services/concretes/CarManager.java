@@ -8,6 +8,7 @@ import com.tobeto.rentACar.core.utilities.results.Result;
 import com.tobeto.rentACar.core.utilities.results.SuccessResult;
 import com.tobeto.rentACar.entities.concretes.Car;
 import com.tobeto.rentACar.repositories.CarRepository;
+import com.tobeto.rentACar.repositories.CarSpecifications;
 import com.tobeto.rentACar.repositories.ReviewRepository;
 import com.tobeto.rentACar.services.abstracts.CarService;
 import com.tobeto.rentACar.services.constants.Messages;
@@ -16,12 +17,17 @@ import com.tobeto.rentACar.services.dtos.car.request.DeleteCarRequest;
 import com.tobeto.rentACar.services.dtos.car.request.UpdateCarRequest;
 import com.tobeto.rentACar.services.dtos.car.response.GetAllCarsResponse;
 import com.tobeto.rentACar.services.dtos.car.response.GetCarByIdResponse;
+import com.tobeto.rentACar.services.dtos.car.response.PagedCarsResponse;
 import com.tobeto.rentACar.services.constants.ListingConstants;
 import com.tobeto.rentACar.services.rules.CarBusinessRule;
 import com.tobeto.rentACar.services.rules.ColorBusinessRule;
 import com.tobeto.rentACar.services.rules.ModelBusinessRule;
 import lombok.AllArgsConstructor;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -50,6 +56,43 @@ public class CarManager implements CarService {
             applyListingDefaults(r);
             return r;
         }).toList();
+    }
+
+    @Override
+    public PagedCarsResponse search(
+            Integer brandId,
+            Integer colorId,
+            Double minPrice,
+            Double maxPrice,
+            Integer minYear,
+            String listing,
+            String q,
+            int page,
+            int size) {
+
+        int pageOneBased = Math.max(1, page);
+        int pageSize = Math.min(50, Math.max(1, size));
+        int pageIndex = pageOneBased - 1;
+
+        Specification<Car> spec = CarSpecifications.withFilters(brandId, colorId, minPrice, maxPrice, minYear, listing, q);
+        Page<Car> result = carRepository.findAll(
+                spec,
+                PageRequest.of(pageIndex, pageSize, Sort.by(Sort.Direction.DESC, "id")));
+
+        Map<Integer, double[]> ratingByCar = buildRatingStatsMap();
+        List<GetAllCarsResponse> content = result.getContent().stream().map((car) -> {
+            GetAllCarsResponse r = this.modelMapperService.forResponse().map(car, GetAllCarsResponse.class);
+            applyRatingStats(r, car.getId(), ratingByCar);
+            applyListingDefaults(r);
+            return r;
+        }).toList();
+
+        return new PagedCarsResponse(
+                content,
+                result.getTotalElements(),
+                result.getTotalPages(),
+                pageOneBased,
+                pageSize);
     }
 
     @Override
