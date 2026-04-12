@@ -43,7 +43,10 @@ public class SecurityConfiguration {
             "/api/brands/**",
             "/api/contact/**",
             "/api/ai/**",
-            "/files/**"
+            "/files/**",
+            "/actuator/health",
+            "/actuator/health/**",
+            "/actuator/info"
     };
 
     @Bean

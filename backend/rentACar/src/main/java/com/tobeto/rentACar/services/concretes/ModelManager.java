@@ -17,9 +17,12 @@ import com.tobeto.rentACar.services.dtos.model.request.DeleteModelRequest;
 import com.tobeto.rentACar.services.dtos.model.request.UpdateModelRequest;
 import com.tobeto.rentACar.services.dtos.model.response.GetAllModelsResponse;
 import com.tobeto.rentACar.services.dtos.model.response.GetModelByIdResponse;
+import com.tobeto.rentACar.core.configurations.CacheConfig;
 import com.tobeto.rentACar.services.rules.BrandBusinessRule;
 import com.tobeto.rentACar.services.rules.ModelBusinessRule;
 import lombok.AllArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -46,6 +49,7 @@ public class ModelManager implements ModelService {
     }
 
     @Override
+    @Cacheable(cacheNames = CacheConfig.MODELS, key = "'names'")
     public List<String> getAllName() {
 
         return modelRepository.findAll().stream()
@@ -54,6 +58,7 @@ public class ModelManager implements ModelService {
     }
 
     @Override
+    @Cacheable(cacheNames = CacheConfig.MODELS, key = "'all'")
     public List<GetAllModelsResponse> getAll() {
         List<Model> models = modelRepository.findAll();
         return models
@@ -66,6 +71,7 @@ public class ModelManager implements ModelService {
 
 
     @Override
+    @CacheEvict(cacheNames = CacheConfig.MODELS, allEntries = true)
     public Result add(AddModelRequest request) {
         modelBusinessRule.existsModelByName(request.getName());
 
@@ -86,6 +92,7 @@ public class ModelManager implements ModelService {
     }
 
     @Override
+    @CacheEvict(cacheNames = CacheConfig.MODELS, allEntries = true)
     public Result update(UpdateModelRequest request) {
 
         modelBusinessRule.existsModelByName(request.getName());
@@ -104,6 +111,7 @@ public class ModelManager implements ModelService {
     }
 
     @Override
+    @CacheEvict(cacheNames = CacheConfig.MODELS, allEntries = true)
     public Result delete(DeleteModelRequest request) {
         modelBusinessRule.existsModelById(request.getId());
 

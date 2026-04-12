@@ -15,6 +15,7 @@ function Test-Get($path) {
 
 Write-Host "=== Smoke test $BaseUrl ==="
 
+Test-Get "/actuator/health"
 Test-Get "/api/cars/getAll"
 Test-Get "/api/rentals/insurance-options"
 

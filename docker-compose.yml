@@ -44,7 +44,8 @@ services:
     ports:
       - "${API_PORT:-8081}:8081"
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8081/api/brands/getAll -o /dev/null"]
+      # Mức D: Spring Actuator (DB + liveness) thay vì gọi API nghiệp vụ
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8081/actuator/health -o /dev/null"]
       interval: 15s
       timeout: 10s
       retries: 25

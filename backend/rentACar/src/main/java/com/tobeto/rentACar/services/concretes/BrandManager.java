@@ -14,8 +14,12 @@ import com.tobeto.rentACar.services.dtos.brand.request.DeleteBrandRequest;
 import com.tobeto.rentACar.services.dtos.brand.request.UpdateBrandRequest;
 import com.tobeto.rentACar.services.dtos.brand.response.GetAllBrandsResponse;
 import com.tobeto.rentACar.services.dtos.brand.response.GetBrandByIdResponse;
+import com.tobeto.rentACar.core.configurations.CacheConfig;
 import com.tobeto.rentACar.services.rules.BrandBusinessRule;
 import lombok.AllArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -41,6 +45,7 @@ public class BrandManager implements BrandService {
     }
 
     @Override
+    @Cacheable(cacheNames = CacheConfig.BRANDS, key = "'names'")
     public List<String> getAllName() {
         return brandRepository.findAll().stream()
                 .map(Brand::getName)
@@ -48,6 +53,7 @@ public class BrandManager implements BrandService {
     }
 
     @Override
+    @Cacheable(cacheNames = CacheConfig.BRANDS, key = "'all'")
     public List<GetAllBrandsResponse> getAll() {
         List<Brand> brands = brandRepository.findAll();
         return brands
@@ -60,6 +66,10 @@ public class BrandManager implements BrandService {
 
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.BRANDS, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.MODELS, allEntries = true)
+    })
     public Result add(AddBrandRequest request) {
 
         brandBusinessRule.existsBrandByName(request.getName());
@@ -71,6 +81,10 @@ public class BrandManager implements BrandService {
     }
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.BRANDS, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.MODELS, allEntries = true)
+    })
     public Result update(UpdateBrandRequest request) {
 
         brandBusinessRule.existsBrandByName(request.getName());
@@ -82,6 +96,10 @@ public class BrandManager implements BrandService {
     }
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.BRANDS, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.MODELS, allEntries = true)
+    })
     public Result delete(DeleteBrandRequest request){
 
         brandBusinessRule.existsBrandById(request.getId());
