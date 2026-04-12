@@ -17,11 +17,17 @@ const MyInvoices = () => {
   });
 
   const getRentalId = (inv: Invoice) => inv.rental?.id ?? inv.rentalId;
+  const getSaleOrderId = (inv: Invoice) => inv.saleOrder?.id;
+  const orderSubtitle = (inv: Invoice) => {
+    if (inv.saleOrder?.id) return `Đơn mua #${inv.saleOrder.id}`;
+    return `Đơn thuê #${getRentalId(inv) ?? '—'}`;
+  };
 
   const filtered = invoices.filter((inv) =>
     inv.invoiceNo?.toLowerCase().includes(search.toLowerCase()) ||
     String(inv.id).includes(search) ||
-    String(getRentalId(inv) ?? '').includes(search)
+    String(getRentalId(inv) ?? '').includes(search) ||
+    String(getSaleOrderId(inv) ?? '').includes(search)
   );
 
   const sortedFiltered = useMemo(
@@ -57,7 +63,7 @@ const MyInvoices = () => {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm theo số hóa đơn, mã đơn thuê..."
+            placeholder="Tìm theo số hóa đơn, đơn thuê / đơn mua..."
             className="input-field pl-12"
           />
         </div>
@@ -88,7 +94,7 @@ const MyInvoices = () => {
                   </div>
                   <div>
                     <p className="font-semibold text-navy">#{invoice.invoiceNo || `INV-${invoice.id}`}</p>
-                    <p className="text-gray-400 text-sm">Đơn thuê #{getRentalId(invoice)}</p>
+                    <p className="text-gray-400 text-sm">{orderSubtitle(invoice)}</p>
                   </div>
                 </div>
 
@@ -146,16 +152,32 @@ const MyInvoices = () => {
             <div className="space-y-3">
               {[
                 { label: 'Số hóa đơn', value: selected.invoiceNo || `INV-${selected.id}` },
-                { label: 'Mã đơn thuê', value: `#${getRentalId(selected)}` },
+                selected.saleOrder?.id
+                  ? { label: 'Mã đơn mua', value: `#${selected.saleOrder.id}` }
+                  : { label: 'Mã đơn thuê', value: `#${getRentalId(selected) ?? '—'}` },
                 {
                   label: 'Xe',
-                  value: selected.rental?.car
-                    ? `${selected.rental.car.model?.brand?.name ?? ''} ${selected.rental.car.model?.name ?? ''}`.trim()
-                    : 'N/A',
+                  value: (() => {
+                    const c = selected.rental?.car ?? selected.saleOrder?.car;
+                    return c ? `${c.model?.brand?.name ?? ''} ${c.model?.name ?? ''}`.trim() : 'N/A';
+                  })(),
                 },
-                { label: 'Biển số', value: selected.rental?.car?.plate || 'N/A' },
-                { label: 'Ngày nhận xe', value: selected.rental?.startDate ? formatDate(selected.rental.startDate) : 'N/A' },
-                { label: 'Ngày trả xe', value: selected.rental?.endDate ? formatDate(selected.rental.endDate) : 'N/A' },
+                {
+                  label: 'Biển số',
+                  value: selected.rental?.car?.plate || selected.saleOrder?.car?.plate || 'N/A',
+                },
+                ...(selected.rental
+                  ? [
+                      {
+                        label: 'Ngày nhận xe',
+                        value: selected.rental.startDate ? formatDate(selected.rental.startDate) : 'N/A',
+                      },
+                      {
+                        label: 'Ngày trả xe',
+                        value: selected.rental.endDate ? formatDate(selected.rental.endDate) : 'N/A',
+                      },
+                    ]
+                  : [{ label: 'Loại', value: 'Mua xe' }]),
                 { label: 'Chiết khấu', value: `${selected.discountRate}%` },
                 { label: 'Thuế VAT', value: `${selected.taxRate}%` },
               ].map((row) => (

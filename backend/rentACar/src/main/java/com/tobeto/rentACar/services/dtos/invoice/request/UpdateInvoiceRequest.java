@@ -33,7 +33,7 @@ public class UpdateInvoiceRequest {
     @Max(value = 100, message = "Tax rate cannot be greater than 100")
     private Float taxRate;
 
-    @NotNull
-    @Positive(message = "The assigned value must not assume a negative numerical value!")
-    private int rentalId;
+    private Integer rentalId;
+
+    private Integer saleOrderId;
 }

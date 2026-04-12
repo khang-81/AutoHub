@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, User, FileText, LogOut, Car, Receipt, ShieldCheck, IdCard } from 'lucide-react';
+import { LayoutDashboard, User, FileText, LogOut, Car, Receipt, ShieldCheck, IdCard, ShoppingBag } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
 const navItems = [
@@ -7,6 +7,7 @@ const navItems = [
   { label: 'Hồ sơ của tôi', to: '/dashboard/profile', icon: User },
   { label: 'Xác minh danh tính', to: '/dashboard/kyc', icon: IdCard },
   { label: 'Lịch sử thuê xe', to: '/dashboard/rentals', icon: FileText },
+  { label: 'Đơn mua xe', to: '/dashboard/sale-orders', icon: ShoppingBag },
   { label: 'Hóa đơn', to: '/dashboard/invoices', icon: Receipt },
   { label: 'Đổi mật khẩu', to: '/dashboard/change-password', icon: ShieldCheck },
 ];

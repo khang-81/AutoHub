@@ -8,6 +8,11 @@ interface CarCardProps {
 }
 
 const CarCard = ({ car }: CarCardProps) => {
+  const lt = (car.listingType || 'RENT_ONLY').toUpperCase();
+  const showRent = lt === 'RENT_ONLY' || lt === 'BOTH';
+  const showSale = lt === 'SALE_ONLY' || lt === 'BOTH';
+  const saleOk = showSale && car.saleStatus === 'AVAILABLE' && (car.salePrice ?? 0) > 0;
+
   return (
     <div className="card group overflow-hidden">
       {/* Image */}
@@ -20,10 +25,16 @@ const CarCard = ({ car }: CarCardProps) => {
             (e.target as HTMLImageElement).src = CAR_PLACEHOLDER;
           }}
         />
-        <div className="absolute top-3 left-3">
-          <span className="badge bg-navy text-white text-xs">
-            {car.model?.brand?.name}
-          </span>
+        <div className="absolute top-3 left-3 flex flex-wrap gap-1">
+          <span className="badge bg-navy text-white text-xs">{car.model?.brand?.name}</span>
+          {showRent && (
+            <span className="badge bg-blue-600 text-white text-xs">Thuê</span>
+          )}
+          {showSale && (
+            <span className="badge bg-amber-600 text-white text-xs">
+              {saleOk ? 'Bán' : car.saleStatus === 'SOLD' ? 'Đã bán' : 'Bán'}
+            </span>
+          )}
         </div>
         <div className="absolute top-3 right-3">
           <div className="flex items-center gap-1 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1">
@@ -66,20 +77,31 @@ const CarCard = ({ car }: CarCardProps) => {
         </div>
 
         {/* Price & CTA */}
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="font-heading font-bold text-primary text-xl">
-              {formatCurrency(car.dailyPrice)}
-            </span>
-            <span className="text-gray-400 text-sm">/ngày</span>
-          </div>
-          <Link
-            to={`/cars/${car.id}`}
-            className="btn-primary !py-2 !px-4 !text-sm"
-          >
-            Thuê ngay
-          </Link>
+        <div className="space-y-2 mb-4">
+          {showRent && car.dailyPrice > 0 && (
+            <div className="flex items-baseline justify-between">
+              <span className="text-gray-500 text-xs">Thuê</span>
+              <div>
+                <span className="font-heading font-bold text-primary text-lg">
+                  {formatCurrency(car.dailyPrice)}
+                </span>
+                <span className="text-gray-400 text-sm">/ngày</span>
+              </div>
+            </div>
+          )}
+          {showSale && (car.salePrice ?? 0) > 0 && (
+            <div className="flex items-baseline justify-between">
+              <span className="text-gray-500 text-xs">Mua</span>
+              <span className="font-heading font-bold text-amber-700 text-lg">
+                {formatCurrency(car.salePrice!)}
+              </span>
+            </div>
+          )}
         </div>
+
+        <Link to={`/cars/${car.id}`} className="btn-primary w-full text-center block !py-2.5 !text-sm">
+          Xem chi tiết
+        </Link>
       </div>
     </div>
   );

@@ -29,9 +29,11 @@ public class UpdateCarRequest {
     @Max(value = 2024, message = "Production year must be between 2005 to 2024!")
     private short modelYear;
 
-    @NotNull
-    @Positive(message = "The value cannot be negative!")
     private Float dailyPrice;
+
+    private String listingType;
+
+    private Float salePrice;
 
     @NotNull
     @Positive(message = "The value cannot be negative!")

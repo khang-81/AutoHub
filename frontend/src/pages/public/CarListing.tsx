@@ -23,6 +23,8 @@ const CarListing = () => {
     maxPrice: '',
     minYear: '',
     search: '',
+    /** '' | rent | sale — lọc loại hình */
+    listing: (searchParams.get('listing') as '' | 'rent' | 'sale') || '',
   });
 
   const { data: cars = [], isLoading } = useQuery<Car[]>({ queryKey: ['cars'], queryFn: getAllCarsApi });
@@ -31,10 +33,33 @@ const CarListing = () => {
 
   const filtered = useMemo(() => {
     return cars.filter((car) => {
+      const lt = (car.listingType || 'RENT_ONLY').toUpperCase();
+      if (filters.listing === 'rent') {
+        if (lt !== 'RENT_ONLY' && lt !== 'BOTH') return false;
+      }
+      if (filters.listing === 'sale') {
+        if (lt !== 'SALE_ONLY' && lt !== 'BOTH') return false;
+      }
       if (filters.brandId && car.model?.brand?.id !== Number(filters.brandId)) return false;
       if (filters.colorId && car.color?.id !== Number(filters.colorId)) return false;
-      if (filters.minPrice && car.dailyPrice < Number(filters.minPrice)) return false;
-      if (filters.maxPrice && car.dailyPrice > Number(filters.maxPrice)) return false;
+      if (filters.minPrice) {
+        const minP = Number(filters.minPrice);
+        if (filters.listing === 'sale') {
+          const sp = car.salePrice ?? 0;
+          if (sp < minP) return false;
+        } else {
+          if (car.dailyPrice < minP) return false;
+        }
+      }
+      if (filters.maxPrice) {
+        const maxP = Number(filters.maxPrice);
+        if (filters.listing === 'sale') {
+          const sp = car.salePrice ?? 0;
+          if (sp > maxP) return false;
+        } else {
+          if (car.dailyPrice > maxP) return false;
+        }
+      }
       if (filters.minYear && car.modelYear < Number(filters.minYear)) return false;
       if (filters.search) {
         const q = filters.search.toLowerCase();
@@ -57,7 +82,7 @@ const CarListing = () => {
   };
 
   const resetFilters = () => {
-    setFilters({ brandId: '', colorId: '', minPrice: '', maxPrice: '', minYear: '', search: '' });
+    setFilters({ brandId: '', colorId: '', minPrice: '', maxPrice: '', minYear: '', search: '', listing: '' });
     setPage(1);
   };
 
@@ -68,8 +93,8 @@ const CarListing = () => {
       {/* Header */}
       <div className="bg-navy py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="font-heading font-bold text-3xl text-white mb-2">Thuê xe</h1>
-          <p className="text-gray-300">Khám phá {cars.length} xe từ các thương hiệu hàng đầu</p>
+          <h1 className="font-heading font-bold text-3xl text-white mb-2">Thuê & mua xe</h1>
+          <p className="text-gray-300">Khám phá {cars.length} xe — cho thuê và bán</p>
         </div>
       </div>
 
@@ -121,6 +146,20 @@ const CarListing = () => {
                 )}
               </div>
 
+              {/* Listing type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Loại hình</label>
+                <select
+                  value={filters.listing}
+                  onChange={(e) => updateFilter('listing', e.target.value)}
+                  className="input-field text-sm"
+                >
+                  <option value="">Tất cả</option>
+                  <option value="rent">Cho thuê</option>
+                  <option value="sale">Bán xe</option>
+                </select>
+              </div>
+
               {/* Brand */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Thương hiệu</label>
@@ -153,7 +192,9 @@ const CarListing = () => {
 
               {/* Price range */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Giá/ngày (VNĐ)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {filters.listing === 'sale' ? 'Giá bán (VNĐ)' : 'Giá thuê/ngày (VNĐ)'}
+                </label>
                 <div className="flex gap-2">
                   <input
                     type="number"

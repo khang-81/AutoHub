@@ -1,0 +1,23 @@
+{
+  "name": "AutoHub",
+  "short_name": "AutoHub",
+  "description": "Nền tảng thuê và mua bán ô tô",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1d4ed8",
+  "icons": [
+    {
+      "src": "/logo192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

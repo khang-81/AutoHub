@@ -47,6 +47,8 @@ export interface Color {
 }
 
 // ─── Car ────────────────────────────────────────────────────────────────────
+export type ListingType = 'RENT_ONLY' | 'SALE_ONLY' | 'BOTH';
+
 export interface Car {
   id: number;
   modelYear: number;
@@ -57,6 +59,9 @@ export interface Car {
   minFindeksRate: number;
   kilometer: number;
   dailyPrice: number;
+  listingType?: ListingType | string;
+  salePrice?: number | null;
+  saleStatus?: string | null;
   imagePath: string;
   model: CarModel;
   color: Color;
@@ -66,7 +71,9 @@ export interface AddCarRequest {
   kilometer: number;
   plate: string;
   modelYear: number;
-  dailyPrice: number;
+  dailyPrice?: number;
+  listingType?: ListingType | string;
+  salePrice?: number | null;
   modelId: number;
   colorId: number;
   minFindeksRate: number;
@@ -188,6 +195,35 @@ export interface Invoice {
     totalPrice?: number;
     car?: Car;
   };
+  saleOrder?: {
+    id: number;
+    orderStatus?: string;
+    totalPrice?: number;
+    car?: Car;
+  };
+}
+
+export interface SaleOrder {
+  id: number;
+  totalPrice: number;
+  paymentMethod?: string;
+  paymentStatus?: string;
+  orderStatus?: string;
+  cancelledAt?: string | null;
+  cancelledBy?: string | null;
+  cancellationReason?: string | null;
+  car: Car;
+  user?: { id: number; email?: string };
+}
+
+export interface AddSaleOrderRequest {
+  carId: number;
+  paymentMethod: 'CASH' | 'BANK_TRANSFER';
+}
+
+export interface AddSaleOrderResponse {
+  id?: number;
+  result?: { success?: boolean; message?: string };
 }
 
 // ─── User ────────────────────────────────────────────────────────────────────
