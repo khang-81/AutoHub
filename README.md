@@ -67,6 +67,8 @@ docker compose build web --no-cache && docker compose up -d
 
 **`502 Bad Gateway` trên `/api/...` (qua Nginx):** container `api` chưa sẵn sàng hoặc đã thoát. Xem log: `docker compose logs api --tail 100`. Nếu lỗi Hibernate **validate**, thử `JPA_DDL_AUTO=update` trong `.env` rồi `docker compose up -d api`. Stack hiện đợi `api` **healthy** trước khi chạy `web`.
 
+**API exit 1 / `missing sequence [roles_seq]`:** entity `Role` phải dùng `GenerationType.IDENTITY` cho khớp bảng `roles` trong script SQL (đã sửa trong code). Build lại: `docker compose build api --no-cache && docker compose up -d`.
+
 ---
 
 ## CORS & bảo mật API
