@@ -61,6 +61,8 @@ const Login = () => {
           );
           navigate('/admin');
         } else {
+          localStorage.removeItem('autohub_admin_token');
+          localStorage.removeItem('autohub_admin_user');
           navigate(from === '/login' ? '/dashboard' : from);
         }
       } else {
