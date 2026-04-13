@@ -49,6 +49,9 @@ const PaymentPage = () => {
   if (isLoading) return <LoadingSpinner />;
   if (!rental) return <div className="text-center text-gray-500">Không tìm thấy đơn thuê.</div>;
 
+  const bankAwaitingTransfer =
+    rental.paymentMethod === 'BANK_TRANSFER' && rental.rentalStatus === 'PENDING_PAYMENT';
+
   const insLabel =
     !rental.insuranceCode || rental.insuranceCode === 'NONE'
       ? 'Không mua thêm'
@@ -98,7 +101,7 @@ const PaymentPage = () => {
         </p>
       </div>
 
-      {rental.paymentMethod === 'BANK_TRANSFER' ? (
+      {bankAwaitingTransfer ? (
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <div className="flex items-center gap-2 mb-4">
             <QrCode className="w-5 h-5 text-primary" />
@@ -127,6 +130,29 @@ const PaymentPage = () => {
               {transferMutation.isPending ? 'Đang gửi...' : 'Xác nhận chuyển khoản'}
             </button>
           </div>
+        </div>
+      ) : rental.paymentMethod === 'BANK_TRANSFER' ? (
+        <div className="bg-white rounded-2xl shadow-sm p-6 space-y-3 text-sm text-gray-700">
+          <h2 className="font-semibold text-navy text-base">Trạng thái thanh toán chuyển khoản</h2>
+          {rental.rentalStatus === 'PENDING_ADMIN_CONFIRM' && (
+            <p>Đã gửi xác nhận chuyển khoản. Vui lòng chờ admin xác nhận đơn.</p>
+          )}
+          {rental.rentalStatus === 'CONFIRMED' && (
+            <p>Đơn đã được xác nhận. Chi tiết xem tại lịch sử thuê xe.</p>
+          )}
+          {rental.rentalStatus === 'COMPLETED' && (
+            <p>Chuyến thuê đã hoàn tất.</p>
+          )}
+          {rental.rentalStatus === 'CANCELLED' && (
+            <p>Đơn thuê đã hủy.</p>
+          )}
+          {!['PENDING_ADMIN_CONFIRM', 'CONFIRMED', 'COMPLETED', 'CANCELLED'].includes(rental.rentalStatus || '') && (
+            <p>Đơn không còn ở bước thanh toán trên trang này.</p>
+          )}
+          <button type="button" onClick={() => navigate('/dashboard/rentals')} className="btn-primary inline-flex items-center gap-2 mt-4">
+            <ArrowLeft className="w-4 h-4" />
+            Về lịch sử đơn
+          </button>
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm p-6">

@@ -54,6 +54,11 @@ const Login = () => {
         // Redirect based on role
         const adminRole = roles.some((r: string) => r.toLowerCase().includes('admin'));
         if (adminRole) {
+          localStorage.setItem('autohub_admin_token', token);
+          localStorage.setItem(
+            'autohub_admin_user',
+            JSON.stringify({ id: userId, email, roles })
+          );
           navigate('/admin');
         } else {
           navigate(from === '/login' ? '/dashboard' : from);

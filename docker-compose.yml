@@ -44,19 +44,23 @@ services:
     ports:
       - "${API_PORT:-8081}:8081"
     healthcheck:
-      # Mức D: Spring Actuator (DB + liveness) thay vì gọi API nghiệp vụ
-      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8081/actuator/health -o /dev/null"]
+      # Liveness: JVM đã sẵn sàng (không gộp DB — tránh 503 khi probe sớm). Security phải cho phép actuator.
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8081/actuator/health/liveness -o /dev/null"]
       interval: 15s
       timeout: 10s
-      retries: 25
-      start_period: 120s
+      retries: 30
+      start_period: 150s
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:sqlserver://db:1433;databaseName=autohub;encrypt=false;trustServerCertificate=true
       SPRING_DATASOURCE_USERNAME: sa
       SPRING_DATASOURCE_PASSWORD: ${MSSQL_SA_PASSWORD}
       JWT_KEY: ${JWT_KEY}
-      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
+      # Mỗi lần khởi động API: đặt lại mật khẩu admin demo (đặt rỗng trong .env nếu không muốn)
+      APP_ADMIN_SEED_EMAIL: ${APP_ADMIN_SEED_EMAIL:-admin@autohub.local}
+      APP_ADMIN_SEED_PASSWORD: ${APP_ADMIN_SEED_PASSWORD:-12345678}
+      # Mặc định khớp WEB_PORT 3000 + Vite; ghi đè trong .env nếu deploy domain thật
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080}
       JPA_DDL_AUTO: ${JPA_DDL_AUTO:-validate}
       APP_UPLOAD_ROOT: /app/uploads
     volumes:

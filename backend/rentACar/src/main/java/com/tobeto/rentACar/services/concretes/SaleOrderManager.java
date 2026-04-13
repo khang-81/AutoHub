@@ -99,9 +99,12 @@ public class SaleOrderManager implements SaleOrderService {
     }
 
     @Override
-    public GetAllSaleOrdersResponse getById(int id) {
+    public GetAllSaleOrdersResponse getById(int id, int actorUserId, boolean isAdmin) {
         SaleOrder o = saleOrderRepository.findById(id).orElseThrow(
                 () -> new NotFoundException("Không tìm thấy đơn mua."));
+        if (!isAdmin && (o.getUser() == null || o.getUser().getId() != actorUserId)) {
+            throw new BusinessException("Bạn không có quyền xem đơn mua này.");
+        }
         return modelMapperService.forResponse().map(o, GetAllSaleOrdersResponse.class);
     }
 

@@ -16,7 +16,7 @@ public interface RentalService {
     Result update(UpdateRentalRequest request);
     Result delete(DeleteRentalRequest request);
     List<GetAllRentalsResponse> getAll();
-    GetRentalByIdResponse getById(int id);
+    GetRentalByIdResponse getById(int id, int actorUserId, boolean isAdmin);
 
     GetRentalIdResponse getRentalId(FindRentalIdRequest request);
 

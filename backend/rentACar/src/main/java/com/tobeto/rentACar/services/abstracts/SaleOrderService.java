@@ -13,7 +13,7 @@ public interface SaleOrderService {
 
     List<GetAllSaleOrdersResponse> getAll();
 
-    GetAllSaleOrdersResponse getById(int id);
+    GetAllSaleOrdersResponse getById(int id, int actorUserId, boolean isAdmin);
 
     List<GetAllSaleOrdersResponse> getByUserId(int userId);
 

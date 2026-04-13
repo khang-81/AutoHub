@@ -97,6 +97,7 @@ const CarDetail = () => {
   const depositEstimate = totalPrice > 0 ? Math.max(500_000, totalPrice * 0.15) : 0;
 
   const listingType = (car?.listingType || 'RENT_ONLY').toUpperCase();
+  const backToListPath = listingType === 'SALE_ONLY' ? '/cars/mua' : '/cars';
   const canRent = !!car && (listingType === 'RENT_ONLY' || listingType === 'BOTH') && car.dailyPrice > 0;
   const canBuy =
     !!car &&
@@ -241,7 +242,7 @@ const CarDetail = () => {
     <div className="pt-20 min-h-screen flex items-center justify-center">
       <div className="text-center">
         <p className="text-gray-500 text-xl">Không tìm thấy xe</p>
-        <Link to="/cars/tat-ca" className="btn-primary mt-4 inline-block">Quay lại</Link>
+        <Link to="/cars" className="btn-primary mt-4 inline-block">Quay lại</Link>
       </div>
     </div>
   );
@@ -252,11 +253,11 @@ const CarDetail = () => {
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <Link
-            to="/cars/tat-ca"
+            to={backToListPath}
             className="inline-flex items-center gap-2 text-gray-500 hover:text-primary transition-colors text-sm font-medium"
           >
             <ArrowLeft className="w-4 h-4" />
-            Quay lại danh sách xe
+            {listingType === 'SALE_ONLY' ? 'Quay lại xe đang bán' : 'Quay lại xe cho thuê'}
           </Link>
         </div>
       </div>

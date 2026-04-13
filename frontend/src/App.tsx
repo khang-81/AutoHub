@@ -66,7 +66,7 @@ function RoutesWithChatbot() {
         {/* Public routes */}
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />
-          <Route path="/cars/tat-ca" element={<CarListing />} />
+          <Route path="/cars/tat-ca" element={<Navigate to="/cars" replace />} />
           <Route path="/cars/mua" element={<CarListing />} />
           <Route path="/cars" element={<CarListing />} />
           <Route path="/cars/:id" element={<CarDetail />} />
@@ -101,9 +101,9 @@ function RoutesWithChatbot() {
           <Route path="kyc" element={<KycVerification />} />
         </Route>
 
-        {/* Admin routes - protected by AdminProtectedRoute */}
+        {/* Admin routes — splat `/admin/*` khớp React Router 7 + mọi đường dẫn con */}
         <Route
-          path="/admin"
+          path="/admin/*"
           element={
             <AdminProtectedRoute>
               <AdminLayout />

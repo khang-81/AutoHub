@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -43,8 +44,17 @@ public class SaleOrdersController {
     }
 
     @GetMapping("/getById/{id}")
-    public GetAllSaleOrdersResponse getById(@PathVariable int id) {
-        return saleOrderService.getById(id);
+    public GetAllSaleOrdersResponse getById(@PathVariable int id, HttpServletRequest request) {
+        String tokenWithPrefix = request.getHeader("Authorization");
+        if (tokenWithPrefix == null || !tokenWithPrefix.startsWith("Bearer ")) {
+            throw new BusinessException("Yêu cầu đăng nhập.");
+        }
+        String token = tokenWithPrefix.replace("Bearer ", "");
+        int userId = jwtService.extractUserId(token);
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAdmin = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_admin".equals(a.getAuthority()) || "admin".equals(a.getAuthority()));
+        return saleOrderService.getById(id, userId, isAdmin);
     }
 
     @GetMapping("/getByUserId")
@@ -58,6 +68,9 @@ public class SaleOrdersController {
     @PutMapping("/submitTransfer/{id}")
     public Result submitTransfer(@PathVariable int id, HttpServletRequest request) {
         String tokenWithPrefix = request.getHeader("Authorization");
+        if (tokenWithPrefix == null || !tokenWithPrefix.startsWith("Bearer ")) {
+            throw new BusinessException("Yêu cầu đăng nhập.");
+        }
         String token = tokenWithPrefix.replace("Bearer ", "");
         int userId = jwtService.extractUserId(token);
         return saleOrderService.submitTransfer(id, userId);

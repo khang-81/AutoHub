@@ -59,19 +59,18 @@ public class AuthCManager implements AuthCService {
 
     @Override
     public Result login(LoginUserRequest loginUserRequest) {
+        String email = loginUserRequest.getEmail() != null ? loginUserRequest.getEmail().trim() : "";
+        String password = loginUserRequest.getPassword() != null ? loginUserRequest.getPassword() : "";
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        loginUserRequest.getEmail(),
-                        loginUserRequest.getPassword()
-                )
+                new UsernamePasswordAuthenticationToken(email, password)
         );
 
         if (authentication.isAuthenticated()) {
 
-            GetUserByNameResponse userResponse = userService.getByName(loginUserRequest.getEmail());
+            GetUserByNameResponse userResponse = userService.getByName(email);
 
             if (userResponse != null) {
-                String token = jwtService.generateToken(loginUserRequest.getEmail(), userResponse);
+                String token = jwtService.generateToken(email, userResponse);
                 LoginResponse loginResponse = new LoginResponse();
                 loginResponse.setToken(token);
                 return new AuthCResult(true, messageService.getMessage(Messages.User.userLoginSuccess), loginResponse);

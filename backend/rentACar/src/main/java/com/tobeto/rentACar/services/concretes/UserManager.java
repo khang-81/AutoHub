@@ -25,7 +25,9 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.tobeto.rentACar.services.dtos.user.response.AuthorityItemResponse;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -119,12 +121,20 @@ public class UserManager implements UserService {
     @Override
     public List<GetAllUsersResponse> getAll() {
         List<User> users = userRepository.findAll();
-        return users
-                .stream()
-                .map(user -> this.modelMapperService
-                        .forResponse()
-                        .map(user, GetAllUsersResponse.class))
-                .toList();
+        return users.stream().map(user -> {
+            GetAllUsersResponse dto = this.modelMapperService.forResponse().map(user, GetAllUsersResponse.class);
+            dto.setPassword(null);
+            List<AuthorityItemResponse> authorities = new ArrayList<>();
+            if (user.getAuthorities() != null) {
+                for (Role r : user.getAuthorities()) {
+                    if (r != null && r.getName() != null) {
+                        authorities.add(new AuthorityItemResponse(r.getName()));
+                    }
+                }
+            }
+            dto.setAuthorities(authorities);
+            return dto;
+        }).toList();
     }
 
     @Override

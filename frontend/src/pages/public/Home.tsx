@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -81,7 +81,14 @@ const Home = () => {
     queryFn: getAllBrandsApi,
   });
 
-  const featuredCars = cars.slice(0, 6);
+  const featuredCars = useMemo(() => {
+    return cars
+      .filter((c) => {
+        const lt = (c.listingType || 'RENT_ONLY').toUpperCase();
+        return (lt === 'RENT_ONLY' || lt === 'BOTH') && c.dailyPrice > 0;
+      })
+      .slice(0, 6);
+  }, [cars]);
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -199,10 +206,10 @@ const Home = () => {
               <h2 className="section-title mt-2">Xe được thuê nhiều nhất</h2>
             </div>
             <Link
-              to="/cars/tat-ca"
+              to="/cars"
               className="hidden sm:flex items-center gap-2 text-primary font-semibold hover:gap-3 transition-all"
             >
-              Xem tất cả <ArrowRight className="w-5 h-5" />
+              Xem tất cả xe thuê <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
 
@@ -211,14 +218,14 @@ const Home = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {featuredCars.map((car) => (
-                <CarCard key={car.id} car={car} />
+                <CarCard key={car.id} car={car} variant="rent" />
               ))}
             </div>
           )}
 
           <div className="text-center mt-10 sm:hidden">
-            <Link to="/cars/tat-ca" className="btn-outline inline-flex items-center gap-2">
-              Xem tất cả xe <ArrowRight className="w-5 h-5" />
+            <Link to="/cars" className="btn-outline inline-flex items-center gap-2">
+              Xem tất cả xe thuê <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
         </div>
@@ -330,10 +337,10 @@ const Home = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center flex-wrap">
             <Link
-              to="/cars/tat-ca"
+              to="/cars"
               className="bg-white text-primary font-bold px-8 py-4 rounded-xl hover:bg-gray-50 transition-colors shadow-lg flex items-center justify-center gap-2"
             >
-              Khám phá xe ngay <ChevronRight className="w-5 h-5" />
+              Thuê xe ngay <ChevronRight className="w-5 h-5" />
             </Link>
             <Link
               to="/cars/mua"

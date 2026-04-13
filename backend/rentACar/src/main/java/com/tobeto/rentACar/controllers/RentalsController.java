@@ -17,6 +17,7 @@ import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -53,8 +54,17 @@ public class RentalsController {
     }
 
     @GetMapping("/getById/{id}")
-    public GetRentalByIdResponse getById(@PathVariable int id){
-        return rentalService.getById(id);
+    public GetRentalByIdResponse getById(@PathVariable int id, HttpServletRequest request) {
+        String tokenWithPrefix = request.getHeader("Authorization");
+        if (tokenWithPrefix == null || !tokenWithPrefix.startsWith("Bearer ")) {
+            throw new BusinessException("Yêu cầu đăng nhập.");
+        }
+        String token = tokenWithPrefix.replace("Bearer ", "");
+        int userId = jwtService.extractUserId(token);
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAdmin = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_admin".equals(a.getAuthority()) || "admin".equals(a.getAuthority()));
+        return rentalService.getById(id, userId, isAdmin);
     }
 
 
@@ -88,6 +98,9 @@ public class RentalsController {
     @PutMapping("/submitTransfer/{id}")
     public Result submitTransfer(@PathVariable int id, HttpServletRequest request) {
         String tokenWithPrefix = request.getHeader("Authorization");
+        if (tokenWithPrefix == null || !tokenWithPrefix.startsWith("Bearer ")) {
+            throw new BusinessException("Yêu cầu đăng nhập.");
+        }
         String token = tokenWithPrefix.replace("Bearer ", "");
         int userID = jwtService.extractUserId(token);
         return rentalService.submitTransfer(id, userID);

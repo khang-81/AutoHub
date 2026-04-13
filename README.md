@@ -42,6 +42,23 @@ Không cần cài Maven hay `npm install` trên máy — Docker build **backend*
    - Giao diện (Nginx / static build): **http://localhost:3000** (mặc định `WEB_PORT=3000`; **không** phải chỉ có khi chạy `npm run dev` — đó là cùng cổng mặc định). Đổi cổng bằng `WEB_PORT` trong `.env` nếu bị trùng app khác.
    - API: **http://localhost:8081** (đổi bằng `API_PORT`)
 
+### Tài khoản admin (duyệt KYC, quản trị)
+
+Sau khi `db-init` chạy script `docker/sqlserver-init/autohub-full-schema.sql`, đã có sẵn user **admin**:
+
+| Trường | Giá trị |
+|--------|---------|
+| Email | `admin@autohub.local` |
+| Mật khẩu | `12345678` |
+| Vai trò | `admin` (bảng `users_roles`) |
+
+Với **Docker Compose**, API mỗi lần khởi động đồng bộ lại admin theo `APP_ADMIN_SEED_EMAIL` / `APP_ADMIN_SEED_PASSWORD` (mặc định trong `docker-compose.yml`: `admin@autohub.local` / `12345678`). Production có thể đặt `APP_ADMIN_SEED_PASSWORD=` (rỗng) trong `.env` để tắt.
+
+- Đăng nhập khu vực quản trị: **http://localhost:3000/admin/login** (hoặc đăng nhập tại `/login` bằng cùng tài khoản — hệ thống sẽ lưu phiên admin và chuyển tới `/admin`).
+- Truy cập **http://localhost:3000/admin** khi chưa đăng nhập admin sẽ được chuyển tới `/admin/login`.
+
+Tài khoản demo user thường: `user@autohub.local` / `12345678` (role `user`).
+
 ### Dịch vụ trong Compose
 
 | Service | Mô tả |

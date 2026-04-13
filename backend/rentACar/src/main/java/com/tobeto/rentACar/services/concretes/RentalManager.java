@@ -189,12 +189,15 @@ public class RentalManager implements RentalService {
     }
 
     @Override
-    public GetRentalByIdResponse getById(int id) {
+    public GetRentalByIdResponse getById(int id, int actorUserId, boolean isAdmin) {
 
         Rental rental = rentalRepository.findById(id).orElseThrow(
                 () -> new NotFoundException(messageService.getMessage(Messages.Rental.getRentalNotFoundMessage)));
 
-        // Mapping the object to the response object
+        if (!isAdmin && (rental.getUser() == null || rental.getUser().getId() != actorUserId)) {
+            throw new BusinessException("Bạn không có quyền xem đơn thuê này.");
+        }
+
         return this.modelMapperService.forResponse()
                 .map(rental, GetRentalByIdResponse.class);
     }
