@@ -14,16 +14,32 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { formatCurrency, CAR_PLACEHOLDER } from '../../utils/helpers';
 import type { Car as CarType, CarModel, Color, Rental } from '../../types';
 
-const schema = z.object({
-  plate: z.string().min(1, 'Nhập biển số'),
-  modelYear: z.number().min(2005).max(2024),
-  kilometer: z.number().min(0),
-  dailyPrice: z.number().min(1, 'Nhập giá'),
-  modelId: z.number().min(1, 'Chọn model'),
-  colorId: z.number().min(1, 'Chọn màu'),
-  minFindeksRate: z.number().min(0),
-  imagePath: z.string().min(1, 'Nhập URL ảnh'),
-});
+const schema = z
+  .object({
+    plate: z.string().min(1, 'Nhập biển số'),
+    modelYear: z.number().min(2005).max(2024),
+    kilometer: z.number().min(0),
+    listingType: z.enum(['RENT_ONLY', 'SALE_ONLY', 'BOTH']),
+    dailyPrice: z.number().min(0),
+    salePrice: z.number().optional().nullable(),
+    modelId: z.number().min(1, 'Chọn model'),
+    colorId: z.number().min(1, 'Chọn màu'),
+    minFindeksRate: z.number().min(0),
+    imagePath: z.string().min(1, 'Nhập URL ảnh'),
+  })
+  .superRefine((data, ctx) => {
+    if (data.listingType === 'RENT_ONLY' || data.listingType === 'BOTH') {
+      if (!data.dailyPrice || data.dailyPrice < 1) {
+        ctx.addIssue({ code: 'custom', message: 'Giá thuê/ngày phải > 0', path: ['dailyPrice'] });
+      }
+    }
+    if (data.listingType === 'SALE_ONLY' || data.listingType === 'BOTH') {
+      const sp = data.salePrice ?? 0;
+      if (sp < 1) {
+        ctx.addIssue({ code: 'custom', message: 'Giá bán phải > 0', path: ['salePrice'] });
+      }
+    }
+  });
 
 type FormData = z.infer<typeof schema>;
 
@@ -42,7 +58,14 @@ const ManageCars = () => {
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { modelYear: 2023, kilometer: 0, minFindeksRate: 500 },
+    defaultValues: {
+      modelYear: 2023,
+      kilometer: 0,
+      minFindeksRate: 500,
+      listingType: 'RENT_ONLY',
+      dailyPrice: 0,
+      salePrice: undefined,
+    },
   });
 
   const addMutation = useMutation({
@@ -80,17 +103,29 @@ const ManageCars = () => {
 
   const openAdd = () => {
     setEditCar(null);
-    reset({ modelYear: 2023, kilometer: 0, minFindeksRate: 500, dailyPrice: 0, modelId: 0, colorId: 0 });
+    reset({
+      modelYear: 2023,
+      kilometer: 0,
+      minFindeksRate: 500,
+      dailyPrice: 0,
+      salePrice: undefined,
+      listingType: 'RENT_ONLY',
+      modelId: 0,
+      colorId: 0,
+    });
     setModalOpen(true);
   };
 
   const openEdit = (car: CarType) => {
     setEditCar(car);
+    const lt = (car.listingType || 'RENT_ONLY').toUpperCase() as 'RENT_ONLY' | 'SALE_ONLY' | 'BOTH';
     reset({
       plate: car.plate,
       modelYear: car.modelYear,
       kilometer: car.kilometer,
       dailyPrice: car.dailyPrice,
+      salePrice: car.salePrice ?? undefined,
+      listingType: lt === 'SALE_ONLY' || lt === 'BOTH' || lt === 'RENT_ONLY' ? lt : 'RENT_ONLY',
       modelId: car.model?.id,
       colorId: car.color?.id,
       minFindeksRate: car.minFindeksRate,
@@ -158,7 +193,8 @@ const ManageCars = () => {
                   <th className="text-left px-5 py-4 font-medium">Biển số</th>
                   <th className="text-left px-5 py-4 font-medium">Năm</th>
                   <th className="text-left px-5 py-4 font-medium">Màu</th>
-                  <th className="text-right px-5 py-4 font-medium">Giá/ngày</th>
+                  <th className="text-left px-5 py-4 font-medium">Loại</th>
+                  <th className="text-right px-5 py-4 font-medium">Giá</th>
                   <th className="text-center px-5 py-4 font-medium">Trạng thái</th>
                   <th className="text-right px-5 py-4 font-medium">Thao tác</th>
                 </tr>
@@ -202,8 +238,15 @@ const ManageCars = () => {
                       <td className="px-5 py-4">
                         <span className="badge bg-gray-100 text-gray-600">{car.color?.name}</span>
                       </td>
-                      <td className="px-5 py-4 text-right font-semibold text-primary">
-                        {formatCurrency(car.dailyPrice)}
+                      <td className="px-5 py-4 text-gray-600 text-xs">
+                        {(car.listingType || 'RENT_ONLY').replace('_', ' ')}
+                        {car.saleStatus ? ` • ${car.saleStatus}` : ''}
+                      </td>
+                      <td className="px-5 py-4 text-right text-xs">
+                        <div className="font-semibold text-primary">{formatCurrency(car.dailyPrice)}/ngày</div>
+                        {(car.salePrice ?? 0) > 0 && (
+                          <div className="text-amber-700 font-medium mt-0.5">Mua: {formatCurrency(car.salePrice!)}</div>
+                        )}
                       </td>
                       <td className="px-5 py-4 text-center">
                         <span
@@ -288,19 +331,33 @@ const ManageCars = () => {
             </div>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Loại niêm yết *</label>
+            <select {...register('listingType')} className="input-field">
+              <option value="RENT_ONLY">Chỉ cho thuê</option>
+              <option value="SALE_ONLY">Chỉ bán</option>
+              <option value="BOTH">Thuê & bán</option>
+            </select>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Giá/ngày (VNĐ) *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Giá thuê/ngày (VNĐ)</label>
               <input {...register('dailyPrice', { valueAsNumber: true })} type="number" className="input-field" placeholder="500000" />
               {errors.dailyPrice && <p className="text-red-500 text-xs mt-1">{errors.dailyPrice.message}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Số km đã đi</label>
-              <input {...register('kilometer', { valueAsNumber: true })} type="number" className="input-field" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Giá bán (VNĐ)</label>
+              <input {...register('salePrice', { valueAsNumber: true })} type="number" className="input-field" placeholder="VD: 450000000" />
+              {errors.salePrice && <p className="text-red-500 text-xs mt-1">{String(errors.salePrice.message)}</p>}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Số km đã đi</label>
+              <input {...register('kilometer', { valueAsNumber: true })} type="number" className="input-field" />
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Min Findeks Rate</label>
               <input {...register('minFindeksRate', { valueAsNumber: true })} type="number" className="input-field" />

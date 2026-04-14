@@ -5,7 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -18,5 +19,8 @@ public class GetAllUsersResponse {
     private String password;
 
     private String kycStatus;
+
+    /** Vai trò (admin, user, …) — dùng cho trang quản trị */
+    private List<AuthorityItemResponse> authorities = new ArrayList<>();
 
 }

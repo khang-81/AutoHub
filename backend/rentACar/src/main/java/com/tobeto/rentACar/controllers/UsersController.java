@@ -1,5 +1,6 @@
 package com.tobeto.rentACar.controllers;
 
+import com.tobeto.rentACar.core.exceptions.types.BusinessException;
 import com.tobeto.rentACar.core.services.JwtService;
 import com.tobeto.rentACar.core.utilities.results.Result;
 import com.tobeto.rentACar.services.abstracts.UserService;
@@ -54,6 +55,9 @@ public class UsersController {
     @GetMapping("/getProfile")
     public GetUserByNameResponse getProfile(HttpServletRequest request) {
         String tokenWithPrefix = request.getHeader("Authorization");
+        if (tokenWithPrefix == null || !tokenWithPrefix.startsWith("Bearer ")) {
+            throw new BusinessException("Yêu cầu đăng nhập.");
+        }
         String token = tokenWithPrefix.replace("Bearer ", "");
         String username = jwtService.extractUser(token);
         return userService.getByName(username);
@@ -62,6 +66,9 @@ public class UsersController {
     @PutMapping("/updateProfile")
     public GetUserByNameResponse updateProfile(@RequestBody UpdateProfileRequest request, HttpServletRequest httpRequest) {
         String tokenWithPrefix = httpRequest.getHeader("Authorization");
+        if (tokenWithPrefix == null || !tokenWithPrefix.startsWith("Bearer ")) {
+            throw new BusinessException("Yêu cầu đăng nhập.");
+        }
         String token = tokenWithPrefix.replace("Bearer ", "");
         String username = jwtService.extractUser(token);
 
@@ -74,6 +81,9 @@ public class UsersController {
     @PutMapping("/changePassword")
     public Result changePassword(@RequestBody @Valid ChangePasswordRequest request, HttpServletRequest httpRequest) {
         String tokenWithPrefix = httpRequest.getHeader("Authorization");
+        if (tokenWithPrefix == null || !tokenWithPrefix.startsWith("Bearer ")) {
+            throw new BusinessException("Yêu cầu đăng nhập.");
+        }
         String token = tokenWithPrefix.replace("Bearer ", "");
         String username = jwtService.extractUser(token);
 

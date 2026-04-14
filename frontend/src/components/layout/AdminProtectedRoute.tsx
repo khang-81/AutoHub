@@ -1,18 +1,12 @@
-import { Navigate, useLocation } from 'react-router-dom';
+import AdminSessionGate from './AdminSessionGate';
 
 interface AdminProtectedRouteProps {
   children: React.ReactNode;
 }
 
+/** Cổng admin: token riêng + xác minh role admin qua API (xem AdminSessionGate). */
 const AdminProtectedRoute = ({ children }: AdminProtectedRouteProps) => {
-  const location = useLocation();
-  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('autohub_admin_token') : null;
-
-  if (!adminToken) {
-    return <Navigate to="/admin/login" state={{ from: location }} replace />;
-  }
-
-  return <>{children}</>;
+  return <AdminSessionGate>{children}</AdminSessionGate>;
 };
 
 export default AdminProtectedRoute;

@@ -33,6 +33,18 @@ public class Car extends BaseEntity {
     @Column(name="daily_price")
     private Float dailyPrice;
 
+    /** RENT_ONLY | SALE_ONLY | BOTH */
+    @Column(name = "listing_type", length = 16)
+    private String listingType;
+
+    /** Giá bán (áp dụng SALE_ONLY hoặc BOTH) */
+    @Column(name = "sale_price")
+    private Float salePrice;
+
+    /** AVAILABLE | RESERVED | SOLD — khi có niêm yết bán */
+    @Column(name = "sale_status", length = 16)
+    private String saleStatus;
+
     @Column(name="image_path")
     private String imagePath;
 
@@ -46,5 +58,8 @@ public class Car extends BaseEntity {
 
     @OneToMany(mappedBy = "car")
     private List<Rental> rentals;
+
+    @OneToMany(mappedBy = "car")
+    private List<SaleOrder> saleOrders;
 
 }

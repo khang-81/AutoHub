@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.validator.constraints.Length;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -24,9 +25,14 @@ public class AddCarRequest {
     @Max(value = 2024, message = "Production year must be between 2005 to 2024!")
     private short modelYear;
 
-    @NotNull
-    @Positive(message = "The value cannot be negative!")
+    /** Bắt buộc với RENT_ONLY và BOTH; có thể 0 với SALE_ONLY. */
     private Float dailyPrice;
+
+    /** RENT_ONLY | SALE_ONLY | BOTH — mặc định RENT_ONLY nếu bỏ trống. */
+    private String listingType;
+
+    /** Bắt buộc với SALE_ONLY và BOTH. */
+    private Float salePrice;
 
     @NotNull
     @Positive(message = "The value cannot be negative!")

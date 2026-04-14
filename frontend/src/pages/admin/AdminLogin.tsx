@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { Car, Lock, Mail, Eye, EyeOff, ShieldCheck, AlertCircle } from 'lucide-react';
 import { loginApi } from '../../api/auth';
 import { getUserRolesApi } from '../../api/users';
-import { getUserIdFromToken, getEmailFromToken } from '../../utils/helpers';
+import { getUserIdFromToken, getEmailFromToken, isJwtExpired } from '../../utils/helpers';
 
 const schema = z.object({
   email: z.string().email('Email không hợp lệ'),
@@ -24,6 +24,13 @@ const AdminLogin = () => {
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
+
+  useEffect(() => {
+    const t = localStorage.getItem('autohub_admin_token')?.trim();
+    if (t && !isJwtExpired(t)) {
+      navigate('/admin', { replace: true });
+    }
+  }, [navigate]);
 
   const onSubmit = async (data: FormData) => {
     try {

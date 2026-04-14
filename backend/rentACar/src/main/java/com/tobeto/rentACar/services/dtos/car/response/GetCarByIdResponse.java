@@ -17,6 +17,13 @@ public class GetCarByIdResponse {
     private short minFindeksRate;
     private Long kilometer;
     private Float dailyPrice;
+
+    private String listingType;
+
+    private Float salePrice;
+
+    private String saleStatus;
+
     private String imagePath;
     private GetModelByIdResponse model;
     private GetColorByIdResponse color;

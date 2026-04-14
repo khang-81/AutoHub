@@ -19,15 +19,26 @@ import { getAllRentalsApi } from '../../api/rentals';
 import { getAllCarsApi } from '../../api/cars';
 import { getAllUsersApi } from '../../api/users';
 import { getAllBrandsApi } from '../../api/brands';
+import { getAllSaleOrdersApi } from '../../api/saleOrders';
 import { formatCurrency } from '../../utils/helpers';
-import type { Rental, Car as CarType } from '../../types';
+import type { Rental, Car as CarType, SaleOrder } from '../../types';
 import { format, parseISO, startOfMonth } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
 const COLORS = ['#C9A227', '#1B2A4A', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
+function csvCell(v: unknown): string {
+  const s = v == null ? '' : String(v);
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
 const ManageReports = () => {
   const { data: rentals = [] } = useQuery<Rental[]>({ queryKey: ['rentals'], queryFn: getAllRentalsApi });
+  const { data: saleOrders = [] } = useQuery<SaleOrder[]>({
+    queryKey: ['saleOrders'],
+    queryFn: getAllSaleOrdersApi,
+  });
   const { data: cars = [] } = useQuery<CarType[]>({ queryKey: ['cars'], queryFn: getAllCarsApi });
   const { data: users = [] } = useQuery({ queryKey: ['users'], queryFn: getAllUsersApi });
   const { data: brands = [] } = useQuery({ queryKey: ['brands'], queryFn: getAllBrandsApi });
@@ -78,17 +89,65 @@ const ManageReports = () => {
     { icon: Users, label: 'Người dùng', value: usersCount, color: 'text-purple-600 bg-purple-50' },
   ];
 
-  const handleExportCSV = () => {
-    const header = ['Tháng', 'Doanh thu (VNĐ)', 'Số đơn'];
-    const rows = monthlyData.map((m) => [m.month, m.revenue, m.count]);
-    const csv = [header, ...rows].map((r) => r.join(',')).join('\n');
+  const downloadCsv = (filename: string, header: string[], rows: (string | number)[][]) => {
+    const csv = [header.map(csvCell), ...rows.map((r) => r.map(csvCell))].map((r) => r.join(',')).join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'revenue-report.csv';
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleExportCSV = () => {
+    const header = ['Tháng', 'Doanh thu (VNĐ)', 'Số đơn'];
+    const rows = monthlyData.map((m) => [m.month, m.revenue, m.count]);
+    downloadCsv('revenue-report.csv', header, rows);
+  };
+
+  const handleExportRentalsDetailCSV = () => {
+    const header = [
+      'Mã đơn',
+      'Ngày bắt đầu',
+      'Ngày kết thúc',
+      'Tổng tiền (VNĐ)',
+      'Trạng thái thuê',
+      'Trạng thái thanh toán',
+      'Email khách',
+      'Biển số',
+    ];
+    const rows = rentals.map((r) => [
+      r.id,
+      r.startDate ?? '',
+      r.endDate ?? '',
+      r.totalPrice ?? 0,
+      r.rentalStatus ?? '',
+      r.paymentStatus ?? '',
+      r.user?.email ?? '',
+      r.car?.plate ?? '',
+    ]);
+    downloadCsv('don-thue-chi-tiet.csv', header, rows);
+  };
+
+  const handleExportSaleOrdersCSV = () => {
+    const header = [
+      'Mã đơn',
+      'Tổng tiền (VNĐ)',
+      'Trạng thái đơn',
+      'Trạng thái thanh toán',
+      'Email khách',
+      'Biển số',
+    ];
+    const rows = saleOrders.map((o) => [
+      o.id,
+      o.totalPrice ?? 0,
+      o.orderStatus ?? '',
+      o.paymentStatus ?? '',
+      o.user?.email ?? '',
+      o.car?.plate ?? '',
+    ]);
+    downloadCsv('don-mua-xe.csv', header, rows);
   };
 
   const formatYAxis = (value: number) => {
@@ -105,13 +164,32 @@ const ManageReports = () => {
           <h1 className="font-heading font-bold text-2xl text-navy">Báo cáo & Thống kê</h1>
           <p className="text-gray-400 text-sm mt-1">Phân tích doanh thu và hoạt động hệ thống</p>
         </div>
-        <button
-          onClick={handleExportCSV}
-          className="flex items-center gap-2 px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-xl transition-colors text-sm"
-        >
-          <Download className="w-4 h-4" />
-          Xuất báo cáo CSV
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-xl transition-colors text-sm"
+          >
+            <Download className="w-4 h-4" />
+            CSV doanh thu theo tháng
+          </button>
+          <button
+            type="button"
+            onClick={handleExportRentalsDetailCSV}
+            className="flex items-center gap-2 px-4 py-2.5 bg-navy hover:bg-navy/90 text-white font-semibold rounded-xl transition-colors text-sm"
+          >
+            <Download className="w-4 h-4" />
+            CSV đơn thuê chi tiết
+          </button>
+          <button
+            type="button"
+            onClick={handleExportSaleOrdersCSV}
+            className="flex items-center gap-2 px-4 py-2.5 border border-navy text-navy hover:bg-navy/5 font-semibold rounded-xl transition-colors text-sm"
+          >
+            <Download className="w-4 h-4" />
+            CSV đơn mua xe
+          </button>
+        </div>
       </div>
 
       {/* Summary stats */}

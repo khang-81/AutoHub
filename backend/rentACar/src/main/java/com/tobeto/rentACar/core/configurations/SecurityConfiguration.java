@@ -2,6 +2,7 @@ package com.tobeto.rentACar.core.configurations;
 
 import com.tobeto.rentACar.core.filters.JwtAuthFilter;
 import lombok.AllArgsConstructor;
+import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -17,10 +18,12 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.core.GrantedAuthorityDefaults;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.core.Ordered;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
 
 @Configuration
 @EnableWebSecurity
@@ -43,11 +46,23 @@ public class SecurityConfiguration {
             "/api/brands/**",
             "/api/contact/**",
             "/api/ai/**",
-            "/files/**"
+            "/files/**",
+            "/actuator/**"
     };
 
+    /** Actuator: chain riêng (không gắn JWT) — tránh 403 health khi deploy / Docker. */
     @Bean
-    @Order(0)
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    public SecurityFilterChain actuatorSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher(EndpointRequest.toAnyEndpoint())
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(x -> x.anyRequest().permitAll());
+        return http.build();
+    }
+
+    @Bean
+    @Order(1)
     public SecurityFilterChain authEndpointsFilterChain(HttpSecurity http) throws Exception {
         http
                 .securityMatcher("/api/auth/**")
@@ -58,10 +73,12 @@ public class SecurityConfiguration {
         return http.build();
     }
 
+    /** API + tài liệu + file: không áp dụng cho endpoint Actuator (đã có chain riêng). */
     @Bean
-    @Order(1)
+    @Order(2)
     public SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
         http
+                .securityMatcher(new NegatedRequestMatcher(EndpointRequest.toAnyEndpoint()))
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(x -> x
@@ -69,12 +86,14 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/cars/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/rentals/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/sale-orders/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/models/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/colors/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/invoices/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/customers/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/rentals/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/sale-orders/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/customers/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/invoices/**").permitAll()
                         .anyRequest().authenticated())

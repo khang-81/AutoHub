@@ -25,11 +25,20 @@ const Navbar = () => {
         setProfileOpen(false);
     };
 
-    const navLinks = [
-        { label: 'Trang chủ', to: '/' },
-        { label: 'Thuê xe', to: '/cars' },
-        { label: 'Giới thiệu', to: '/about' },
-        { label: 'Liên hệ', to: '/contact' },
+    const navLinks: { label: string; to: string; isActive: (path: string) => boolean }[] = [
+        { label: 'Trang chủ', to: '/', isActive: (p) => p === '/' },
+        {
+            label: 'Thuê xe',
+            to: '/cars',
+            isActive: (p) => p === '/cars' || p === '/cars/',
+        },
+        {
+            label: 'Mua xe',
+            to: '/cars/mua',
+            isActive: (p) => p === '/cars/mua' || p.startsWith('/cars/mua/'),
+        },
+        { label: 'Giới thiệu', to: '/about', isActive: (p) => p === '/about' || p.startsWith('/about/') },
+        { label: 'Liên hệ', to: '/contact', isActive: (p) => p === '/contact' || p.startsWith('/contact/') },
     ];
 
     const isTransparent = isHomePage && !scrolled;
@@ -57,9 +66,9 @@ const Navbar = () => {
                     <div className="hidden md:flex items-center gap-8">
                         {navLinks.map((link) => (
                             <Link
-                                key={link.to}
+                                key={link.label}
                                 to={link.to}
-                                className={`font-medium transition-colors duration-200 ${location.pathname === link.to
+                                className={`font-medium transition-colors duration-200 ${link.isActive(location.pathname)
                                         ? 'text-primary'
                                         : 'text-gray-200 hover:text-primary'
                                     }`}
@@ -159,9 +168,11 @@ const Navbar = () => {
                 <div className="md:hidden bg-navy border-t border-navy-400 px-4 pb-4">
                     {navLinks.map((link) => (
                         <Link
-                            key={link.to}
+                            key={link.label}
                             to={link.to}
-                            className="block py-3 text-gray-200 hover:text-primary font-medium border-b border-navy-400"
+                            className={`block py-3 font-medium border-b border-navy-400 ${
+                                link.isActive(location.pathname) ? 'text-primary' : 'text-gray-200 hover:text-primary'
+                            }`}
                             onClick={() => setIsOpen(false)}
                         >
                             {link.label}

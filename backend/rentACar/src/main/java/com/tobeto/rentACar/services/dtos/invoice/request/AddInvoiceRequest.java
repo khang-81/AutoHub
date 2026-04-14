@@ -30,8 +30,10 @@ public class AddInvoiceRequest {
     @Max(value = 100, message = "Tax rate cannot be greater than 100")
     private Float taxRate;
 
-    @NotNull
-    @Positive(message = "The assigned value must not assume a negative numerical value!")
-    private int rentalId;
+    /** Gắn hóa đơn đơn thuê (mutually exclusive với saleOrderId). */
+    private Integer rentalId;
+
+    /** Gắn hóa đơn đơn mua (mutually exclusive với rentalId). */
+    private Integer saleOrderId;
 
 }

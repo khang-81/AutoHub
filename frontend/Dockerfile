@@ -7,8 +7,8 @@ RUN npm ci
 
 COPY . .
 
-# URL API mà trình duyệt gọi (không dùng hostname nội bộ Docker như http://api:8081)
-ARG VITE_API_URL=http://localhost:8081
+# Rỗng = same-origin /api → Nginx proxy (xem nginx.conf). Chỉ set URL đầy đủ khi build đặc biệt.
+ARG VITE_API_URL=
 ENV VITE_API_URL=$VITE_API_URL
 
 RUN npm run build

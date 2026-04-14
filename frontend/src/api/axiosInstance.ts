@@ -14,15 +14,18 @@ axiosInstance.interceptors.request.use(
     if (config.data instanceof FormData) {
       delete (config.headers as Record<string, string>)['Content-Type'];
     }
-    // Ưu tiên token admin khi đang ở /admin/*
-    let token = localStorage.getItem('autohub_token');
+    // Khu vực admin (trừ trang đăng nhập): chỉ gửi autohub_admin_token — không fallback user token.
+    let token: string | null = null;
     try {
-      const isAdminRoute = typeof window !== 'undefined' && window.location?.pathname?.startsWith('/admin');
-      if (isAdminRoute) {
-        token = localStorage.getItem('autohub_admin_token') || token;
+      const path = typeof window !== 'undefined' ? window.location?.pathname ?? '' : '';
+      const isAdminApp = path.startsWith('/admin') && path !== '/admin/login';
+      if (isAdminApp) {
+        token = localStorage.getItem('autohub_admin_token');
+      } else {
+        token = localStorage.getItem('autohub_token');
       }
     } catch {
-      /* window/localStorage không khả dụng (SSR) */
+      token = localStorage.getItem('autohub_token');
     }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -37,8 +40,9 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      const isAdminRoute = typeof window !== 'undefined' && window.location?.pathname?.startsWith('/admin');
-      if (isAdminRoute) {
+      const path = typeof window !== 'undefined' ? window.location?.pathname ?? '' : '';
+      const isAdminApp = path.startsWith('/admin') && path !== '/admin/login';
+      if (isAdminApp) {
         localStorage.removeItem('autohub_admin_token');
         localStorage.removeItem('autohub_admin_user');
         window.location.href = '/admin/login';

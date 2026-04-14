@@ -1,23 +1,59 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, Search, X, ChevronLeft, ChevronRight, LayoutGrid, List } from 'lucide-react';
-import { getAllCarsApi } from '../../api/cars';
+import { useSearchParams, useLocation, useNavigate, NavLink } from 'react-router-dom';
+import { SlidersHorizontal, Search, X, ChevronLeft, ChevronRight, LayoutGrid, List, KeyRound, Tag } from 'lucide-react';
+import { searchCarsApi } from '../../api/cars';
 import { getAllBrandsApi } from '../../api/brands';
 import { getAllColorsApi } from '../../api/colors';
-import CarCard from '../../components/ui/CarCard';
+import CarCard, { CarListRow } from '../../components/ui/CarCard';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import type { Car, Brand, Color } from '../../types';
+import type { Brand, Color, PagedCarsResponse } from '../../types';
 
 const ITEMS_PER_PAGE = 9;
 
+const PATH_CARS_RENT = '/cars';
+const PATH_CARS_SALE = '/cars/mua';
+
+export type ListingPageMode = 'rent' | 'sale';
+
+function listingFromPathname(pathname: string): ListingPageMode {
+  const p = pathname.replace(/\/+$/, '') || '/';
+  if (p === PATH_CARS_SALE) return 'sale';
+  return 'rent';
+}
+
+/** Trang tối đa hiển thị dạng nút (mức C — danh sách lớn) */
+function buildPageItems(current: number, total: number): (number | 'ellipsis')[] {
+  if (total <= 9) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const items: (number | 'ellipsis')[] = [];
+  const windowStart = Math.max(2, current - 1);
+  const windowEnd = Math.min(total - 1, current + 1);
+  items.push(1);
+  if (windowStart > 2) items.push('ellipsis');
+  for (let p = windowStart; p <= windowEnd; p++) {
+    if (p > 1 && p < total) items.push(p);
+  }
+  if (windowEnd < total - 1) items.push('ellipsis');
+  if (total > 1) items.push(total);
+  return items;
+}
+
 const CarListing = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  const listingMode = listingFromPathname(location.pathname);
+  const brandParam = searchParams.get('brand') || '';
+  const searchParamsStr = searchParams.toString();
+  const qs = useMemo(() => (searchParamsStr ? `?${searchParamsStr}` : ''), [searchParamsStr]);
 
   const [filters, setFilters] = useState({
-    brandId: searchParams.get('brand') || '',
     colorId: '',
     minPrice: '',
     maxPrice: '',
@@ -25,31 +61,84 @@ const CarListing = () => {
     search: '',
   });
 
-  const { data: cars = [], isLoading } = useQuery<Car[]>({ queryKey: ['cars'], queryFn: getAllCarsApi });
+  const [debouncedSearch, setDebouncedSearch] = useState(filters.search);
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebouncedSearch(filters.search), 350);
+    return () => clearTimeout(id);
+  }, [filters.search]);
+
+  const searchParamsApi = useMemo(() => {
+    const minP = filters.minPrice.trim() ? Number(filters.minPrice) : undefined;
+    const maxP = filters.maxPrice.trim() ? Number(filters.maxPrice) : undefined;
+    const y = filters.minYear.trim() ? Number(filters.minYear) : undefined;
+    return {
+      page,
+      size: ITEMS_PER_PAGE,
+      brandId: brandParam ? Number(brandParam) : undefined,
+      colorId: filters.colorId ? Number(filters.colorId) : undefined,
+      minPrice: Number.isFinite(minP) ? minP : undefined,
+      maxPrice: Number.isFinite(maxP) ? maxP : undefined,
+      minYear: Number.isFinite(y) ? y : undefined,
+      listing: listingMode,
+      q: debouncedSearch.trim() || undefined,
+    };
+  }, [page, filters, debouncedSearch, brandParam, listingMode]);
+
+  const { data, isLoading, isFetching } = useQuery<PagedCarsResponse>({
+    queryKey: ['cars', 'search', searchParamsApi],
+    queryFn: () => searchCarsApi(searchParamsApi),
+  });
+
   const { data: brands = [] } = useQuery<Brand[]>({ queryKey: ['brands'], queryFn: getAllBrandsApi });
   const { data: colors = [] } = useQuery<Color[]>({ queryKey: ['colors'], queryFn: getAllColorsApi });
 
-  const filtered = useMemo(() => {
-    return cars.filter((car) => {
-      if (filters.brandId && car.model?.brand?.id !== Number(filters.brandId)) return false;
-      if (filters.colorId && car.color?.id !== Number(filters.colorId)) return false;
-      if (filters.minPrice && car.dailyPrice < Number(filters.minPrice)) return false;
-      if (filters.maxPrice && car.dailyPrice > Number(filters.maxPrice)) return false;
-      if (filters.minYear && car.modelYear < Number(filters.minYear)) return false;
-      if (filters.search) {
-        const q = filters.search.toLowerCase();
-        const match =
-          car.model?.brand?.name?.toLowerCase().includes(q) ||
-          car.model?.name?.toLowerCase().includes(q) ||
-          car.plate?.toLowerCase().includes(q);
-        if (!match) return false;
-      }
-      return true;
-    });
-  }, [cars, filters]);
+  const paginated = data?.content ?? [];
+  const totalPages = data?.totalPages ?? 0;
+  const totalElements = data?.totalElements ?? 0;
+  const pageItems = totalPages > 0 ? buildPageItems(page, totalPages) : [];
 
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-  const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  const heroCopy = useMemo(() => {
+    const n = totalElements;
+    if (listingMode === 'sale') {
+      return {
+        kicker: 'Mua xe',
+        title: 'Xe ô tô niêm yết bán',
+        subtitle: isLoading ? 'Đang tải…' : `${n} xe đang mở bán — giá minh bạch, kiểm định rõ ràng`,
+      };
+    }
+    return {
+      kicker: 'Thuê xe',
+      title: 'Thuê xe theo ngày',
+      subtitle: isLoading ? 'Đang tải…' : `${n} xe sẵn sàng — đặt nhanh, nhận xe thuận tiện`,
+    };
+  }, [listingMode, isLoading, totalElements]);
+
+  const tabClass = (active: boolean, accent: 'rent' | 'sale') => {
+    const base =
+      'relative flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-bold transition-all duration-200 md:px-6 md:py-4 md:text-base';
+    if (active) {
+      if (accent === 'rent') {
+        return `${base} bg-emerald-500 text-white shadow-lg shadow-emerald-900/25 ring-2 ring-white/20`;
+      }
+      return `${base} bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg shadow-orange-900/20 ring-2 ring-white/25`;
+    }
+    return `${base} bg-white/10 text-gray-200 hover:bg-white/15 hover:text-white`;
+  };
+
+  const navigateListingMode = (mode: ListingPageMode) => {
+    setPage(1);
+    const q = qs;
+    if (mode === 'sale') navigate(`${PATH_CARS_SALE}${q}`);
+    else navigate(`${PATH_CARS_RENT}${q}`);
+  };
+
+  const setBrandFilter = (value: string) => {
+    setPage(1);
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set('brand', value);
+    else next.delete('brand');
+    setSearchParams(next, { replace: true });
+  };
 
   const updateFilter = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -57,47 +146,127 @@ const CarListing = () => {
   };
 
   const resetFilters = () => {
-    setFilters({ brandId: '', colorId: '', minPrice: '', maxPrice: '', minYear: '', search: '' });
+    setFilters({
+      colorId: '',
+      minPrice: '',
+      maxPrice: '',
+      minYear: '',
+      search: '',
+    });
+    setSearchParams(new URLSearchParams(), { replace: true });
     setPage(1);
   };
 
-  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const activeFilterCount = [
+    brandParam,
+    filters.colorId,
+    filters.minPrice,
+    filters.maxPrice,
+    filters.minYear,
+    filters.search,
+  ].filter(Boolean).length;
+
+  const cardVariant = listingMode === 'sale' ? 'sale' : 'rent';
 
   return (
-    <div className="pt-20 min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-navy py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="font-heading font-bold text-3xl text-white mb-2">Thuê xe</h1>
-          <p className="text-gray-300">Khám phá {cars.length} xe từ các thương hiệu hàng đầu</p>
-        </div>
-      </div>
+    <div className="min-h-screen bg-[#f4f6fa] pt-20">
+      <header
+        className={`relative pb-14 pt-8 md:pb-16 md:pt-10 ${
+          listingMode === 'sale' ? 'listing-hero--sale' : 'listing-hero--rent'
+        }`}
+      >
+        <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:linear-gradient(rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.12)_1px,transparent_1px)] [background-size:48px_48px]" />
+        <div className="relative z-[1] mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-white/70">AutoHub</p>
+          <p
+            className={`mb-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${
+              listingMode === 'sale'
+                ? 'bg-orange-500/20 text-amber-100 ring-1 ring-orange-400/30'
+                : 'bg-emerald-500/20 text-emerald-100 ring-1 ring-emerald-400/25'
+            }`}
+          >
+            {listingMode === 'sale' ? (
+              <>
+                <Tag className="h-3.5 w-3.5" />
+                {heroCopy.kicker}
+              </>
+            ) : (
+              <>
+                <KeyRound className="h-3.5 w-3.5" />
+                {heroCopy.kicker}
+              </>
+            )}
+          </p>
+          <h1 className="mb-3 max-w-3xl font-heading text-3xl font-extrabold tracking-tight text-white md:text-4xl lg:text-[2.35rem] lg:leading-tight">
+            {heroCopy.title}
+          </h1>
+          <p className="mb-8 max-w-2xl text-base leading-relaxed text-gray-200/95 md:text-lg">
+            {heroCopy.subtitle}
+          </p>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search bar */}
-        <div className="flex gap-3 mb-6">
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <div className="max-w-3xl rounded-2xl bg-black/25 p-1.5 ring-1 ring-white/10 backdrop-blur-md">
+            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+              <NavLink
+                to={`${PATH_CARS_RENT}${qs}`}
+                className={({ isActive }) => tabClass(isActive, 'rent')}
+                end
+                onClick={() => setPage(1)}
+              >
+                <KeyRound className="h-5 w-5 shrink-0 opacity-90" />
+                <span className="text-left leading-tight">
+                  <span className="block">Cho thuê</span>
+                  <span className="mt-0.5 block text-[11px] font-normal opacity-90 md:text-xs">
+                    Theo ngày, linh hoạt
+                  </span>
+                </span>
+              </NavLink>
+              <NavLink
+                to={`${PATH_CARS_SALE}${qs}`}
+                className={({ isActive }) => tabClass(isActive, 'sale')}
+                onClick={() => setPage(1)}
+              >
+                <Tag className="h-5 w-5 shrink-0 opacity-90" />
+                <span className="text-left leading-tight">
+                  <span className="block">Mua xe</span>
+                  <span className="mt-0.5 block text-[11px] font-normal opacity-90 md:text-xs">
+                    Niêm yết bán, sở hữu xe
+                  </span>
+                </span>
+              </NavLink>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="relative z-[2] mx-auto -mt-8 max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
+        <div className="listing-search-shell mb-8 flex flex-col gap-2 sm:flex-row sm:items-stretch">
+          <div className="relative min-h-[52px] flex-1">
+            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Tìm kiếm theo thương hiệu, model..."
+              placeholder={
+                listingMode === 'sale'
+                  ? 'Tìm xe bán theo hãng, dòng xe hoặc biển số…'
+                  : 'Tìm xe thuê theo hãng, dòng xe hoặc biển số…'
+              }
               value={filters.search}
               onChange={(e) => updateFilter('search', e.target.value)}
-              className="input-field pl-12"
+              className="h-full w-full rounded-xl border-0 bg-gray-50/80 py-3.5 pl-12 pr-4 text-navy placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
           <button
+            type="button"
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-3 rounded-lg border-2 font-medium transition-all ${
+            className={`inline-flex min-h-[52px] shrink-0 items-center justify-center gap-2 rounded-xl px-5 font-semibold transition-all sm:px-6 ${
               showFilters || activeFilterCount > 0
-                ? 'border-primary bg-primary/5 text-primary'
-                : 'border-gray-200 text-gray-600 hover:border-primary'
+                ? 'bg-navy text-white shadow-md ring-2 ring-primary/40 ring-offset-2'
+                : 'border border-gray-200 bg-white text-navy hover:border-primary/40 hover:bg-primary/5'
             }`}
           >
-            <SlidersHorizontal className="w-5 h-5" />
+            <SlidersHorizontal className="h-5 w-5" />
             Bộ lọc
             {activeFilterCount > 0 && (
-              <span className="bg-primary text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+              <span className="flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-primary px-1.5 text-xs font-bold text-navy">
                 {activeFilterCount}
               </span>
             )}
@@ -105,40 +274,55 @@ const CarListing = () => {
         </div>
 
         <div className="flex gap-8">
-          {/* Sidebar Filters */}
           <aside
             className={`flex-shrink-0 transition-all duration-300 ${
-              showFilters ? 'w-64 opacity-100' : 'w-0 opacity-0 overflow-hidden'
+              showFilters ? 'w-64 opacity-100' : 'w-0 overflow-hidden opacity-0'
             }`}
           >
-            <div className="bg-white rounded-2xl shadow-sm p-5 sticky top-24 space-y-6">
+            <div className="sticky top-24 space-y-6 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between">
-                <h3 className="font-heading font-semibold text-navy">Bộ lọc</h3>
+                <h3 className="font-heading text-lg font-bold text-navy">Bộ lọc</h3>
                 {activeFilterCount > 0 && (
-                  <button onClick={resetFilters} className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1">
-                    <X className="w-3 h-3" /> Xóa tất cả
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="flex items-center gap-1 text-xs text-red-500 hover:text-red-600"
+                  >
+                    <X className="h-3 w-3" /> Xóa tất cả
                   </button>
                 )}
               </div>
 
-              {/* Brand */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Thương hiệu</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Danh mục</label>
                 <select
-                  value={filters.brandId}
-                  onChange={(e) => updateFilter('brandId', e.target.value)}
+                  value={listingMode}
+                  onChange={(e) => navigateListingMode(e.target.value as ListingPageMode)}
+                  className="input-field text-sm"
+                >
+                  <option value="rent">Xe cho thuê</option>
+                  <option value="sale">Xe đang bán</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Thương hiệu</label>
+                <select
+                  value={brandParam}
+                  onChange={(e) => setBrandFilter(e.target.value)}
                   className="input-field text-sm"
                 >
                   <option value="">Tất cả</option>
                   {brands.map((b) => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
                   ))}
                 </select>
               </div>
 
-              {/* Color */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Màu sắc</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Màu sắc</label>
                 <select
                   value={filters.colorId}
                   onChange={(e) => updateFilter('colorId', e.target.value)}
@@ -146,14 +330,17 @@ const CarListing = () => {
                 >
                   <option value="">Tất cả</option>
                   {colors.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
                   ))}
                 </select>
               </div>
 
-              {/* Price range */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Giá/ngày (VNĐ)</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  {listingMode === 'sale' ? 'Giá bán (VNĐ)' : 'Giá thuê / ngày (VNĐ)'}
+                </label>
                 <div className="flex gap-2">
                   <input
                     type="number"
@@ -172,9 +359,8 @@ const CarListing = () => {
                 </div>
               </div>
 
-              {/* Year */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Năm sản xuất (từ)</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Năm sản xuất (từ)</label>
                 <input
                   type="number"
                   placeholder="VD: 2020"
@@ -188,19 +374,62 @@ const CarListing = () => {
             </div>
           </aside>
 
-          {/* Car Grid */}
-          <div className="flex-1 min-w-0">
-            {/* Results header */}
-            <div className="flex items-center justify-between mb-5">
-              <p className="text-gray-500 text-sm">
-                Hiển thị <span className="font-semibold text-navy">{paginated.length}</span> trong {filtered.length} xe
-              </p>
-              <div className="flex gap-2">
-                <button className="p-2 rounded-lg bg-primary text-white">
-                  <LayoutGrid className="w-4 h-4" />
+          <div className="min-w-0 flex-1">
+            <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                <span
+                  className={`inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${
+                    listingMode === 'sale'
+                      ? 'bg-orange-100 text-orange-900'
+                      : 'bg-emerald-100 text-emerald-900'
+                  }`}
+                >
+                  {listingMode === 'sale' ? 'Danh sách bán' : 'Danh sách thuê'}
+                </span>
+                <p className="text-sm text-gray-600">
+                  {totalElements === 0 ? (
+                    <span className="font-medium text-gray-500">Không có xe phù hợp</span>
+                  ) : (
+                    <>
+                      <span className="font-semibold text-navy">{paginated.length}</span>
+                      <span className="text-gray-500"> xe trên trang · </span>
+                      <span className="font-semibold text-navy">{totalElements}</span>
+                      <span className="text-gray-500"> kết quả</span>
+                      {totalPages > 1 && (
+                        <>
+                          <span className="mx-1.5 text-gray-300">·</span>
+                          <span className="text-gray-500">
+                            Trang <span className="font-semibold text-navy">{page}</span> / {totalPages}
+                          </span>
+                        </>
+                      )}
+                    </>
+                  )}
+                  {isFetching && !isLoading ? (
+                    <span className="ml-2 text-xs font-medium text-primary">Đang cập nhật…</span>
+                  ) : null}
+                </p>
+              </div>
+              <div className="flex gap-1 rounded-xl bg-gray-100/90 p-1">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('grid')}
+                  className={`rounded-lg p-2.5 transition-all ${
+                    viewMode === 'grid' ? 'bg-white text-navy shadow-sm' : 'text-gray-500 hover:text-navy'
+                  }`}
+                  aria-label="Lưới"
+                >
+                  <LayoutGrid className="h-4 w-4" />
                 </button>
-                <button className="p-2 rounded-lg border border-gray-200 text-gray-400 hover:border-primary hover:text-primary">
-                  <List className="w-4 h-4" />
+                <button
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  className={`rounded-lg p-2.5 transition-all ${
+                    viewMode === 'list' ? 'bg-white text-navy shadow-sm' : 'text-gray-500 hover:text-navy'
+                  }`}
+                  aria-label="Danh sách"
+                >
+                  <List className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -208,48 +437,71 @@ const CarListing = () => {
             {isLoading ? (
               <LoadingSpinner text="Đang tải xe..." />
             ) : paginated.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="text-6xl mb-4">🚗</div>
-                <p className="text-gray-500 text-lg">Không tìm thấy xe phù hợp</p>
-                <button onClick={resetFilters} className="btn-outline mt-4">Xóa bộ lọc</button>
+              <div className="rounded-2xl border border-dashed border-gray-200 bg-white py-16 text-center shadow-sm">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-navy-50 text-3xl">
+                  🚗
+                </div>
+                <p className="text-lg font-semibold text-navy">Chưa có kết quả</p>
+                <p className="mx-auto mt-1 max-w-sm text-sm text-gray-500">
+                  Thử đổi bộ lọc hoặc từ khóa tìm kiếm.
+                </p>
+                <button type="button" onClick={resetFilters} className="btn-outline mt-6">
+                  Xóa bộ lọc
+                </button>
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                  {paginated.map((car) => (
-                    <CarCard key={car.id} car={car} />
-                  ))}
-                </div>
+                {viewMode === 'grid' ? (
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                    {paginated.map((car) => (
+                      <CarCard key={car.id} car={car} variant={cardVariant} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {paginated.map((car) => (
+                      <CarListRow key={car.id} car={car} variant={cardVariant} />
+                    ))}
+                  </div>
+                )}
 
-                {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 mt-10">
+                  <div className="mt-10 flex flex-wrap items-center justify-center gap-2">
                     <button
+                      type="button"
                       onClick={() => setPage(Math.max(1, page - 1))}
                       disabled={page === 1}
-                      className="p-2 rounded-lg border border-gray-200 disabled:opacity-40 hover:border-primary hover:text-primary transition-colors"
+                      className="rounded-full border border-gray-200 bg-white p-2.5 text-navy shadow-sm transition-all hover:border-primary disabled:opacity-40"
                     >
-                      <ChevronLeft className="w-5 h-5" />
+                      <ChevronLeft className="h-5 w-5" />
                     </button>
-                    {Array.from({ length: totalPages }).map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setPage(i + 1)}
-                        className={`w-10 h-10 rounded-lg font-medium text-sm transition-all ${
-                          page === i + 1
-                            ? 'bg-primary text-white shadow-md'
-                            : 'border border-gray-200 text-gray-600 hover:border-primary hover:text-primary'
-                        }`}
-                      >
-                        {i + 1}
-                      </button>
-                    ))}
+                    {pageItems.map((item, idx) =>
+                      item === 'ellipsis' ? (
+                        <span key={`e-${idx}`} className="px-2 text-gray-400">
+                          …
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          key={item}
+                          onClick={() => setPage(item)}
+                          className={`min-h-10 min-w-10 rounded-full px-3 text-sm font-semibold transition-all ${
+                            page === item
+                              ? 'bg-navy text-white shadow-md ring-2 ring-primary/30'
+                              : 'border border-gray-200 bg-white text-gray-600 hover:border-primary/50 hover:text-navy'
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      )
+                    )}
                     <button
+                      type="button"
                       onClick={() => setPage(Math.min(totalPages, page + 1))}
                       disabled={page === totalPages}
-                      className="p-2 rounded-lg border border-gray-200 disabled:opacity-40 hover:border-primary hover:text-primary transition-colors"
+                      className="rounded-full border border-gray-200 bg-white p-2.5 text-navy shadow-sm transition-all hover:border-primary disabled:opacity-40"
                     >
-                      <ChevronRight className="w-5 h-5" />
+                      <ChevronRight className="h-5 w-5" />
                     </button>
                   </div>
                 )}

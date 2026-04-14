@@ -1,5 +1,6 @@
 package com.tobeto.rentACar.services.concretes;
 
+import com.tobeto.rentACar.core.exceptions.types.BusinessException;
 import com.tobeto.rentACar.core.services.JwtService;
 import com.tobeto.rentACar.core.utilities.messages.MessageService;
 import com.tobeto.rentACar.core.utilities.results.ErrorResult;
@@ -23,9 +24,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 
 @Service
@@ -41,14 +40,14 @@ public class AuthCManager implements AuthCService {
 
     @Override
     public Result register(RegisterUserRequest registerUserRequest) {
-        Set<Role> authorities = registerUserRequest.getRoles().stream()
-                .map(roleService::findByName)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
+        // Chỉ cho đăng ký khách — không tin roles từ client (tránh tự gán admin).
+        Role userRole = roleService.findByName("user");
+        if (userRole == null) {
+            throw new BusinessException("Chưa cấu hình role user trong hệ thống.");
+        }
         User user = User.builder()
                 .email(registerUserRequest.getEmail())
-                .authorities(authorities)
+                .authorities(Set.of(userRole))
                 .password(passwordEncoder.encode(registerUserRequest.getPassword()))
                 .build();
         userService.add(user);
@@ -59,19 +58,18 @@ public class AuthCManager implements AuthCService {
 
     @Override
     public Result login(LoginUserRequest loginUserRequest) {
+        String email = loginUserRequest.getEmail() != null ? loginUserRequest.getEmail().trim() : "";
+        String password = loginUserRequest.getPassword() != null ? loginUserRequest.getPassword() : "";
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        loginUserRequest.getEmail(),
-                        loginUserRequest.getPassword()
-                )
+                new UsernamePasswordAuthenticationToken(email, password)
         );
 
         if (authentication.isAuthenticated()) {
 
-            GetUserByNameResponse userResponse = userService.getByName(loginUserRequest.getEmail());
+            GetUserByNameResponse userResponse = userService.getByName(email);
 
             if (userResponse != null) {
-                String token = jwtService.generateToken(loginUserRequest.getEmail(), userResponse);
+                String token = jwtService.generateToken(email, userResponse);
                 LoginResponse loginResponse = new LoginResponse();
                 loginResponse.setToken(token);
                 return new AuthCResult(true, messageService.getMessage(Messages.User.userLoginSuccess), loginResponse);

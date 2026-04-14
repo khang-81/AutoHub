@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Car, Eye, EyeOff, Lock, Mail, UserCheck } from 'lucide-react';
+import { Car, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { registerApi } from '../../api/auth';
 import { useToast } from '../../components/ui/Toast';
 
@@ -11,7 +11,6 @@ const schema = z.object({
   email: z.string().email('Email không hợp lệ'),
   password: z.string().min(6, 'Mật khẩu tối thiểu 6 ký tự'),
   confirmPassword: z.string(),
-  role: z.enum(['user', 'admin']),
 }).refine((d) => d.password === d.confirmPassword, {
   message: 'Mật khẩu xác nhận không khớp',
   path: ['confirmPassword'],
@@ -31,7 +30,6 @@ const Register = () => {
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { role: 'user' },
   });
 
   const onSubmit = async (data: FormData) => {
@@ -40,9 +38,11 @@ const Register = () => {
       const res = await registerApi({
         email: data.email,
         password: data.password,
-        roles: [data.role],
+        roles: ['user'],
       });
       if (res.success) {
+        localStorage.removeItem('autohub_admin_token');
+        localStorage.removeItem('autohub_admin_user');
         showToast('Đăng ký thành công! Vui lòng đăng nhập.', 'success');
         navigate('/login');
       } else {
@@ -132,26 +132,9 @@ const Register = () => {
               {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</p>}
             </div>
 
-            {/* Role */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Loại tài khoản</label>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { value: 'user', label: 'Khách hàng', desc: 'Thuê xe cá nhân' },
-                  { value: 'admin', label: 'Quản trị viên', desc: 'Quản lý hệ thống' },
-                ].map((opt) => (
-                  <label
-                    key={opt.value}
-                    className="relative flex flex-col p-4 border-2 rounded-xl cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/5 border-gray-200 hover:border-gray-300"
-                  >
-                    <input {...register('role')} type="radio" value={opt.value} className="sr-only" />
-                    <UserCheck className="w-5 h-5 text-primary mb-2" />
-                    <span className="font-semibold text-sm text-navy">{opt.label}</span>
-                    <span className="text-xs text-gray-400">{opt.desc}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+            <p className="text-xs text-gray-500">
+              Tài khoản mới chỉ là <strong>khách hàng</strong>. Quản trị viên do hệ thống cấp, không đăng ký công khai.
+            </p>
 
             <button
               type="submit"

@@ -5,6 +5,8 @@ import { getProfileApi } from '../../api/users';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { useToast } from '../../components/ui/Toast';
 
+const MAX_KYC_FILE_BYTES = 5 * 1024 * 1024;
+
 const statusLabel = (s: string) => {
   if (s === 'APPROVED') return { text: 'Đã duyệt', className: 'bg-green-100 text-green-800' };
   if (s === 'REJECTED') return { text: 'Từ chối', className: 'bg-red-100 text-red-800' };
@@ -43,6 +45,10 @@ const KycVerification = () => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    if (file.size > MAX_KYC_FILE_BYTES) {
+      showToast('Dung lượng tối đa 5MB.', 'error');
+      return;
+    }
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
       showToast('Chỉ chấp nhận ảnh hoặc PDF', 'error');
       return;
@@ -51,6 +57,11 @@ const KycVerification = () => {
   };
 
   const kyc = profile?.kycStatus || 'NOT_SUBMITTED';
+  /** Backend coi thiếu một loại giấy là PENDING; banner phải phân biệt "thiếu file" vs "chờ admin". */
+  const hasCccd = docs.some((d) => d.documentType === 'CCCD');
+  const hasGplx = docs.some((d) => d.documentType === 'GPLX');
+  const bothTypesUploaded = hasCccd && hasGplx;
+
   const kycBanner =
     kyc === 'APPROVED'
       ? { text: 'Tài khoản đã xác minh đầy đủ. Bạn có thể đặt xe.', c: 'bg-green-50 border-green-200 text-green-800' }
@@ -59,9 +70,14 @@ const KycVerification = () => {
             text: 'Giấy tờ bị từ chối. Vui lòng tải lên bản rõ nét hơn.',
             c: 'bg-red-50 border-red-200 text-red-800',
           }
-        : kyc === 'PENDING'
-          ? { text: 'Đang chờ admin duyệt.', c: 'bg-amber-50 border-amber-200 text-amber-900' }
-          : { text: 'Vui lòng tải CCCD và GPLX để đặt xe.', c: 'bg-blue-50 border-blue-200 text-blue-900' };
+        : !bothTypesUploaded
+          ? {
+              text: 'Vui lòng tải đủ CCCD và GPLX (mỗi loại một file) để gửi duyệt.',
+              c: 'bg-blue-50 border-blue-200 text-blue-900',
+            }
+          : kyc === 'PENDING'
+            ? { text: 'Đã nhận đủ giấy tờ. Đang chờ admin duyệt.', c: 'bg-amber-50 border-amber-200 text-amber-900' }
+            : { text: 'Vui lòng tải CCCD và GPLX để đặt xe.', c: 'bg-blue-50 border-blue-200 text-blue-900' };
 
   if (profileLoading || docsLoading) {
     return (

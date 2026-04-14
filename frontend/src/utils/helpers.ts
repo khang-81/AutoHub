@@ -96,4 +96,25 @@ export function getEmailFromToken(token: string): string | null {
   }
 }
 
+/** true nếu JWT hết hạn (theo claim `exp`, giây UTC) hoặc payload không đọc được */
+export function isJwtExpired(token: string): boolean {
+  try {
+    const base64Url = token.split('.')[1];
+    if (!base64Url) return true;
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const payload = JSON.parse(jsonPayload);
+    const exp = payload.exp;
+    if (typeof exp !== 'number') return false;
+    return exp * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+}
+
 export const CAR_PLACEHOLDER = 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=800&q=80';
