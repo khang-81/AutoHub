@@ -49,7 +49,20 @@ SCHEMA_LINE=${SCHEMA_LINE:-0}
 
 if [ "$SCHEMA_LINE" != "1" ]; then
   echo "Applying /autohub-full-schema.sql (schema + seed)..."
-  "$SQLCMD" "${COMMON[@]}" -b -i /autohub-full-schema.sql
+  # Chạy script qua kết nối [master] + retry ngắn để tránh lỗi tạm thời Msg 904 lúc DB vừa ONLINE.
+  ok=0
+  for i in $(seq 1 8); do
+    if run_master -b -i /autohub-full-schema.sql; then
+      ok=1
+      break
+    fi
+    echo "Seed attempt $i failed; retrying in 2s..."
+    sleep 2
+  done
+  if [ "$ok" -ne 1 ]; then
+    echo "Failed to initialize database [autohub] after retries."
+    exit 1
+  fi
   echo "Database [autohub] initialized."
 else
   echo "Database [autohub] already has schema; skipping SQL init."

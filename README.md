@@ -129,11 +129,55 @@ Chỉ dùng khi sửa code và cần hot-reload.
 
 ---
 
+## Deploy: Vercel + Render + Supabase (PostgreSQL)
+
+Stack cloud này dùng **PostgreSQL (Supabase)** thay cho SQL Server. Backend đọc driver/dialect qua biến môi trường (`SPRING_DATASOURCE_DRIVER_CLASS_NAME`, `SPRING_JPA_DATABASE_PLATFORM`); Docker Compose local **không đổi** (vẫn SQL Server).
+
+### 1. Supabase
+
+1. Tạo project tại [supabase.com](https://supabase.com).
+2. **Settings → Database**: lấy chuỗi kết nối **direct** (cổng **5432**), bật SSL.
+3. JDBC (đặt trên Render):  
+   `jdbc:postgresql://db.<PROJECT_REF>.supabase.co:5432/postgres?sslmode=require`  
+   User: `postgres`, password: mật khẩu database trong Supabase.
+
+### 2. Render (API)
+
+1. [render.com](https://render.com) → **New → Blueprint** (hoặc **Web Service**), chọn repo, dùng `render.yaml` ở gốc repo (Dockerfile: `backend/rentACar/Dockerfile`).
+2. **Environment** (bổ sung biến không có trong blueprint):
+
+   | Biến | Giá trị |
+   |------|--------|
+   | `SPRING_DATASOURCE_URL` | JDBC ở bước Supabase |
+   | `SPRING_DATASOURCE_USERNAME` | `postgres` |
+   | `SPRING_DATASOURCE_PASSWORD` | Mật khẩu DB |
+   | `SPRING_DATASOURCE_DRIVER_CLASS_NAME` | `org.postgresql.Driver` |
+   | `SPRING_JPA_DATABASE_PLATFORM` | `org.hibernate.dialect.PostgreSQLDialect` |
+   | `JWT_KEY` | Base64 (giống `JWT_KEY` trong Docker; đủ dài cho HS256) |
+   | `APP_CORS_ALLOWED_ORIGINS` | URL Vercel, ví dụ `https://ten-app.vercel.app` (không có `/` cuối) |
+   | `JPA_DDL_AUTO` | Lần đầu: `update`; sau khi schema ổn có thể `validate` |
+   | `APP_ADMIN_SEED_PASSWORD` | (Tuỳ chọn) Mật khẩu admin sau deploy — cần có role `admin` (được tạo tự động lần đầu) |
+
+3. Free tier có **cold start**; lần đầu mở link có thể chờ ~1 phút.
+
+**Lưu ý:** File upload KYC lưu trên disk container Render — **có thể mất khi redeploy**. Đồ án có thể chấp nhận; production thật nên dùng object storage (S3, Supabase Storage).
+
+### 3. Vercel (Frontend)
+
+1. **New Project** → import repo, **Root Directory**: `frontend`.
+2. **Environment Variables** (Build + Production):  
+   `VITE_API_URL` = URL gốc API Render, ví dụ `https://rentacar-api.onrender.com` (**không** có `/` cuối).
+3. Build: `npm run build`, output: `dist` (mặc định Vite). SPA fallback: `frontend/vercel.json`.
+
+Sau khi deploy, cập nhật lại `APP_CORS_ALLOWED_ORIGINS` trên Render nếu Vercel đổi domain preview.
+
+---
+
 ## Kiến trúc & công nghệ
 
-- **Backend:** Spring Boot, JPA/Hibernate, SQL Server, JWT, Lombok, ModelMapper  
+- **Backend:** Spring Boot, JPA/Hibernate, SQL Server (Docker) hoặc PostgreSQL (Supabase), JWT, Lombok, ModelMapper  
 - **Frontend:** React 19, Vite, TanStack Query, Tailwind  
-- **Deploy:** Docker Compose (SQL Server + API + Nginx)
+- **Deploy:** Docker Compose (SQL Server + API + Nginx) hoặc Vercel + Render + Supabase
 
 ---
 
