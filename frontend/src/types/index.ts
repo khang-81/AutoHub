@@ -220,6 +220,7 @@ export interface SaleOrder {
   cancelledAt?: string | null;
   cancelledBy?: string | null;
   cancellationReason?: string | null;
+  hasReview?: boolean;
   car: Car;
   user?: { id: number; email?: string };
 }

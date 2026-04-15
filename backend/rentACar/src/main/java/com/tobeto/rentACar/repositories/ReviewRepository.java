@@ -14,9 +14,34 @@ public interface ReviewRepository extends JpaRepository<Review, Integer> {
 
     boolean existsByRental_Id(int rentalId);
 
-    @Query("select r from Review r join fetch r.user join fetch r.rental where r.rental.car.id = :carId order by r.createdDate desc")
+    boolean existsBySaleOrder_Id(int saleOrderId);
+
+    @Query("""
+            select r from Review r
+            join fetch r.user
+            left join fetch r.rental rr
+            left join fetch r.saleOrder so
+            where (rr is not null and rr.car.id = :carId)
+               or (so is not null and so.car.id = :carId)
+            order by r.createdDate desc
+            """)
     List<Review> findByCarIdOrderByCreatedDateDesc(@Param("carId") int carId);
 
-    @Query("select r.rental.car.id, avg(r.rating), count(r) from Review r group by r.rental.car.id")
+    @Query("""
+            select r from Review r
+            join fetch r.user
+            left join fetch r.rental rr
+            left join fetch r.saleOrder so
+            order by r.id desc
+            """)
+    List<Review> findAllWithRefsOrderByIdDesc();
+
+    @Query("""
+            select coalesce(rr.car.id, so.car.id), avg(r.rating), count(r)
+            from Review r
+            left join r.rental rr
+            left join r.saleOrder so
+            group by coalesce(rr.car.id, so.car.id)
+            """)
     List<Object[]> findAverageRatingStatsByCar();
 }

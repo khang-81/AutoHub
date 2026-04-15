@@ -2,7 +2,11 @@ import axiosInstance from './axiosInstance';
 
 export interface ReviewDto {
   id: number;
-  rentalId: number;
+  rentalId: number | null;
+  saleOrderId: number | null;
+  sourceType: 'RENTAL' | 'SALE_ORDER' | string;
+  carId?: number | null;
+  carLabel?: string | null;
   rating: number;
   comment: string | null;
   createdDate: string;
@@ -14,7 +18,17 @@ export const getReviewsByCarIdApi = async (carId: number): Promise<ReviewDto[]> 
   return res.data;
 };
 
-export const addReviewApi = async (data: { rentalId: number; rating: number; comment?: string }) => {
+export const addReviewApi = async (data: { rentalId?: number; saleOrderId?: number; rating: number; comment?: string }) => {
   const res = await axiosInstance.post('/api/reviews/add', data);
+  return res.data;
+};
+
+export const getAllReviewsAdminApi = async (): Promise<ReviewDto[]> => {
+  const res = await axiosInstance.get('/api/reviews/admin/getAll');
+  return res.data;
+};
+
+export const deleteReviewAdminApi = async (id: number) => {
+  const res = await axiosInstance.delete(`/api/reviews/admin/delete/${id}`);
   return res.data;
 };

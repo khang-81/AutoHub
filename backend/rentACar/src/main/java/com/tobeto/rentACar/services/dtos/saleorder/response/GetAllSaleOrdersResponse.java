@@ -21,6 +21,7 @@ public class GetAllSaleOrdersResponse {
     private LocalDateTime cancelledAt;
     private String cancelledBy;
     private String cancellationReason;
+    private Boolean hasReview;
 
     private GetCarByIdResponse car;
     private GetUserByIdResponse user;

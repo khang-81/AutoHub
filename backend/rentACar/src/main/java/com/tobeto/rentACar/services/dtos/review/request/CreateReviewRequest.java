@@ -13,8 +13,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class CreateReviewRequest {
 
-    @NotNull
     private Integer rentalId;
+
+    private Integer saleOrderId;
 
     @NotNull
     @Min(1)
