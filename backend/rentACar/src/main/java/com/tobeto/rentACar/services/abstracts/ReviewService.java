@@ -11,4 +11,8 @@ public interface ReviewService {
     Result add(CreateReviewRequest request, int userId);
 
     List<ReviewResponse> getByCarId(int carId);
+
+    List<ReviewResponse> getAll();
+
+    Result delete(int reviewId);
 }

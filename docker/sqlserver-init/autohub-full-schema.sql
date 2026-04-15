@@ -204,21 +204,34 @@ CREATE TABLE [dbo].[invoices] (
     )
 );
 
-/* ---------- reviews (một review / rental) ---------- */
+/* ---------- reviews (một review / rental hoặc sale_order) ---------- */
 CREATE TABLE [dbo].[reviews] (
     [id]           INT            IDENTITY (1, 1) NOT NULL,
     [created_date] DATE           NULL,
     [updated_date] DATE           NULL,
     [deleted_date] DATE           NULL,
-    [rental_id]    INT            NOT NULL,
+    [rental_id]    INT            NULL,
+    [sale_order_id] INT           NULL,
     [user_id]      INT            NOT NULL,
     [rating]       INT            NOT NULL,
     [comment]      NVARCHAR (2000) NULL,
     CONSTRAINT [PK_reviews] PRIMARY KEY CLUSTERED ([id] ASC),
-    CONSTRAINT [UQ_reviews_rental_id] UNIQUE ([rental_id]),
     CONSTRAINT [FK_reviews_rentals] FOREIGN KEY ([rental_id]) REFERENCES [dbo].[rentals] ([id]),
+    CONSTRAINT [FK_reviews_sale_orders] FOREIGN KEY ([sale_order_id]) REFERENCES [dbo].[sale_orders] ([id]),
+    CONSTRAINT [CK_reviews_rental_xor_sale_order] CHECK (
+        ([rental_id] IS NOT NULL AND [sale_order_id] IS NULL)
+        OR ([rental_id] IS NULL AND [sale_order_id] IS NOT NULL)
+    ),
     CONSTRAINT [FK_reviews_users] FOREIGN KEY ([user_id]) REFERENCES [dbo].[users] ([id])
 );
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+CREATE UNIQUE INDEX [UX_reviews_rental_id_not_null]
+    ON [dbo].[reviews]([rental_id])
+    WHERE [rental_id] IS NOT NULL;
+CREATE UNIQUE INDEX [UX_reviews_sale_order_id_not_null]
+    ON [dbo].[reviews]([sale_order_id])
+    WHERE [sale_order_id] IS NOT NULL;
 
 /* ---------- user_documents (unique user_id + document_type) ---------- */
 CREATE TABLE [dbo].[user_documents] (

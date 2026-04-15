@@ -10,6 +10,7 @@ import com.tobeto.rentACar.core.utilities.results.SuccessResult;
 import com.tobeto.rentACar.entities.concretes.Car;
 import com.tobeto.rentACar.entities.concretes.SaleOrder;
 import com.tobeto.rentACar.repositories.CarRepository;
+import com.tobeto.rentACar.repositories.ReviewRepository;
 import com.tobeto.rentACar.repositories.SaleOrderRepository;
 import com.tobeto.rentACar.repositories.UserRepository;
 import com.tobeto.rentACar.services.abstracts.InvoiceService;
@@ -34,6 +35,7 @@ public class SaleOrderManager implements SaleOrderService {
 
     private final SaleOrderRepository saleOrderRepository;
     private final CarRepository carRepository;
+    private final ReviewRepository reviewRepository;
     private final UserRepository userRepository;
     private final ModelMapperService modelMapperService;
     private final InvoiceService invoiceService;
@@ -111,7 +113,11 @@ public class SaleOrderManager implements SaleOrderService {
     @Override
     public List<GetAllSaleOrdersResponse> getByUserId(int userId) {
         return saleOrderRepository.findByUser_IdOrderByIdDesc(userId).stream()
-                .map(o -> modelMapperService.forResponse().map(o, GetAllSaleOrdersResponse.class))
+                .map(o -> {
+                    GetAllSaleOrdersResponse dto = modelMapperService.forResponse().map(o, GetAllSaleOrdersResponse.class);
+                    dto.setHasReview(reviewRepository.existsBySaleOrder_Id(o.getId()));
+                    return dto;
+                })
                 .toList();
     }
 

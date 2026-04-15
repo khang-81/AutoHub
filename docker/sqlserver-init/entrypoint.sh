@@ -66,4 +66,61 @@ if [ "$SCHEMA_LINE" != "1" ]; then
   echo "Database [autohub] initialized."
 else
   echo "Database [autohub] already has schema; skipping SQL init."
+  echo "Applying safe incremental migrations (if needed)..."
+  run_master -b -Q "
+    USE [autohub];
+
+    IF COL_LENGTH('dbo.reviews', 'sale_order_id') IS NULL
+    BEGIN
+      ALTER TABLE dbo.reviews ADD sale_order_id INT NULL;
+    END;
+
+    IF EXISTS (
+      SELECT 1
+      FROM sys.columns
+      WHERE object_id = OBJECT_ID('dbo.reviews')
+        AND name = 'rental_id'
+        AND is_nullable = 0
+    )
+    BEGIN
+      ALTER TABLE dbo.reviews ALTER COLUMN rental_id INT NULL;
+    END;
+
+    IF EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'UQ_reviews_rental_id')
+    BEGIN
+      ALTER TABLE dbo.reviews DROP CONSTRAINT UQ_reviews_rental_id;
+    END;
+
+    IF EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'UQ_reviews_sale_order_id')
+    BEGIN
+      ALTER TABLE dbo.reviews DROP CONSTRAINT UQ_reviews_sale_order_id;
+    END;
+
+    IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_reviews_sale_orders')
+    BEGIN
+      ALTER TABLE dbo.reviews
+      ADD CONSTRAINT FK_reviews_sale_orders FOREIGN KEY (sale_order_id) REFERENCES dbo.sale_orders(id);
+    END;
+
+    IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_reviews_rental_xor_sale_order')
+    BEGIN
+      ALTER TABLE dbo.reviews DROP CONSTRAINT CK_reviews_rental_xor_sale_order;
+    END;
+    EXEC('ALTER TABLE dbo.reviews WITH NOCHECK
+      ADD CONSTRAINT CK_reviews_rental_xor_sale_order CHECK (
+        (rental_id IS NOT NULL AND sale_order_id IS NULL)
+        OR (rental_id IS NULL AND sale_order_id IS NOT NULL)
+      )');
+
+    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_reviews_rental_id_not_null' AND object_id = OBJECT_ID('dbo.reviews'))
+    BEGIN
+      EXEC('SET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON; CREATE UNIQUE INDEX UX_reviews_rental_id_not_null ON dbo.reviews(rental_id) WHERE rental_id IS NOT NULL');
+    END;
+
+    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_reviews_sale_order_id_not_null' AND object_id = OBJECT_ID('dbo.reviews'))
+    BEGIN
+      EXEC('SET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON; CREATE UNIQUE INDEX UX_reviews_sale_order_id_not_null ON dbo.reviews(sale_order_id) WHERE sale_order_id IS NOT NULL');
+    END;
+  "
+  echo "Incremental migrations completed."
 fi
