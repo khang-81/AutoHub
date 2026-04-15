@@ -10,7 +10,6 @@ import {
   Menu,
   X,
   ChevronRight,
-  Receipt,
   BarChart3,
   ShieldCheck,
   ShoppingBag,
@@ -28,7 +27,6 @@ const navItems = [
   { label: 'Quản lý đơn thuê', to: '/admin/rentals', icon: FileText },
   { label: 'Đơn mua xe', to: '/admin/sale-orders', icon: ShoppingBag },
   { label: 'Quản lý đánh giá', to: '/admin/reviews', icon: MessageSquare },
-  { label: 'Quản lý hóa đơn', to: '/admin/invoices', icon: Receipt },
   { label: 'Báo cáo', to: '/admin/reports', icon: BarChart3 },
 ];
 

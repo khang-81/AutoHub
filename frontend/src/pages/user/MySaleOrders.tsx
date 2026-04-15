@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { ShoppingBag, CreditCard, XCircle, Star } from 'lucide-react';
+import { ShoppingBag, CreditCard, XCircle, Star, Receipt } from 'lucide-react';
 import { cancelSaleOrderApi, getMySaleOrdersApi } from '../../api/saleOrders';
 import { addReviewApi } from '../../api/reviews';
+import { getMyInvoicesApi } from '../../api/invoices';
 import { useToast } from '../../components/ui/Toast';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Modal from '../../components/ui/Modal';
 import { formatCurrency, CAR_PLACEHOLDER } from '../../utils/helpers';
-import type { SaleOrder } from '../../types';
+import { formatDate } from '../../utils/helpers';
+import type { SaleOrder, Invoice } from '../../types';
 
 const statusLabel: Record<string, string> = {
   PENDING_PAYMENT: 'Chờ thanh toán',
@@ -21,6 +23,7 @@ const MySaleOrders = () => {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const [cancelId, setCancelId] = useState<number | null>(null);
+  const [invoiceSaleOrderId, setInvoiceSaleOrderId] = useState<number | null>(null);
   const [reviewSaleOrderId, setReviewSaleOrderId] = useState<number | null>(null);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
@@ -28,6 +31,10 @@ const MySaleOrders = () => {
   const { data: orders = [], isLoading } = useQuery<SaleOrder[]>({
     queryKey: ['mySaleOrders'],
     queryFn: getMySaleOrdersApi,
+  });
+  const { data: invoices = [] } = useQuery<Invoice[]>({
+    queryKey: ['myInvoices'],
+    queryFn: getMyInvoicesApi,
   });
 
   const cancelMutation = useMutation({
@@ -95,6 +102,7 @@ const MySaleOrders = () => {
             const canCancel =
               o.orderStatus === 'PENDING_PAYMENT' || o.orderStatus === 'PENDING_ADMIN_CONFIRM';
             const canReview = o.orderStatus === 'COMPLETED' && o.hasReview !== true;
+            const hasInvoice = invoices.some((inv) => (inv.saleOrder?.id) === o.id);
             return (
               <div key={o.id} className="bg-white rounded-2xl shadow-sm p-5 flex flex-wrap gap-4 items-start">
                 <img
@@ -116,6 +124,16 @@ const MySaleOrders = () => {
                   </p>
                 </div>
                 <div className="flex flex-col gap-2">
+                  {hasInvoice && (
+                    <button
+                      type="button"
+                      onClick={() => setInvoiceSaleOrderId(o.id)}
+                      className="btn-outline text-sm py-2 px-4 text-primary border-primary/20 flex items-center justify-center gap-2"
+                    >
+                      <Receipt className="w-4 h-4" />
+                      Xuất hóa đơn
+                    </button>
+                  )}
                   {canPay && (
                     <Link
                       to={`/dashboard/sale-payment/${o.id}`}
@@ -171,6 +189,83 @@ const MySaleOrders = () => {
             Đóng
           </button>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!invoiceSaleOrderId}
+        onClose={() => setInvoiceSaleOrderId(null)}
+        title="Chi tiết hóa đơn mua xe"
+        size="md"
+      >
+        {(() => {
+          const selectedInvoice = invoices.find((inv) => inv.saleOrder?.id === invoiceSaleOrderId) || null;
+          if (!selectedInvoice) {
+            return (
+              <div className="text-center py-8">
+                <Receipt className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                <p className="text-gray-400">Hóa đơn chưa được tạo cho đơn mua này.</p>
+                <button onClick={() => setInvoiceSaleOrderId(null)} className="btn-outline mt-4">
+                  Đóng
+                </button>
+              </div>
+            );
+          }
+
+          return (
+            <div className="space-y-5">
+              <div className="text-center pb-5 border-b">
+                <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-3">
+                  <Receipt className="w-7 h-7 text-white" />
+                </div>
+                <h2 className="font-heading font-bold text-xl text-navy">
+                  {selectedInvoice.invoiceNo || `INV-${selectedInvoice.id}`}
+                </h2>
+                <p className="text-gray-400 text-sm">AutoHub Car Rental</p>
+              </div>
+
+              <div className="space-y-3">
+                {[
+                  { label: 'Mã đơn mua', value: `#${selectedInvoice.saleOrder?.id}` },
+                  {
+                    label: 'Xe',
+                    value: selectedInvoice.saleOrder?.car
+                      ? `${selectedInvoice.saleOrder.car.model?.brand?.name ?? ''} ${selectedInvoice.saleOrder.car.model?.name ?? ''}`.trim()
+                      : 'N/A',
+                  },
+                  { label: 'Biển số', value: selectedInvoice.saleOrder?.car?.plate || 'N/A' },
+                  { label: 'Trạng thái đơn', value: selectedInvoice.saleOrder?.orderStatus || 'N/A' },
+                  { label: 'Chiết khấu', value: `${selectedInvoice.discountRate}%` },
+                  { label: 'Thuế VAT', value: `${selectedInvoice.taxRate}%` },
+                  { label: 'Ngày tạo', value: selectedInvoice.createdDate ? formatDate(selectedInvoice.createdDate) : 'N/A' },
+                ].map((row) => (
+                  <div key={row.label} className="flex justify-between py-2 border-b border-gray-50">
+                    <span className="text-gray-500 text-sm">{row.label}</span>
+                    <span className="font-medium text-navy">{row.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-primary/5 rounded-xl p-4 flex justify-between items-center">
+                <span className="font-semibold text-navy">Tổng thanh toán</span>
+                <span className="font-heading font-bold text-2xl text-primary">
+                  {formatCurrency(selectedInvoice.totalPrice)}
+                </span>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => window.print()}
+                  className="btn-primary flex items-center gap-2 flex-1 justify-center"
+                >
+                  In hóa đơn
+                </button>
+                <button onClick={() => setInvoiceSaleOrderId(null)} className="btn-outline flex-1">
+                  Đóng
+                </button>
+              </div>
+            </div>
+          );
+        })()}
       </Modal>
 
       <Modal
