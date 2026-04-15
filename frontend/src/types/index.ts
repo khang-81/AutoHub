@@ -192,6 +192,7 @@ export interface RentalByUser {
 export interface Invoice {
   id: number;
   invoiceNo: string;
+  createdDate?: string;
   totalPrice: number;
   discountRate: number;
   taxRate: number;

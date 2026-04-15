@@ -29,7 +29,6 @@ import Register from './pages/auth/Register';
 import UserDashboard from './pages/user/UserDashboard';
 import Profile from './pages/user/Profile';
 import RentalHistory from './pages/user/RentalHistory';
-import MyInvoices from './pages/user/MyInvoices';
 import ChangePassword from './pages/user/ChangePassword';
 import PaymentPage from './pages/user/PaymentPage';
 import PaymentSalePage from './pages/user/PaymentSalePage';
@@ -42,7 +41,6 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import ManageCars from './pages/admin/ManageCars';
 import ManageBrands from './pages/admin/ManageBrands';
 import ManageRentals from './pages/admin/ManageRentals';
-import ManageInvoices from './pages/admin/ManageInvoices';
 import ManageUsers from './pages/admin/ManageUsers';
 import ManageReports from './pages/admin/ManageReports';
 import ManageKyc from './pages/admin/ManageKyc';
@@ -97,7 +95,6 @@ function RoutesWithChatbot() {
           <Route path="payment/:rentalId" element={<PaymentPage />} />
           <Route path="sale-payment/:saleOrderId" element={<PaymentSalePage />} />
           <Route path="sale-orders" element={<MySaleOrders />} />
-          <Route path="invoices" element={<MyInvoices />} />
           <Route path="change-password" element={<ChangePassword />} />
           <Route path="kyc" element={<KycVerification />} />
         </Route>
@@ -115,7 +112,6 @@ function RoutesWithChatbot() {
           <Route path="cars" element={<ManageCars />} />
           <Route path="brands" element={<ManageBrands />} />
           <Route path="rentals" element={<ManageRentals />} />
-          <Route path="invoices" element={<ManageInvoices />} />
           <Route path="users" element={<ManageUsers />} />
           <Route path="reports" element={<ManageReports />} />
           <Route path="kyc" element={<ManageKyc />} />
