@@ -9,6 +9,7 @@ import com.tobeto.rentACar.services.dtos.review.response.ReviewResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -36,5 +37,17 @@ public class ReviewsController {
         String token = tokenWithPrefix.replace("Bearer ", "");
         int userId = jwtService.extractUserId(token);
         return reviewService.add(request, userId);
+    }
+
+    @PreAuthorize("hasRole('admin')")
+    @GetMapping("/admin/getAll")
+    public List<ReviewResponse> getAllForAdmin() {
+        return reviewService.getAll();
+    }
+
+    @PreAuthorize("hasRole('admin')")
+    @DeleteMapping("/admin/delete/{id}")
+    public Result deleteForAdmin(@PathVariable int id) {
+        return reviewService.delete(id);
     }
 }

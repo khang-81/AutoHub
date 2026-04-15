@@ -14,6 +14,7 @@ import {
   BarChart3,
   ShieldCheck,
   ShoppingBag,
+  MessageSquare,
 } from 'lucide-react';
 import { useState } from 'react';
 import { getEmailFromToken } from '../../utils/helpers';
@@ -26,6 +27,7 @@ const navItems = [
   { label: 'Thương hiệu & Model', to: '/admin/brands', icon: Tag },
   { label: 'Quản lý đơn thuê', to: '/admin/rentals', icon: FileText },
   { label: 'Đơn mua xe', to: '/admin/sale-orders', icon: ShoppingBag },
+  { label: 'Quản lý đánh giá', to: '/admin/reviews', icon: MessageSquare },
   { label: 'Quản lý hóa đơn', to: '/admin/invoices', icon: Receipt },
   { label: 'Báo cáo', to: '/admin/reports', icon: BarChart3 },
 ];

@@ -47,6 +47,7 @@ import ManageUsers from './pages/admin/ManageUsers';
 import ManageReports from './pages/admin/ManageReports';
 import ManageKyc from './pages/admin/ManageKyc';
 import ManageSaleOrders from './pages/admin/ManageSaleOrders';
+import ManageReviews from './pages/admin/ManageReviews';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -119,6 +120,7 @@ function RoutesWithChatbot() {
           <Route path="reports" element={<ManageReports />} />
           <Route path="kyc" element={<ManageKyc />} />
           <Route path="sale-orders" element={<ManageSaleOrders />} />
+          <Route path="reviews" element={<ManageReviews />} />
         </Route>
 
         {/* Catch all */}

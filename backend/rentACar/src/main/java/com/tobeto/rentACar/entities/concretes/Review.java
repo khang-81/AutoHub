@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 /**
- * One review per completed rental (enforced by unique rental_id).
+ * One review per completed rental or sale order.
  */
 @Table(name = "reviews")
 @Entity
@@ -16,8 +16,12 @@ import lombok.*;
 public class Review extends BaseEntity {
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "rental_id", nullable = false, unique = true)
+    @JoinColumn(name = "rental_id")
     private Rental rental;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sale_order_id")
+    private SaleOrder saleOrder;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

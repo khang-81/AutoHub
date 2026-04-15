@@ -12,6 +12,10 @@ import java.time.LocalDate;
 public class ReviewResponse {
     private Integer id;
     private Integer rentalId;
+    private Integer saleOrderId;
+    private String sourceType;
+    private Integer carId;
+    private String carLabel;
     private Integer rating;
     private String comment;
     private LocalDate createdDate;
