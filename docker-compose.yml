@@ -63,6 +63,11 @@ services:
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080}
       JPA_DDL_AUTO: ${JPA_DDL_AUTO:-validate}
       APP_UPLOAD_ROOT: /app/uploads
+      # Gmail: MAIL_USERNAME = địa chỉ Gmail, MAIL_PASSWORD = mật khẩu ứng dụng (App Password), không phải mật khẩu đăng nhập
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      # Link trong email OTP — mặc định khớp WEB_PORT 3000 (SPA Docker)
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
     volumes:
       - uploads_data:/app/uploads
     depends_on:

@@ -21,7 +21,11 @@ public class UserBusinessRule {
         }
 
         public void existsUserByEmail(String email) {
-            if (userRepository.existsByEmail(email)) {
+            if (email == null || email.isBlank()) {
+                throw new BusinessException("Email không hợp lệ.");
+            }
+            String normalized = email.trim();
+            if (userRepository.existsByEmailIgnoreCase(normalized)) {
                 throw new BusinessException(messageService.getMessage(Messages.User.getUserMailAlreadyExistsMessage));
             }
         }

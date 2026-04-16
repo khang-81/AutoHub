@@ -62,13 +62,16 @@ CREATE TABLE [dbo].[colors] (
 
 /* ---------- users + users_roles ---------- */
 CREATE TABLE [dbo].[users] (
-    [id]           INT            IDENTITY (1, 1) NOT NULL,
-    [created_date] DATE           NULL,
-    [updated_date] DATE           NULL,
-    [deleted_date] DATE           NULL,
-    [email]        NVARCHAR (255) NULL,
-    [password]     NVARCHAR (MAX) NULL,
-    [kyc_status]   NVARCHAR (32)  NULL,
+    [id]                     INT            IDENTITY (1, 1) NOT NULL,
+    [created_date]           DATE           NULL,
+    [updated_date]         DATE           NULL,
+    [deleted_date]         DATE           NULL,
+    [email]                  NVARCHAR (255) NULL,
+    [password]               NVARCHAR (MAX) NULL,
+    [kyc_status]             NVARCHAR (32)  NULL,
+    [password_reset_token]   NVARCHAR (64)     NULL,
+    /* Instant (Hibernate 6 + SQL Server) → datetimeoffset, không dùng datetime2 */
+    [password_reset_expires] DATETIMEOFFSET (6) NULL,
     CONSTRAINT [PK_users] PRIMARY KEY CLUSTERED ([id] ASC)
 );
 

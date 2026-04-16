@@ -52,6 +52,9 @@ const AdminLogin = () => {
       const userId = getUserIdFromToken(token) ?? 0;
       const email = getEmailFromToken(token) ?? data.email;
 
+      // Trang /admin/login vẫn dùng autohub_token trong interceptor — gắn JWT trước khi gọi roles
+      localStorage.setItem('autohub_token', token);
+
       // Fetch roles from API
       const rolesData = userId ? await getUserRolesApi(userId) : [];
       const roles = rolesData.map((r) => r.name);

@@ -39,7 +39,13 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const reqUrl = String(error.config?.url ?? '');
+    const isAuthEndpoint =
+      reqUrl.includes('/api/auth/login') ||
+      reqUrl.includes('/api/auth/register') ||
+      reqUrl.includes('/api/auth/forgot-password') ||
+      reqUrl.includes('/api/auth/reset-password');
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       const path = typeof window !== 'undefined' ? window.location?.pathname ?? '' : '';
       const isAdminApp = path.startsWith('/admin') && path !== '/admin/login';
       if (isAdminApp) {
