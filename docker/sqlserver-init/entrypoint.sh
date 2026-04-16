@@ -121,6 +121,27 @@ else
     BEGIN
       EXEC('SET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON; CREATE UNIQUE INDEX UX_reviews_sale_order_id_not_null ON dbo.reviews(sale_order_id) WHERE sale_order_id IS NOT NULL');
     END;
+
+    IF COL_LENGTH('dbo.users', 'password_reset_token') IS NULL
+    BEGIN
+      ALTER TABLE dbo.users ADD password_reset_token NVARCHAR(64) NULL;
+    END;
+
+    IF COL_LENGTH('dbo.users', 'password_reset_expires') IS NULL
+    BEGIN
+      ALTER TABLE dbo.users ADD password_reset_expires DATETIMEOFFSET(6) NULL;
+    END
+    ELSE IF EXISTS (
+      SELECT 1
+      FROM sys.columns c
+      INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
+      WHERE c.object_id = OBJECT_ID(N'dbo.users')
+        AND c.name = N'password_reset_expires'
+        AND t.name = N'datetime2'
+    )
+    BEGIN
+      ALTER TABLE dbo.users ALTER COLUMN password_reset_expires DATETIMEOFFSET(6) NULL;
+    END;
   "
   echo "Incremental migrations completed."
 fi

@@ -58,6 +58,12 @@ public class UserManager implements UserService {
 
     @Override
     public Result add(User user) {
+        String email = user.getEmail() != null ? user.getEmail().trim() : "";
+        if (email.isEmpty()) {
+            throw new BusinessException("Email không hợp lệ.");
+        }
+        user.setEmail(email);
+        userBusinessRule.existsUserByEmail(email);
         userRepository.save(user);
         return new SuccessResult(messageService.getMessage(Messages.User.userRegisterSuccess));
     }

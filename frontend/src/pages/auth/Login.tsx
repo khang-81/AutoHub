@@ -46,7 +46,8 @@ const Login = () => {
         }
         const userId = getUserIdFromToken(token) ?? 0;
         const email = getEmailFromToken(token) ?? data.email;
-        // Fetch roles from API (backend JWT doesn't include roles)
+        // Gắn JWT trước khi gọi API roles (axios interceptor đọc localStorage)
+        localStorage.setItem('autohub_token', token);
         const rolesData = userId ? await getUserRolesApi(userId) : [];
         const roles = rolesData.map((r) => r.name);
         login(token, userId, email, roles);
@@ -156,12 +157,20 @@ const Login = () => {
             </button>
           </form>
 
-          <p className="text-center text-sm text-gray-500 mt-6">
-            Chưa có tài khoản?{' '}
-            <Link to="/register" className="text-primary font-semibold hover:underline">
-              Đăng ký ngay
+          <div className="mt-6 pt-2 border-t border-gray-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm">
+            <p className="text-gray-600 text-center sm:text-left">
+              Chưa có tài khoản?{' '}
+              <Link to="/register" className="text-primary font-semibold hover:underline">
+                Đăng ký ngay
+              </Link>
+            </p>
+            <Link
+              to="/forgot-password"
+              className="text-center sm:text-right text-navy/80 font-medium hover:text-primary transition-colors"
+            >
+              Quên mật khẩu?
             </Link>
-          </p>
+          </div>
 
         </div>
       </div>
