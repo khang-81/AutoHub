@@ -236,6 +236,31 @@ export interface AddSaleOrderResponse {
   result?: { success?: boolean; message?: string };
 }
 
+// ─── Viewing appointment (lịch xem xe) ───────────────────────────────────────
+export interface ViewingAppointment {
+  id: number;
+  scheduledAt: string;
+  status: string;
+  note?: string | null;
+  contactPhone?: string | null;
+  adminNote?: string | null;
+  createdDate?: string;
+  car: Car;
+  user: { id: number; email?: string; kycStatus?: string };
+}
+
+export interface CreateViewingAppointmentRequest {
+  carId: number;
+  scheduledAt: string;
+  note?: string;
+  contactPhone?: string;
+}
+
+export interface UpdateViewingStatusRequest {
+  status: 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
+  adminNote?: string;
+}
+
 // ─── User ────────────────────────────────────────────────────────────────────
 export interface User {
   id: number;

@@ -142,6 +142,26 @@ else
     BEGIN
       ALTER TABLE dbo.users ALTER COLUMN password_reset_expires DATETIMEOFFSET(6) NULL;
     END;
+
+    IF OBJECT_ID(N'dbo.viewing_appointments', N'U') IS NULL
+    BEGIN
+      CREATE TABLE [dbo].[viewing_appointments] (
+        [id]             INT            IDENTITY (1, 1) NOT NULL,
+        [created_date]   DATE           NULL,
+        [updated_date]   DATE           NULL,
+        [deleted_date]   DATE           NULL,
+        [scheduled_at]   DATETIME2 (7)  NOT NULL,
+        [status]         NVARCHAR (32)  NOT NULL,
+        [note]           NVARCHAR (500) NULL,
+        [contact_phone]  NVARCHAR (32)  NULL,
+        [admin_note]     NVARCHAR (500) NULL,
+        [car_id]         INT            NOT NULL,
+        [user_id]        INT            NOT NULL,
+        CONSTRAINT [PK_viewing_appointments] PRIMARY KEY CLUSTERED ([id] ASC),
+        CONSTRAINT [FK_viewing_appointments_cars] FOREIGN KEY ([car_id]) REFERENCES [dbo].[cars] ([id]),
+        CONSTRAINT [FK_viewing_appointments_users] FOREIGN KEY ([user_id]) REFERENCES [dbo].[users] ([id])
+      );
+    END;
   "
   echo "Incremental migrations completed."
 fi

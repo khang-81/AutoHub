@@ -1,15 +1,17 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import {
   Calendar, Gauge, Tag, Palette, Shield, Star, ArrowLeft,
-  CheckCircle, Car, MapPin, Fuel, CreditCard, Scale
+  CheckCircle, Car, MapPin, Fuel, CreditCard, Scale, CalendarClock,
+  Phone, MessageSquare, Clock3, Info,
 } from 'lucide-react';
 import { getCarByIdApi } from '../../api/cars';
 import { getAllRentalsApi, getInsuranceOptionsApi, addRentalApi } from '../../api/rentals';
 import { addSaleOrderApi } from '../../api/saleOrders';
+import { createViewingAppointmentApi } from '../../api/viewingAppointments';
 import { getProfileApi } from '../../api/users';
 import { getReviewsByCarIdApi } from '../../api/reviews';
 import { useAuthStore } from '../../store/authStore';
@@ -19,6 +21,7 @@ import {
   formatCurrency,
   calculateRentalDays,
   formatDateForApi,
+  formatDateTimeForApi,
   formatDate,
   CAR_PLACEHOLDER,
 } from '../../utils/helpers';
@@ -39,6 +42,11 @@ const CarDetail = () => {
   const [insuranceCode, setInsuranceCode] = useState('NONE');
   const [pickupDistrict, setPickupDistrict] = useState('');
   const [extraFeesAmount, setExtraFeesAmount] = useState('');
+  const [viewingDate, setViewingDate] = useState<Date | null>(null);
+  const [viewingNote, setViewingNote] = useState('');
+  const [viewingPhone, setViewingPhone] = useState('');
+  /** Tab trong khối thuê / mua / đặt lịch xem */
+  const [bookingMode, setBookingMode] = useState<'rent' | 'buy' | 'view'>('rent');
 
   const { data: car, isLoading } = useQuery<CarType>({
     queryKey: ['car', id],
@@ -99,11 +107,67 @@ const CarDetail = () => {
   const listingType = (car?.listingType || 'RENT_ONLY').toUpperCase();
   const backToListPath = listingType === 'SALE_ONLY' ? '/cars/mua' : '/cars';
   const canRent = !!car && (listingType === 'RENT_ONLY' || listingType === 'BOTH') && car.dailyPrice > 0;
+  const saleStatusUp = (car?.saleStatus ?? '').toUpperCase();
   const canBuy =
     !!car &&
     (listingType === 'SALE_ONLY' || listingType === 'BOTH') &&
-    car.saleStatus === 'AVAILABLE' &&
+    saleStatusUp === 'AVAILABLE' &&
     (car.salePrice ?? 0) > 0;
+  /** Khớp backend: xe niêm yết bán, còn AVAILABLE hoặc RESERVED, có giá — có thể đặt lịch xem (không cần trùng canBuy). */
+  const canScheduleViewing =
+    !!car &&
+    (listingType === 'SALE_ONLY' || listingType === 'BOTH') &&
+    (saleStatusUp === 'AVAILABLE' || saleStatusUp === 'RESERVED') &&
+    (car.salePrice ?? 0) > 0;
+
+  const bookingModeCount = [canRent, canBuy, canScheduleViewing].filter(Boolean).length;
+
+  const availableBookingModes = useMemo((): ('rent' | 'buy' | 'view')[] => {
+    const m: ('rent' | 'buy' | 'view')[] = [];
+    if (canRent) m.push('rent');
+    if (canBuy) m.push('buy');
+    if (canScheduleViewing) m.push('view');
+    return m;
+  }, [canRent, canBuy, canScheduleViewing]);
+
+  const bookingModeResolved =
+    availableBookingModes.length > 0 && availableBookingModes.includes(bookingMode)
+      ? bookingMode
+      : availableBookingModes[0] ?? 'rent';
+
+  const viewingMutation = useMutation({
+    mutationFn: () =>
+      createViewingAppointmentApi({
+        carId: Number(id),
+        scheduledAt: formatDateTimeForApi(viewingDate!),
+        note: viewingNote.trim() || undefined,
+        contactPhone: viewingPhone.trim() || undefined,
+      }),
+    onSuccess: () => {
+      showToast('Đã gửi lịch xem xe — chờ admin xác nhận.', 'success');
+      queryClient.invalidateQueries({ queryKey: ['myViewingAppointments'] });
+      setViewingNote('');
+      setViewingPhone('');
+      setViewingDate(null);
+    },
+    onError: (error: unknown) => {
+      const apiError = error as { response?: { data?: { message?: string } } };
+      showToast(apiError?.response?.data?.message || 'Không thể đặt lịch', 'error');
+    },
+  });
+
+  const handleViewingBook = () => {
+    if (!isAuthenticated) {
+      showToast('Vui lòng đăng nhập để đặt lịch xem xe', 'info');
+      navigate('/login', { state: { from: { pathname: `/cars/${id}` } } });
+      return;
+    }
+    if (!viewingDate) {
+      showToast('Chọn ngày giờ xem xe', 'info');
+      return;
+    }
+    viewingMutation.mutate();
+  };
 
   const saleMutation = useMutation({
     mutationFn: (pm: 'CASH' | 'BANK_TRANSFER') =>
@@ -433,12 +497,63 @@ const CarDetail = () => {
             </div>
           </div>
 
-          {/* Right: Booking & Buy */}
+          {/* Right: Thuê / Mua / Đặt lịch xem — một khối */}
           <div className="lg:col-span-1 space-y-6">
-            {canRent && (
+            {bookingModeCount > 0 && (
             <div className="card p-6 sticky top-24">
-              <h2 className="font-heading font-semibold text-navy text-lg mb-5">Đặt thuê xe</h2>
+              <h2 className="font-heading font-semibold text-navy text-lg mb-1">
+                Thuê xe, mua xe hoặc đặt lịch xem
+              </h2>
+              <p className="text-xs text-gray-500 mb-4">
+                Chọn một tùy chọn bên dưới để tiếp tục.
+              </p>
 
+              {bookingModeCount > 1 && (
+                <div className="flex flex-wrap gap-1 p-1 rounded-xl bg-gray-100 mb-5" role="tablist" aria-label="Hình thức">
+                  {canRent && (
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={bookingModeResolved === 'rent'}
+                      onClick={() => setBookingMode('rent')}
+                      className={`flex-1 min-w-[6.5rem] px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                        bookingModeResolved === 'rent' ? 'bg-white text-navy shadow-sm' : 'text-gray-600 hover:text-navy'
+                      }`}
+                    >
+                      Thuê xe
+                    </button>
+                  )}
+                  {canBuy && (
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={bookingModeResolved === 'buy'}
+                      onClick={() => setBookingMode('buy')}
+                      className={`flex-1 min-w-[6.5rem] px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                        bookingModeResolved === 'buy' ? 'bg-white text-navy shadow-sm' : 'text-gray-600 hover:text-navy'
+                      }`}
+                    >
+                      Mua xe
+                    </button>
+                  )}
+                  {canScheduleViewing && (
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={bookingModeResolved === 'view'}
+                      onClick={() => setBookingMode('view')}
+                      className={`flex-1 min-w-[7.5rem] px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                        bookingModeResolved === 'view' ? 'bg-white text-navy shadow-sm' : 'text-gray-600 hover:text-navy'
+                      }`}
+                    >
+                      Đặt lịch xem xe
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {bookingModeResolved === 'rent' && canRent && (
+              <>
               {isAuthenticated && !profileLoading && profile?.kycStatus !== 'APPROVED' && (
                 <div className="mb-5 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm">
                   <p className="font-medium mb-1">Cần xác minh danh tính</p>
@@ -636,13 +751,124 @@ const CarDetail = () => {
                   </div>
                 ))}
               </div>
-            </div>
-            )}
+            </>
+              )}
 
-            {canBuy && (
-              <div className="card p-6 border-2 border-amber-100">
-                <h2 className="font-heading font-semibold text-navy text-lg mb-2">Mua xe</h2>
-                <p className="text-sm text-gray-500 mb-4">
+              {bookingModeResolved === 'view' && canScheduleViewing && (
+                <div className="rounded-2xl border border-primary/20 bg-white p-5 shadow-sm space-y-5">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <CalendarClock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-heading font-semibold text-navy text-lg">Đặt lịch xem xe</h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Chọn khung giờ phù hợp để được tư vấn trực tiếp tại showroom.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-primary/5 border border-primary/10 p-3 space-y-2 text-xs text-gray-600">
+                    <p className="flex items-center gap-2">
+                      <Clock3 className="w-3.5 h-3.5 text-primary shrink-0" />
+                      Thời gian hỗ trợ: 08:00 - 17:30 (thứ 2 - thứ 7)
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <Info className="w-3.5 h-3.5 text-primary shrink-0" />
+                      Lịch hẹn cần cách hiện tại ít nhất 2 giờ để đội ngũ chuẩn bị xe.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Thời gian xem xe</label>
+                    <DatePicker
+                      selected={viewingDate}
+                      onChange={(d: Date | null) => setViewingDate(d)}
+                      showTimeSelect
+                      timeIntervals={30}
+                      timeCaption="Giờ"
+                      dateFormat="dd/MM/yyyy HH:mm"
+                      minDate={new Date()}
+                      filterDate={(date) => date.getDay() !== 0}
+                      filterTime={(time) => {
+                        const candidate = new Date(time);
+                        if (candidate.getDay() === 0) return false;
+                        const now = new Date();
+                        const min = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+                        if (candidate < min) return false;
+                        const h = candidate.getHours();
+                        const m = candidate.getMinutes();
+                        if (h < 8 || h > 17) return false;
+                        if (h === 17 && m > 30) return false;
+                        return true;
+                      }}
+                      placeholderText="Chọn ngày và giờ"
+                      className="input-field w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-primary" />
+                      Số điện thoại liên hệ
+                    </label>
+                    <input
+                      type="tel"
+                      value={viewingPhone}
+                      onChange={(e) => setViewingPhone(e.target.value)}
+                      placeholder="Ví dụ: 0912345678"
+                      className="input-field w-full"
+                      maxLength={32}
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Admin sẽ gọi xác nhận trước thời gian hẹn.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4 text-primary" />
+                      Yêu cầu thêm (không bắt buộc)
+                    </label>
+                    <textarea
+                      value={viewingNote}
+                      onChange={(e) => setViewingNote(e.target.value)}
+                      placeholder="Ví dụ: Muốn xem kỹ khoang máy, nội thất và lịch sử bảo dưỡng."
+                      className="input-field w-full min-h-[96px]"
+                      maxLength={500}
+                    />
+                    <div className="text-right text-[11px] text-gray-400 mt-1">
+                      {viewingNote.length}/500 ký tự
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleViewingBook}
+                    disabled={viewingMutation.isPending}
+                    className="w-full py-3 rounded-xl font-semibold bg-navy text-white hover:bg-navy/90 disabled:opacity-60"
+                  >
+                    {viewingMutation.isPending ? 'Đang gửi yêu cầu...' : 'Gửi lịch hẹn xem xe'}
+                  </button>
+
+                  {!isAuthenticated && (
+                    <p className="text-center text-xs text-gray-400">
+                      <Link to="/login" className="text-primary font-medium">Đăng nhập</Link> để đặt lịch
+                    </p>
+                  )}
+                  {isAuthenticated && (
+                    <p className="text-center text-xs text-gray-400">
+                      Theo dõi lịch đã đặt tại{' '}
+                      <Link to="/dashboard/viewing-appointments" className="text-primary font-medium">
+                        Lịch xem xe của tôi
+                      </Link>
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {bookingModeResolved === 'buy' && canBuy && (
+              <div className="rounded-xl border-2 border-amber-100 bg-amber-50/30 p-4 space-y-4">
+                <h3 className="font-heading font-semibold text-navy text-lg">Mua xe</h3>
+                <p className="text-sm text-gray-500">
                   Giá niêm yết <span className="font-bold text-amber-700">{formatCurrency(car.salePrice!)}</span>
                 </p>
                 {isAuthenticated && !profileLoading && profile?.kycStatus !== 'APPROVED' && (
@@ -675,6 +901,18 @@ const CarDetail = () => {
                   </p>
                 )}
               </div>
+              )}
+
+              {listingType === 'RENT_ONLY' && (
+                <p className="text-xs text-gray-500 pt-4 mt-4 border-t border-gray-100">
+                  Muốn xem xe trước khi mua?{' '}
+                  <Link to="/cars/mua" className="text-primary font-semibold hover:underline">
+                    Xem danh sách xe đang bán
+                  </Link>
+                </p>
+              )}
+
+            </div>
             )}
           </div>
         </div>

@@ -31,6 +31,19 @@ export function formatDateForApi(date: Date): string {
   return format(date, 'yyyy-MM-dd');
 }
 
+/** Local datetime cho API (LocalDateTime), ví dụ 2026-04-20T14:30:00 */
+export function formatDateTimeForApi(date: Date): string {
+  return format(date, "yyyy-MM-dd'T'HH:mm:ss");
+}
+
+export function formatDateTime(dateString: string) {
+  try {
+    return format(parseISO(dateString), 'dd/MM/yyyy HH:mm');
+  } catch {
+    return dateString;
+  }
+}
+
 export function calculateRentalDays(startDate: Date, endDate: Date): number {
   const days = differenceInDays(endDate, startDate);
   return Math.max(days, 1);
