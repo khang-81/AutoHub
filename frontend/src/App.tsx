@@ -119,7 +119,9 @@ function RoutesWithChatbot() {
           }
         >
           <Route index element={<AdminDashboard />} />
-          <Route path="cars" element={<ManageCars />} />
+          <Route path="cars" element={<Navigate to="/admin/cars/rent" replace />} />
+          <Route path="cars/rent" element={<ManageCars />} />
+          <Route path="cars/sale" element={<ManageCars />} />
           <Route path="brands" element={<ManageBrands />} />
           <Route path="rentals" element={<ManageRentals />} />
           <Route path="users" element={<ManageUsers />} />

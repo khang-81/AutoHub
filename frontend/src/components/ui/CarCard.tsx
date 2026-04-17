@@ -13,8 +13,8 @@ export interface CarCardProps {
 
 function listingFlags(car: Car) {
   const lt = (car.listingType || 'RENT_ONLY').toUpperCase();
-  const rentCapable = lt === 'RENT_ONLY' || lt === 'BOTH';
-  const saleCapable = lt === 'SALE_ONLY' || lt === 'BOTH';
+  const rentCapable = lt === 'RENT_ONLY';
+  const saleCapable = lt === 'SALE_ONLY';
   const saleOk = saleCapable && car.saleStatus === 'AVAILABLE' && (car.salePrice ?? 0) > 0;
   return { lt, rentCapable, saleCapable, saleOk };
 }

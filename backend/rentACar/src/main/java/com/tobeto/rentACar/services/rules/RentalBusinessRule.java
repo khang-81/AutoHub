@@ -91,7 +91,7 @@ public class RentalBusinessRule {
         if (ListingConstants.LISTING_SALE_ONLY.equalsIgnoreCase(lt)) {
             throw new BusinessException("Xe này chỉ bán, không cho thuê.");
         }
-        if (ListingConstants.LISTING_BOTH.equalsIgnoreCase(lt) || ListingConstants.LISTING_RENT_ONLY.equalsIgnoreCase(lt)) {
+        if (ListingConstants.LISTING_RENT_ONLY.equalsIgnoreCase(lt)) {
             String ss = car.getSaleStatus();
             if (ss != null && (ListingConstants.SALE_RESERVED.equalsIgnoreCase(ss)
                     || ListingConstants.SALE_SOLD.equalsIgnoreCase(ss))) {

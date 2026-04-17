@@ -107,17 +107,17 @@ const CarDetail = () => {
 
   const listingType = (car?.listingType || 'RENT_ONLY').toUpperCase();
   const backToListPath = listingType === 'SALE_ONLY' ? '/cars/mua' : '/cars';
-  const canRent = !!car && (listingType === 'RENT_ONLY' || listingType === 'BOTH') && car.dailyPrice > 0;
+  const canRent = !!car && listingType === 'RENT_ONLY' && car.dailyPrice > 0;
   const saleStatusUp = (car?.saleStatus ?? '').toUpperCase();
   const canBuy =
     !!car &&
-    (listingType === 'SALE_ONLY' || listingType === 'BOTH') &&
+    listingType === 'SALE_ONLY' &&
     saleStatusUp === 'AVAILABLE' &&
     (car.salePrice ?? 0) > 0;
   /** Khớp backend: xe niêm yết bán, còn AVAILABLE hoặc RESERVED, có giá — có thể đặt lịch xem (không cần trùng canBuy). */
   const canScheduleViewing =
     !!car &&
-    (listingType === 'SALE_ONLY' || listingType === 'BOTH') &&
+    listingType === 'SALE_ONLY' &&
     (saleStatusUp === 'AVAILABLE' || saleStatusUp === 'RESERVED') &&
     (car.salePrice ?? 0) > 0;
 

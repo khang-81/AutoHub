@@ -103,7 +103,13 @@ CREATE TABLE [dbo].[cars] (
     [color_id]         INT            NOT NULL,
     CONSTRAINT [PK_cars] PRIMARY KEY CLUSTERED ([id] ASC),
     CONSTRAINT [FK_cars_models] FOREIGN KEY ([model_id]) REFERENCES [dbo].[models] ([id]),
-    CONSTRAINT [FK_cars_colors] FOREIGN KEY ([color_id]) REFERENCES [dbo].[colors] ([id])
+    CONSTRAINT [FK_cars_colors] FOREIGN KEY ([color_id]) REFERENCES [dbo].[colors] ([id]),
+    CONSTRAINT [CK_cars_listing_type] CHECK ([listing_type] IN (N'RENT_ONLY', N'SALE_ONLY')),
+    CONSTRAINT [CK_cars_rent_price_rule] CHECK (
+        ([listing_type] = N'RENT_ONLY' AND [daily_price] > 0 AND [sale_price] IS NULL AND [sale_status] IS NULL)
+        OR
+        ([listing_type] = N'SALE_ONLY' AND ([daily_price] = 0 OR [daily_price] IS NULL) AND [sale_price] > 0 AND [sale_status] IN (N'AVAILABLE', N'RESERVED', N'SOLD'))
+    )
 );
 
 /* ---------- customers, corporate_customers ---------- */
@@ -380,48 +386,78 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[corporate_customers] cc INNER JOIN [dbo].[us
     FROM [dbo].[users] WHERE [email] = N'corp@autohub.local';
 GO
 
-/* Xe mẫu: thuê / bán / cả hai — biển không có khoảng (khớp normalize phía API) */
-IF NOT EXISTS (SELECT 1 FROM [dbo].[cars] WHERE [plate] = N'29A11111')
-    INSERT INTO [dbo].[cars] ([created_date], [model_year], [service_city], [plate], [min_findeks_rate], [kilometer], [daily_price], [listing_type], [sale_price], [sale_status], [image_path], [model_id], [color_id])
-    SELECT CAST(GETDATE() AS DATE), 2023, N'Hà Nội', N'29A11111', 500, 18500, 950000, N'RENT_ONLY', NULL, NULL, NULL,
-           m.[id], col.[id]
-    FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[brand_id] = b.[id] AND b.[name] = N'Toyota' AND m.[name] = N'Camry'
-    CROSS JOIN (SELECT TOP 1 [id] FROM [dbo].[colors] WHERE [name] = N'Trắng') col;
+/* Xe mẫu reset đầy đủ: 20 xe thuê + 20 xe mua (mỗi xe đúng 1 vai trò) */
+DELETE FROM [dbo].[viewing_appointments];
+DELETE FROM [dbo].[reviews];
+DELETE FROM [dbo].[invoices];
+DELETE FROM [dbo].[rentals];
+DELETE FROM [dbo].[sale_orders];
+DELETE FROM [dbo].[cars];
+DBCC CHECKIDENT ('[dbo].[cars]', RESEED, 0);
 
-IF NOT EXISTS (SELECT 1 FROM [dbo].[cars] WHERE [plate] = N'29A22222')
-    INSERT INTO [dbo].[cars] ([created_date], [model_year], [service_city], [plate], [min_findeks_rate], [kilometer], [daily_price], [listing_type], [sale_price], [sale_status], [image_path], [model_id], [color_id])
-    SELECT CAST(GETDATE() AS DATE), 2022, N'Hà Nội', N'29A22222', 450, 22000, 720000, N'RENT_ONLY', NULL, NULL, NULL,
-           m.[id], col.[id]
-    FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[brand_id] = b.[id] AND b.[name] = N'Honda' AND m.[name] = N'City'
-    CROSS JOIN (SELECT TOP 1 [id] FROM [dbo].[colors] WHERE [name] = N'Bạc') col;
+INSERT INTO [dbo].[cars]
+([created_date], [model_year], [service_city], [plate], [min_findeks_rate], [kilometer], [daily_price], [listing_type], [sale_price], [sale_status], [image_path], [model_id], [color_id])
+SELECT
+    CAST(GETDATE() AS DATE),
+    src.model_year,
+    N'Hà Nội',
+    src.plate,
+    src.min_findeks_rate,
+    src.kilometer,
+    src.daily_price,
+    src.listing_type,
+    src.sale_price,
+    src.sale_status,
+    src.image_path,
+    m.id,
+    c.id
+FROM (
+    VALUES
+      (N'29A11111', 2023, 500, 18500,  950000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=1200&q=80', N'Toyota',  N'Camry', N'Trắng'),
+      (N'29A11112', 2022, 450, 22000,  720000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1549924231-f129b911e442?w=1200&q=80', N'Honda',   N'City',  N'Bạc'),
+      (N'29A11113', 2021, 400, 32000,  680000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=1200&q=80', N'Toyota',  N'Vios',  N'Đen'),
+      (N'29A11114', 2024, 550, 12000, 1100000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1200&q=80', N'Mazda',   N'CX-5',  N'Đỏ'),
+      (N'29A11115', 2023, 520, 16000,  990000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1493238792000-8113da705763?w=1200&q=80', N'VinFast', N'VF e34',N'Xanh dương'),
+      (N'29A11116', 2022, 480, 26000,  830000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1200&q=80', N'Toyota',  N'Camry', N'Bạc'),
+      (N'29A11117', 2021, 430, 34000,  700000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=1200&q=80', N'Honda',   N'City',  N'Trắng'),
+      (N'29A11118', 2020, 380, 41000,  620000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1462396881884-de2c07cb95ed?w=1200&q=80', N'Toyota',  N'Vios',  N'Đen'),
+      (N'29A11119', 2024, 560,  9000, 1200000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?w=1200&q=80', N'Mazda',   N'CX-5',  N'Đỏ'),
+      (N'29A11120', 2023, 510, 15000,  960000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1489824904134-891ab64532f1?w=1200&q=80', N'VinFast', N'VF e34',N'Xanh dương'),
+      (N'29A11121', 2022, 470, 23000,  780000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1542282088-fe8426682b8f?w=1200&q=80', N'Toyota',  N'Camry', N'Trắng'),
+      (N'29A11122', 2021, 420, 33000,  690000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=1200&q=80', N'Honda',   N'City',  N'Bạc'),
+      (N'29A11123', 2020, 390, 45000,  610000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1553440569-bcc63803a83d?w=1200&q=80', N'Toyota',  N'Vios',  N'Đen'),
+      (N'29A11124', 2024, 570,  7000, 1250000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=1200&q=80', N'Mazda',   N'CX-5',  N'Đỏ'),
+      (N'29A11125', 2023, 530, 13000, 1020000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=1200&q=80', N'VinFast', N'VF e34',N'Xanh dương'),
+      (N'29A11126', 2022, 490, 21000,  840000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1532581140115-3e355d1ed1de?w=1200&q=80', N'Toyota',  N'Camry', N'Bạc'),
+      (N'29A11127', 2021, 440, 30000,  730000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1522932467653-e48f79727abf?w=1200&q=80', N'Honda',   N'City',  N'Trắng'),
+      (N'29A11128', 2020, 400, 39000,  640000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1541443131876-44b03de101c5?w=1200&q=80', N'Toyota',  N'Vios',  N'Đen'),
+      (N'29A11129', 2024, 580,  6000, 1280000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1563720223185-11003d516935?w=1200&q=80', N'Mazda',   N'CX-5',  N'Đỏ'),
+      (N'29A11130', 2023, 540, 11000, 1050000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1551830820-330a71b99659?w=1200&q=80', N'VinFast', N'VF e34',N'Xanh dương'),
 
-IF NOT EXISTS (SELECT 1 FROM [dbo].[cars] WHERE [plate] = N'51K88888')
-    INSERT INTO [dbo].[cars] ([created_date], [model_year], [service_city], [plate], [min_findeks_rate], [kilometer], [daily_price], [listing_type], [sale_price], [sale_status], [image_path], [model_id], [color_id])
-    SELECT CAST(GETDATE() AS DATE), 2024, N'Hà Nội', N'51K88888', 0, 8000, 0, N'SALE_ONLY', 685000000, N'AVAILABLE', NULL,
-           m.[id], col.[id]
-    FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[brand_id] = b.[id] AND b.[name] = N'VinFast' AND m.[name] = N'VF e34'
-    CROSS JOIN (SELECT TOP 1 [id] FROM [dbo].[colors] WHERE [name] = N'Đỏ') col;
-
-IF NOT EXISTS (SELECT 1 FROM [dbo].[cars] WHERE [plate] = N'30F77777')
-    INSERT INTO [dbo].[cars] ([created_date], [model_year], [service_city], [plate], [min_findeks_rate], [kilometer], [daily_price], [listing_type], [sale_price], [sale_status], [image_path], [model_id], [color_id])
-    SELECT CAST(GETDATE() AS DATE), 2023, N'Hà Nội', N'30F77777', 0, 5000, 0, N'SALE_ONLY', 920000000, N'SOLD', NULL,
-           m.[id], col.[id]
-    FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[brand_id] = b.[id] AND b.[name] = N'Mazda' AND m.[name] = N'CX-5'
-    CROSS JOIN (SELECT TOP 1 [id] FROM [dbo].[colors] WHERE [name] = N'Xanh dương') col;
-
-IF NOT EXISTS (SELECT 1 FROM [dbo].[cars] WHERE [plate] = N'29A33333')
-    INSERT INTO [dbo].[cars] ([created_date], [model_year], [service_city], [plate], [min_findeks_rate], [kilometer], [daily_price], [listing_type], [sale_price], [sale_status], [image_path], [model_id], [color_id])
-    SELECT CAST(GETDATE() AS DATE), 2024, N'Hà Nội', N'29A33333', 550, 12000, 1100000, N'BOTH', 1250000000, N'AVAILABLE', NULL,
-           m.[id], col.[id]
-    FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[brand_id] = b.[id] AND b.[name] = N'Toyota' AND m.[name] = N'Vios'
-    CROSS JOIN (SELECT TOP 1 [id] FROM [dbo].[colors] WHERE [name] = N'Đen') col;
-
-IF NOT EXISTS (SELECT 1 FROM [dbo].[cars] WHERE [plate] = N'29A55555')
-    INSERT INTO [dbo].[cars] ([created_date], [model_year], [service_city], [plate], [min_findeks_rate], [kilometer], [daily_price], [listing_type], [sale_price], [sale_status], [image_path], [model_id], [color_id])
-    SELECT CAST(GETDATE() AS DATE), 2022, N'Hà Nội', N'29A55555', 500, 31000, 650000, N'BOTH', 480000000, N'RESERVED', NULL,
-           m.[id], col.[id]
-    FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[brand_id] = b.[id] AND b.[name] = N'Honda' AND m.[name] = N'City'
-    CROSS JOIN (SELECT TOP 1 [id] FROM [dbo].[colors] WHERE [name] = N'Trắng') col;
+      (N'30F77777', 2023,   0,  5000,       0.0, N'SALE_ONLY', 920000000.0, N'SOLD',      N'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=1200&q=80', N'Mazda',   N'CX-5',  N'Xanh dương'),
+      (N'51K88888', 2024,   0,  8000,       0.0, N'SALE_ONLY', 685000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=1200&q=80', N'VinFast', N'VF e34',N'Đỏ'),
+      (N'30A20001', 2022,   0, 18000,       0.0, N'SALE_ONLY', 790000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1200&q=80', N'Toyota',  N'Camry', N'Đen'),
+      (N'30A20002', 2021,   0, 26000,       0.0, N'SALE_ONLY', 510000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1549924231-f129b911e442?w=1200&q=80', N'Honda',   N'City',  N'Trắng'),
+      (N'30A20003', 2020,   0, 35000,       0.0, N'SALE_ONLY', 430000000.0, N'RESERVED',  N'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=1200&q=80', N'Toyota',  N'Vios',  N'Bạc'),
+      (N'30A20004', 2024,   0,  7000,       0.0, N'SALE_ONLY', 970000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=1200&q=80', N'Mazda',   N'CX-5',  N'Đỏ'),
+      (N'30A20005', 2023,   0, 12000,       0.0, N'SALE_ONLY', 710000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=1200&q=80', N'VinFast', N'VF e34',N'Xanh dương'),
+      (N'30A20006', 2022,   0, 19000,       0.0, N'SALE_ONLY', 760000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1489824904134-891ab64532f1?w=1200&q=80', N'Toyota',  N'Camry', N'Bạc'),
+      (N'30A20007', 2021,   0, 24000,       0.0, N'SALE_ONLY', 495000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1532581140115-3e355d1ed1de?w=1200&q=80', N'Honda',   N'City',  N'Đen'),
+      (N'30A20008', 2020,   0, 32000,       0.0, N'SALE_ONLY', 415000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1522932467653-e48f79727abf?w=1200&q=80', N'Toyota',  N'Vios',  N'Trắng'),
+      (N'30A20009', 2024,   0,  6000,       0.0, N'SALE_ONLY', 990000000.0, N'RESERVED',  N'https://images.unsplash.com/photo-1563720223185-11003d516935?w=1200&q=80', N'Mazda',   N'CX-5',  N'Xanh dương'),
+      (N'30A20010', 2023,   0, 11000,       0.0, N'SALE_ONLY', 705000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1551830820-330a71b99659?w=1200&q=80', N'VinFast', N'VF e34',N'Đỏ'),
+      (N'30A20011', 2022,   0, 21000,       0.0, N'SALE_ONLY', 745000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1542282088-fe8426682b8f?w=1200&q=80', N'Toyota',  N'Camry', N'Trắng'),
+      (N'30A20012', 2021,   0, 28000,       0.0, N'SALE_ONLY', 485000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=1200&q=80', N'Honda',   N'City',  N'Bạc'),
+      (N'30A20013', 2020,   0, 36000,       0.0, N'SALE_ONLY', 405000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1553440569-bcc63803a83d?w=1200&q=80', N'Toyota',  N'Vios',  N'Đen'),
+      (N'30A20014', 2024,   0,  5000,       0.0, N'SALE_ONLY', 1010000000.0,N'AVAILABLE', N'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?w=1200&q=80', N'Mazda',   N'CX-5',  N'Đỏ'),
+      (N'30A20015', 2023,   0, 14000,       0.0, N'SALE_ONLY', 695000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1200&q=80', N'VinFast', N'VF e34',N'Xanh dương'),
+      (N'30A20016', 2022,   0, 22000,       0.0, N'SALE_ONLY', 735000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1493238792000-8113da705763?w=1200&q=80', N'Toyota',  N'Camry', N'Đen'),
+      (N'30A20017', 2021,   0, 30000,       0.0, N'SALE_ONLY', 475000000.0, N'RESERVED',  N'https://images.unsplash.com/photo-1462396881884-de2c07cb95ed?w=1200&q=80', N'Honda',   N'City',  N'Trắng'),
+      (N'30A20018', 2020,   0, 38000,       0.0, N'SALE_ONLY', 398000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1541443131876-44b03de101c5?w=1200&q=80', N'Toyota',  N'Vios',  N'Bạc')
+) AS src(plate, model_year, min_findeks_rate, kilometer, daily_price, listing_type, sale_price, sale_status, image_path, brand_name, model_name, color_name)
+JOIN [dbo].[brands] b ON b.[name] = src.brand_name
+JOIN [dbo].[models] m ON m.[brand_id] = b.[id] AND m.[name] = src.model_name
+JOIN [dbo].[colors] c ON c.[name] = src.color_name;
 GO
 
 /* user_documents (KYC mẫu) */

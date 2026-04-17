@@ -85,7 +85,7 @@ const Home = () => {
     return cars
       .filter((c) => {
         const lt = (c.listingType || 'RENT_ONLY').toUpperCase();
-        return (lt === 'RENT_ONLY' || lt === 'BOTH') && c.dailyPrice > 0;
+        return lt === 'RENT_ONLY' && c.dailyPrice > 0;
       })
       .slice(0, 6);
   }, [cars]);

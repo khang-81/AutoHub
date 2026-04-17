@@ -47,7 +47,7 @@ export interface Color {
 }
 
 // ─── Car ────────────────────────────────────────────────────────────────────
-export type ListingType = 'RENT_ONLY' | 'SALE_ONLY' | 'BOTH';
+export type ListingType = 'RENT_ONLY' | 'SALE_ONLY';
 
 export interface Car {
   id: number;
