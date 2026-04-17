@@ -48,6 +48,8 @@ import ManageReports from './pages/admin/ManageReports';
 import ManageKyc from './pages/admin/ManageKyc';
 import ManageSaleOrders from './pages/admin/ManageSaleOrders';
 import ManageReviews from './pages/admin/ManageReviews';
+import ManageViewingAppointments from './pages/admin/ManageViewingAppointments';
+import MyViewingAppointments from './pages/user/MyViewingAppointments';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -101,6 +103,7 @@ function RoutesWithChatbot() {
           <Route path="sale-orders" element={<MySaleOrders />} />
           <Route path="change-password" element={<ChangePassword />} />
           <Route path="kyc" element={<KycVerification />} />
+          <Route path="viewing-appointments" element={<MyViewingAppointments />} />
         </Route>
 
         {/* Admin routes — splat `/admin/*` khớp React Router 7 + mọi đường dẫn con */}
@@ -121,6 +124,7 @@ function RoutesWithChatbot() {
           <Route path="kyc" element={<ManageKyc />} />
           <Route path="sale-orders" element={<ManageSaleOrders />} />
           <Route path="reviews" element={<ManageReviews />} />
+          <Route path="viewing-appointments" element={<ManageViewingAppointments />} />
         </Route>
 
         {/* Catch all */}

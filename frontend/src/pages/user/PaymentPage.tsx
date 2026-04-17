@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CreditCard, QrCode, Landmark, ArrowLeft } from 'lucide-react';
 import { getRentalByIdApi, submitTransferApi } from '../../api/rentals';
 import { useToast } from '../../components/ui/Toast';
@@ -19,6 +19,7 @@ const BANK_INFO = {
 const PaymentPage = () => {
   const { rentalId } = useParams<{ rentalId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { showToast } = useToast();
 
   const { data: rental, isLoading } = useQuery<Rental>({
@@ -165,7 +166,14 @@ const PaymentPage = () => {
             <strong> Xác nhận đơn hàng, chưa thanh toán</strong>.
           </p>
           <div className="mt-5">
-            <button onClick={() => navigate('/dashboard/rentals')} className="btn-primary inline-flex items-center gap-2">
+            <button
+              onClick={() => {
+                queryClient.invalidateQueries({ queryKey: ['myRentals'] });
+                queryClient.invalidateQueries({ queryKey: ['myInvoices'] });
+                navigate('/dashboard/rentals');
+              }}
+              className="btn-primary inline-flex items-center gap-2"
+            >
               <ArrowLeft className="w-4 h-4" />
               Về lịch sử đơn
             </button>

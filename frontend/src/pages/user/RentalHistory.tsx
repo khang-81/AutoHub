@@ -24,6 +24,7 @@ const RentalHistory = () => {
   const { data: rentals = [], isLoading } = useQuery<RentalByUser[]>({
     queryKey: ['myRentals'],
     queryFn: getRentalsByUserIdApi,
+    refetchOnMount: 'always',
   });
 
   const { data: invoices = [] } = useQuery<Invoice[]>({

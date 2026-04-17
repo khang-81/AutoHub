@@ -72,15 +72,17 @@ public class UserDocumentManager implements UserDocumentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<UserDocumentResponse> listByUser(int userId) {
-        return userDocumentRepository.findByUser_Id(userId).stream()
+        return userDocumentRepository.findByUser_IdWithUser(userId).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<UserDocumentResponse> listPendingForAdmin() {
-        return userDocumentRepository.findByStatus(KycConstants.DOC_PENDING).stream()
+        return userDocumentRepository.findByStatusWithUser(KycConstants.DOC_PENDING).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
