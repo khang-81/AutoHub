@@ -33,11 +33,11 @@ public class Car extends BaseEntity {
     @Column(name="daily_price")
     private Float dailyPrice;
 
-    /** RENT_ONLY | SALE_ONLY | BOTH */
+    /** RENT_ONLY | SALE_ONLY */
     @Column(name = "listing_type", length = 16)
     private String listingType;
 
-    /** Giá bán (áp dụng SALE_ONLY hoặc BOTH) */
+    /** Giá bán (áp dụng SALE_ONLY) */
     @Column(name = "sale_price")
     private Float salePrice;
 

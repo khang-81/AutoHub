@@ -46,13 +46,11 @@ public final class CarSpecifications {
             switch (list) {
                 case "rent" -> predicates.add(cb.or(
                         cb.equal(root.get("listingType"), "RENT_ONLY"),
-                        cb.equal(root.get("listingType"), "BOTH"),
                         cb.isNull(root.get("listingType")),
                         cb.equal(root.get("listingType"), "")
                 ));
                 case "sale" -> predicates.add(cb.or(
-                        cb.equal(root.get("listingType"), "SALE_ONLY"),
-                        cb.equal(root.get("listingType"), "BOTH")
+                        cb.equal(root.get("listingType"), "SALE_ONLY")
                 ));
                 default -> {
                 }

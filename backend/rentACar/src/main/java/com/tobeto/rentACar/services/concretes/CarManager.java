@@ -131,27 +131,17 @@ public class CarManager implements CarService {
                     throw new BusinessException("Giá thuê/ngày phải lớn hơn 0.");
                 }
                 request.setSalePrice(null);
+                request.setDailyPrice(request.getDailyPrice());
                 request.setListingType(lt);
             }
             case ListingConstants.LISTING_SALE_ONLY -> {
                 if (request.getSalePrice() == null || request.getSalePrice() <= 0) {
                     throw new BusinessException("Giá bán phải lớn hơn 0.");
                 }
-                if (request.getDailyPrice() == null) {
-                    request.setDailyPrice(0f);
-                }
+                request.setDailyPrice(0f);
                 request.setListingType(lt);
             }
-            case ListingConstants.LISTING_BOTH -> {
-                if (request.getDailyPrice() == null || request.getDailyPrice() <= 0) {
-                    throw new BusinessException("Giá thuê/ngày phải lớn hơn 0.");
-                }
-                if (request.getSalePrice() == null || request.getSalePrice() <= 0) {
-                    throw new BusinessException("Giá bán phải lớn hơn 0.");
-                }
-                request.setListingType(lt);
-            }
-            default -> throw new BusinessException("listingType không hợp lệ (RENT_ONLY, SALE_ONLY, BOTH).");
+            default -> throw new BusinessException("listingType không hợp lệ (RENT_ONLY, SALE_ONLY).");
         }
     }
 
@@ -165,27 +155,17 @@ public class CarManager implements CarService {
                     throw new BusinessException("Giá thuê/ngày phải lớn hơn 0.");
                 }
                 request.setSalePrice(null);
+                request.setDailyPrice(request.getDailyPrice());
                 request.setListingType(lt);
             }
             case ListingConstants.LISTING_SALE_ONLY -> {
                 if (request.getSalePrice() == null || request.getSalePrice() <= 0) {
                     throw new BusinessException("Giá bán phải lớn hơn 0.");
                 }
-                if (request.getDailyPrice() == null) {
-                    request.setDailyPrice(0f);
-                }
+                request.setDailyPrice(0f);
                 request.setListingType(lt);
             }
-            case ListingConstants.LISTING_BOTH -> {
-                if (request.getDailyPrice() == null || request.getDailyPrice() <= 0) {
-                    throw new BusinessException("Giá thuê/ngày phải lớn hơn 0.");
-                }
-                if (request.getSalePrice() == null || request.getSalePrice() <= 0) {
-                    throw new BusinessException("Giá bán phải lớn hơn 0.");
-                }
-                request.setListingType(lt);
-            }
-            default -> throw new BusinessException("listingType không hợp lệ (RENT_ONLY, SALE_ONLY, BOTH).");
+            default -> throw new BusinessException("listingType không hợp lệ (RENT_ONLY, SALE_ONLY).");
         }
     }
 

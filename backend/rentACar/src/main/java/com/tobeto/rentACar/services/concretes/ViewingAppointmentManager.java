@@ -73,7 +73,7 @@ public class ViewingAppointmentManager implements ViewingAppointmentService {
 
     private void assertCarEligibleForViewing(Car car) {
         String lt = car.getListingType() != null ? car.getListingType().toUpperCase() : "";
-        boolean forSale = ListingConstants.LISTING_SALE_ONLY.equals(lt) || ListingConstants.LISTING_BOTH.equals(lt);
+        boolean forSale = ListingConstants.LISTING_SALE_ONLY.equals(lt);
         if (!forSale) {
             throw new BusinessException("Xe này không niêm yết bán — không thể đặt lịch xem.");
         }

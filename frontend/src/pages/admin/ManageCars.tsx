@@ -20,7 +20,7 @@ const schema = z
     plate: z.string().min(1, 'Nhập biển số'),
     modelYear: z.number().min(2005).max(2024),
     kilometer: z.number().min(0),
-    listingType: z.enum(['RENT_ONLY', 'SALE_ONLY', 'BOTH']),
+    listingType: z.enum(['RENT_ONLY', 'SALE_ONLY']),
     dailyPrice: z.number().min(0),
     salePrice: z.number().optional().nullable(),
     modelId: z.number().min(1, 'Chọn model'),
@@ -29,12 +29,12 @@ const schema = z
     imagePath: z.string().min(1, 'Nhập URL ảnh'),
   })
   .superRefine((data, ctx) => {
-    if (data.listingType === 'RENT_ONLY' || data.listingType === 'BOTH') {
+    if (data.listingType === 'RENT_ONLY') {
       if (!data.dailyPrice || data.dailyPrice < 1) {
         ctx.addIssue({ code: 'custom', message: 'Giá thuê/ngày phải > 0', path: ['dailyPrice'] });
       }
     }
-    if (data.listingType === 'SALE_ONLY' || data.listingType === 'BOTH') {
+    if (data.listingType === 'SALE_ONLY') {
       const sp = data.salePrice ?? 0;
       if (sp < 1) {
         ctx.addIssue({ code: 'custom', message: 'Giá bán phải > 0', path: ['salePrice'] });
@@ -121,14 +121,14 @@ const ManageCars = () => {
 
   const openEdit = (car: CarType) => {
     setEditCar(car);
-    const lt = (car.listingType || 'RENT_ONLY').toUpperCase() as 'RENT_ONLY' | 'SALE_ONLY' | 'BOTH';
+    const lt = (car.listingType || 'RENT_ONLY').toUpperCase() as 'RENT_ONLY' | 'SALE_ONLY';
     reset({
       plate: car.plate,
       modelYear: car.modelYear,
       kilometer: car.kilometer,
       dailyPrice: car.dailyPrice,
       salePrice: car.salePrice ?? undefined,
-      listingType: lt === 'SALE_ONLY' || lt === 'BOTH' || lt === 'RENT_ONLY' ? lt : 'RENT_ONLY',
+      listingType: lt === 'SALE_ONLY' || lt === 'RENT_ONLY' ? lt : 'RENT_ONLY',
       modelId: car.model?.id,
       colorId: car.color?.id,
       minFindeksRate: car.minFindeksRate,
@@ -147,8 +147,8 @@ const ManageCars = () => {
 
   const moduleCars = cars.filter((c) => {
     const lt = (c.listingType || 'RENT_ONLY').toUpperCase();
-    if (isSaleModule) return lt === 'SALE_ONLY' || lt === 'BOTH';
-    return lt === 'RENT_ONLY' || lt === 'BOTH';
+    if (isSaleModule) return lt === 'SALE_ONLY';
+    return lt === 'RENT_ONLY';
   });
 
   const filtered = moduleCars.filter((c) => {
@@ -381,12 +381,10 @@ const ManageCars = () => {
               {isSaleModule ? (
                 <>
                   <option value="SALE_ONLY">Chỉ bán</option>
-                  <option value="BOTH">Thuê & bán</option>
                 </>
               ) : (
                 <>
                   <option value="RENT_ONLY">Chỉ cho thuê</option>
-                  <option value="BOTH">Thuê & bán</option>
                 </>
               )}
             </select>

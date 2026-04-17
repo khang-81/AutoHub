@@ -10,7 +10,6 @@ public final class ListingConstants {
 
     public static final String LISTING_RENT_ONLY = "RENT_ONLY";
     public static final String LISTING_SALE_ONLY = "SALE_ONLY";
-    public static final String LISTING_BOTH = "BOTH";
 
     public static final String SALE_AVAILABLE = "AVAILABLE";
     public static final String SALE_RESERVED = "RESERVED";
