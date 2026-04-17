@@ -6,6 +6,7 @@ import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -37,6 +38,16 @@ public class User extends BaseEntity implements UserDetails {
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> authorities;
 
+    /** KYC aggregate: NOT_SUBMITTED | PENDING | APPROVED | REJECTED */
+    @Column(name = "kyc_status", length = 32)
+    @Builder.Default
+    private String kycStatus = "NOT_SUBMITTED";
+
+    @Column(name = "password_reset_token", length = 64)
+    private String passwordResetToken;
+
+    @Column(name = "password_reset_expires")
+    private Instant passwordResetExpires;
 
     @Override
     public String getUsername() {

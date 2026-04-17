@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface RentalRepository extends JpaRepository<Rental, Integer> {
 
@@ -14,8 +15,11 @@ public interface RentalRepository extends JpaRepository<Rental, Integer> {
 
     @Query("select case when count(r)>0 then true else false end from Rental r " +
             "where r.car.id = :carId and r.startDate <= :endDate and r.endDate >= :startDate " +
-            "and (r.rentalStatus is null or r.rentalStatus <> 'COMPLETED')")
+            "and (r.rentalStatus is null or (r.rentalStatus <> 'COMPLETED' and r.rentalStatus <> 'CANCELLED'))")
     boolean existsActiveOverlap(@Param("carId") int carId,
                                 @Param("startDate") java.time.LocalDate startDate,
                                 @Param("endDate") java.time.LocalDate endDate);
+
+    @Query("select u.email from Rental r join r.user u where r.id = :id")
+    Optional<String> findUserEmailByRentalId(@Param("id") int id);
 }

@@ -14,4 +14,7 @@ public class GetUserByNameResponse {
     private String email;
 
     private String password;
+
+    /** NOT_SUBMITTED | PENDING | APPROVED | REJECTED */
+    private String kycStatus;
 }

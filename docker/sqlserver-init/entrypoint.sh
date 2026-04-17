@@ -1,0 +1,147 @@
+#!/bin/bash
+set -euo pipefail
+SQLCMD=/opt/mssql-tools18/bin/sqlcmd
+COMMON=( -S "$DB_HOST" -U sa -P "$MSSQL_SA_PASSWORD" -C )
+
+# Không dùng -b: recovery / DB chưa ONLINE có thể làm lệnh lỗi tạm thời.
+run_master() {
+  "$SQLCMD" "${COMMON[@]}" -d master "$@"
+}
+
+echo "Waiting for SQL Server at ${DB_HOST} (login to [master])..."
+for i in $(seq 1 90); do
+  if run_master -Q "SELECT 1" -o /dev/null 2>/dev/null; then
+    echo "SQL Server accepts connections."
+    break
+  fi
+  if [ "$i" -eq 90 ]; then
+    echo "Timeout waiting for SQL Server."
+    exit 1
+  fi
+  sleep 2
+done
+
+echo "Waiting for server recovery to settle..."
+sleep 5
+
+echo "Ensuring database [autohub] exists..."
+run_master -b -Q "IF DB_ID(N'autohub') IS NULL CREATE DATABASE [autohub];"
+
+echo "Waiting for [autohub] to be ONLINE (state=0)..."
+for i in $(seq 1 60); do
+  ST=$(run_master -h -1 -W -Q "SET NOCOUNT ON; SELECT CAST(state AS VARCHAR(2)) FROM sys.databases WHERE name = N'autohub';" 2>/dev/null | tail -n 1 | tr -d '[:space:]' || true)
+  if [ "$ST" = "0" ]; then
+    echo "Database [autohub] is ONLINE."
+    break
+  fi
+  if [ "$i" -eq 60 ]; then
+    echo "Timeout waiting for [autohub] ONLINE (last state='$ST')."
+    exit 1
+  fi
+  sleep 2
+done
+
+# Kiểm tra schema từ [master] — không login -d autohub (tránh 18456 / Msg 904 khi recovery).
+set +e
+SCHEMA_LINE=$(run_master -h -1 -W -Q "SET NOCOUNT ON; SELECT CASE WHEN EXISTS (SELECT 1 FROM autohub.INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = N'dbo' AND TABLE_NAME = N'roles') THEN 1 ELSE 0 END;" 2>/dev/null | tail -n 1 | tr -d '[:space:]')
+set -e
+SCHEMA_LINE=${SCHEMA_LINE:-0}
+
+if [ "$SCHEMA_LINE" != "1" ]; then
+  echo "Applying /autohub-full-schema.sql (schema + seed)..."
+  # Chạy script qua kết nối [master] + retry ngắn để tránh lỗi tạm thời Msg 904 lúc DB vừa ONLINE.
+  ok=0
+  for i in $(seq 1 8); do
+    if run_master -b -i /autohub-full-schema.sql; then
+      ok=1
+      break
+    fi
+    echo "Seed attempt $i failed; retrying in 2s..."
+    sleep 2
+  done
+  if [ "$ok" -ne 1 ]; then
+    echo "Failed to initialize database [autohub] after retries."
+    exit 1
+  fi
+  echo "Database [autohub] initialized."
+else
+  echo "Database [autohub] already has schema; skipping SQL init."
+  echo "Applying safe incremental migrations (if needed)..."
+  run_master -b -Q "
+    USE [autohub];
+
+    IF COL_LENGTH('dbo.reviews', 'sale_order_id') IS NULL
+    BEGIN
+      ALTER TABLE dbo.reviews ADD sale_order_id INT NULL;
+    END;
+
+    IF EXISTS (
+      SELECT 1
+      FROM sys.columns
+      WHERE object_id = OBJECT_ID('dbo.reviews')
+        AND name = 'rental_id'
+        AND is_nullable = 0
+    )
+    BEGIN
+      ALTER TABLE dbo.reviews ALTER COLUMN rental_id INT NULL;
+    END;
+
+    IF EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'UQ_reviews_rental_id')
+    BEGIN
+      ALTER TABLE dbo.reviews DROP CONSTRAINT UQ_reviews_rental_id;
+    END;
+
+    IF EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'UQ_reviews_sale_order_id')
+    BEGIN
+      ALTER TABLE dbo.reviews DROP CONSTRAINT UQ_reviews_sale_order_id;
+    END;
+
+    IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_reviews_sale_orders')
+    BEGIN
+      ALTER TABLE dbo.reviews
+      ADD CONSTRAINT FK_reviews_sale_orders FOREIGN KEY (sale_order_id) REFERENCES dbo.sale_orders(id);
+    END;
+
+    IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_reviews_rental_xor_sale_order')
+    BEGIN
+      ALTER TABLE dbo.reviews DROP CONSTRAINT CK_reviews_rental_xor_sale_order;
+    END;
+    EXEC('ALTER TABLE dbo.reviews WITH NOCHECK
+      ADD CONSTRAINT CK_reviews_rental_xor_sale_order CHECK (
+        (rental_id IS NOT NULL AND sale_order_id IS NULL)
+        OR (rental_id IS NULL AND sale_order_id IS NOT NULL)
+      )');
+
+    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_reviews_rental_id_not_null' AND object_id = OBJECT_ID('dbo.reviews'))
+    BEGIN
+      EXEC('SET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON; CREATE UNIQUE INDEX UX_reviews_rental_id_not_null ON dbo.reviews(rental_id) WHERE rental_id IS NOT NULL');
+    END;
+
+    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_reviews_sale_order_id_not_null' AND object_id = OBJECT_ID('dbo.reviews'))
+    BEGIN
+      EXEC('SET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON; CREATE UNIQUE INDEX UX_reviews_sale_order_id_not_null ON dbo.reviews(sale_order_id) WHERE sale_order_id IS NOT NULL');
+    END;
+
+    IF COL_LENGTH('dbo.users', 'password_reset_token') IS NULL
+    BEGIN
+      ALTER TABLE dbo.users ADD password_reset_token NVARCHAR(64) NULL;
+    END;
+
+    IF COL_LENGTH('dbo.users', 'password_reset_expires') IS NULL
+    BEGIN
+      ALTER TABLE dbo.users ADD password_reset_expires DATETIMEOFFSET(6) NULL;
+    END
+    ELSE IF EXISTS (
+      SELECT 1
+      FROM sys.columns c
+      INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
+      WHERE c.object_id = OBJECT_ID(N'dbo.users')
+        AND c.name = N'password_reset_expires'
+        AND t.name = N'datetime2'
+    )
+    BEGIN
+      ALTER TABLE dbo.users ALTER COLUMN password_reset_expires DATETIMEOFFSET(6) NULL;
+    END;
+  "
+  echo "Incremental migrations completed."
+fi

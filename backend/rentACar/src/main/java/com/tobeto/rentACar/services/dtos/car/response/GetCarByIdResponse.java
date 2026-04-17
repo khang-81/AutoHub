@@ -12,11 +12,22 @@ import lombok.NoArgsConstructor;
 public class GetCarByIdResponse {
     private Integer id;
     private short modelYear;
+    private String serviceCity;
     private String plate;
     private short minFindeksRate;
     private Long kilometer;
     private Float dailyPrice;
+
+    private String listingType;
+
+    private Float salePrice;
+
+    private String saleStatus;
+
     private String imagePath;
     private GetModelByIdResponse model;
     private GetColorByIdResponse color;
+
+    private Double averageRating;
+    private Integer reviewCount;
 }

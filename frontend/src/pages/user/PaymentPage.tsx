@@ -36,7 +36,7 @@ const PaymentPage = () => {
     },
     onError: (err: unknown) => {
       const e = err as { response?: { data?: { message?: string } } };
-      showToast(e?.response?.data?.message || 'Khong the gui xac nhan chuyen khoan', 'error');
+      showToast(e?.response?.data?.message || 'Không thể gửi xác nhận chuyển khoản', 'error');
     },
   });
 
@@ -48,23 +48,65 @@ const PaymentPage = () => {
   }, [rental]);
 
   if (isLoading) return <LoadingSpinner />;
-  if (!rental) return <div className="text-center text-gray-500">Khong tim thay don thue.</div>;
+  if (!rental) return <div className="text-center text-gray-500">Không tìm thấy đơn thuê.</div>;
+
+  const bankAwaitingTransfer =
+    rental.paymentMethod === 'BANK_TRANSFER' && rental.rentalStatus === 'PENDING_PAYMENT';
+
+  const insLabel =
+    !rental.insuranceCode || rental.insuranceCode === 'NONE'
+      ? 'Không mua thêm'
+      : rental.insuranceCode;
 
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-2xl shadow-sm p-6">
-        <h1 className="font-heading font-bold text-xl text-navy mb-1">Thanh toan don thue #{rental.id}</h1>
+        <h1 className="font-heading font-bold text-xl text-navy mb-1">Thanh toán đơn thuê #{rental.id}</h1>
         <p className="text-gray-500 text-sm">
-          Xe: {rental.car?.model?.brand?.name} {rental.car?.model?.name} - Bien so {rental.car?.plate}
+          Xe: {rental.car?.model?.brand?.name} {rental.car?.model?.name} — Biển {rental.car?.plate}
+          {rental.pickupDistrict ? ` — Nhận xe: ${rental.pickupDistrict}, Hà Nội` : ''}
         </p>
-        <p className="text-primary font-bold text-lg mt-2">Tong tien: {formatCurrency(rental.totalPrice)}</p>
+
+        <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50/80 p-4 space-y-2 text-sm">
+          <div className="flex justify-between text-gray-700">
+            <span>Tổng giá trị chuyến (thuê + bảo hiểm + phụ phí)</span>
+            <span className="font-semibold text-navy">{formatCurrency(rental.totalPrice)}</span>
+          </div>
+          {(rental.insuranceFeeAmount != null && rental.insuranceFeeAmount > 0) && (
+            <div className="flex justify-between text-gray-500 text-xs">
+              <span>Trong đó phí bảo hiểm ({insLabel})</span>
+              <span>{formatCurrency(rental.insuranceFeeAmount)}</span>
+            </div>
+          )}
+          {(rental.extraFeesAmount != null && rental.extraFeesAmount > 0) && (
+            <div className="flex justify-between text-gray-500 text-xs">
+              <span>Phụ phí khác</span>
+              <span>{formatCurrency(rental.extraFeesAmount)}</span>
+            </div>
+          )}
+          {rental.depositAmount != null && rental.depositAmount > 0 && (
+            <div className="flex justify-between text-amber-800 text-xs pt-2 border-t border-amber-100">
+              <span>Tiền cọc (tham khảo — xử lý theo chính sách khi nhận xe)</span>
+              <span className="font-medium">{formatCurrency(rental.depositAmount)}</span>
+            </div>
+          )}
+        </div>
+
+        <p className="text-primary font-bold text-lg mt-4">
+          Số tiền cần chuyển khoản (toàn bộ chuyến):{' '}
+          <span className="text-navy">{formatCurrency(rental.totalPrice)}</span>
+        </p>
+        <p className="text-xs text-gray-500 mt-2">
+          QR VietQR bên dưới quét đúng số tiền <strong>{formatCurrency(rental.totalPrice)}</strong> với nội dung{' '}
+          <strong>THUEXE-{rental.id}</strong>.
+        </p>
       </div>
 
-      {rental.paymentMethod === 'BANK_TRANSFER' ? (
+      {bankAwaitingTransfer ? (
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <div className="flex items-center gap-2 mb-4">
             <QrCode className="w-5 h-5 text-primary" />
-            <h2 className="font-semibold text-navy">Chuyen khoan ngan hang</h2>
+            <h2 className="font-semibold text-navy">Chuyển khoản ngân hàng</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -72,11 +114,11 @@ const PaymentPage = () => {
               <img src={qrUrl} alt="QR payment" className="w-56 h-56 object-contain" />
             </div>
             <div className="space-y-3 text-sm text-gray-700">
-              <p className="flex items-center gap-2"><Landmark className="w-4 h-4 text-primary" /> Ngan hang: {BANK_INFO.bankName}</p>
-              <p>Chu tai khoan: <strong>{BANK_INFO.accountName}</strong></p>
-              <p>So tai khoan: <strong>{BANK_INFO.accountNumberDisplay}</strong></p>
-              <p>Noi dung CK: <strong>THUEXE-{rental.id}</strong></p>
-              <p className="text-amber-600">Sau khi chuyen khoan, bam nut ben duoi de gui xac nhan cho admin.</p>
+              <p className="flex items-center gap-2"><Landmark className="w-4 h-4 text-primary" /> Ngân hàng: {BANK_INFO.bankName}</p>
+              <p>Chủ tài khoản: <strong>{BANK_INFO.accountName}</strong></p>
+              <p>Số tài khoản: <strong>{BANK_INFO.accountNumberDisplay}</strong></p>
+              <p>Nội dung CK: <strong>THUEXE-{rental.id}</strong></p>
+              <p className="text-amber-600">Sau khi chuyển khoản, bấm nút bên dưới để gửi xác nhận cho admin.</p>
             </div>
           </div>
 
@@ -86,19 +128,42 @@ const PaymentPage = () => {
               disabled={transferMutation.isPending}
               className="btn-primary min-w-[260px] text-center"
             >
-              {transferMutation.isPending ? 'Dang gui...' : 'Xác nhận chuyển khoản'}
+              {transferMutation.isPending ? 'Đang gửi...' : 'Xác nhận chuyển khoản'}
             </button>
           </div>
+        </div>
+      ) : rental.paymentMethod === 'BANK_TRANSFER' ? (
+        <div className="bg-white rounded-2xl shadow-sm p-6 space-y-3 text-sm text-gray-700">
+          <h2 className="font-semibold text-navy text-base">Trạng thái thanh toán chuyển khoản</h2>
+          {rental.rentalStatus === 'PENDING_ADMIN_CONFIRM' && (
+            <p>Đã gửi xác nhận chuyển khoản. Vui lòng chờ admin xác nhận đơn.</p>
+          )}
+          {rental.rentalStatus === 'CONFIRMED' && (
+            <p>Đơn đã được xác nhận. Chi tiết xem tại lịch sử thuê xe.</p>
+          )}
+          {rental.rentalStatus === 'COMPLETED' && (
+            <p>Chuyến thuê đã hoàn tất.</p>
+          )}
+          {rental.rentalStatus === 'CANCELLED' && (
+            <p>Đơn thuê đã hủy.</p>
+          )}
+          {!['PENDING_ADMIN_CONFIRM', 'CONFIRMED', 'COMPLETED', 'CANCELLED'].includes(rental.rentalStatus || '') && (
+            <p>Đơn không còn ở bước thanh toán trên trang này.</p>
+          )}
+          <button type="button" onClick={() => navigate('/dashboard/rentals')} className="btn-primary inline-flex items-center gap-2 mt-4">
+            <ArrowLeft className="w-4 h-4" />
+            Về lịch sử đơn
+          </button>
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <div className="flex items-center gap-2 mb-3">
             <CreditCard className="w-5 h-5 text-primary" />
-            <h2 className="font-semibold text-navy">Thanh toan tien mat khi nhan xe</h2>
+            <h2 className="font-semibold text-navy">Thanh toán tiền mặt khi nhận xe</h2>
           </div>
           <p className="text-gray-600">
-            Don cua ban da duoc tao. Trang thai hien tai:
-            <strong> Cho admin xac nhan, thanh toan khi nhan xe</strong>.
+            Đơn của bạn đã được tạo. Đơn sẽ ở trạng thái chờ admin xác nhận. Sau khi admin xác nhận, trạng thái sẽ là:
+            <strong> Xác nhận đơn hàng, chưa thanh toán</strong>.
           </p>
           <div className="mt-5">
             <button
@@ -110,7 +175,7 @@ const PaymentPage = () => {
               className="btn-primary inline-flex items-center gap-2"
             >
               <ArrowLeft className="w-4 h-4" />
-              Ve lich su thue xe
+              Về lịch sử đơn
             </button>
           </div>
         </div>

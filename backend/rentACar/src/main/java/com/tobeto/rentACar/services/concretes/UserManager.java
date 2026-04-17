@@ -25,7 +25,9 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.tobeto.rentACar.services.dtos.user.response.AuthorityItemResponse;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -56,6 +58,12 @@ public class UserManager implements UserService {
 
     @Override
     public Result add(User user) {
+        String email = user.getEmail() != null ? user.getEmail().trim() : "";
+        if (email.isEmpty()) {
+            throw new BusinessException("Email không hợp lệ.");
+        }
+        user.setEmail(email);
+        userBusinessRule.existsUserByEmail(email);
         userRepository.save(user);
         return new SuccessResult(messageService.getMessage(Messages.User.userRegisterSuccess));
     }
@@ -81,7 +89,7 @@ public class UserManager implements UserService {
 
         userRepository.save(user);
 
-        return new GetUserByNameResponse(user.getId(), user.getEmail(), user.getPassword());
+        return new GetUserByNameResponse(user.getId(), user.getEmail(), user.getPassword(), user.getKycStatus());
     }
 
     @Override
@@ -119,12 +127,20 @@ public class UserManager implements UserService {
     @Override
     public List<GetAllUsersResponse> getAll() {
         List<User> users = userRepository.findAll();
-        return users
-                .stream()
-                .map(user -> this.modelMapperService
-                        .forResponse()
-                        .map(user, GetAllUsersResponse.class))
-                .toList();
+        return users.stream().map(user -> {
+            GetAllUsersResponse dto = this.modelMapperService.forResponse().map(user, GetAllUsersResponse.class);
+            dto.setPassword(null);
+            List<AuthorityItemResponse> authorities = new ArrayList<>();
+            if (user.getAuthorities() != null) {
+                for (Role r : user.getAuthorities()) {
+                    if (r != null && r.getName() != null) {
+                        authorities.add(new AuthorityItemResponse(r.getName()));
+                    }
+                }
+            }
+            dto.setAuthorities(authorities);
+            return dto;
+        }).toList();
     }
 
     @Override

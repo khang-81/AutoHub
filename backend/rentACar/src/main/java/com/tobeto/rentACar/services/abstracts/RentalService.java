@@ -16,7 +16,7 @@ public interface RentalService {
     Result update(UpdateRentalRequest request);
     Result delete(DeleteRentalRequest request);
     List<GetAllRentalsResponse> getAll();
-    GetRentalByIdResponse getById(int id);
+    GetRentalByIdResponse getById(int id, int actorUserId, boolean isAdmin);
 
     GetRentalIdResponse getRentalId(FindRentalIdRequest request);
 
@@ -24,5 +24,8 @@ public interface RentalService {
     List<GetRentalByUserIdResponse> getByUserId(int userId);
     Result submitTransfer(int id, int userId);
     Result confirmByAdmin(int id);
+
+    /** user hoặc admin hủy đơn; actorUserId từ JWT */
+    Result cancel(int rentalId, int actorUserId, boolean isAdmin, String reason);
 
 }

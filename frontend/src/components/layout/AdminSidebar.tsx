@@ -10,30 +10,52 @@ import {
   Menu,
   X,
   ChevronRight,
-  Receipt,
   BarChart3,
+  ShieldCheck,
+  ShoppingBag,
+  MessageSquare,
 } from 'lucide-react';
 import { useState } from 'react';
-import { useAuthStore } from '../../store/authStore';
+import { getEmailFromToken } from '../../utils/helpers';
 
 const navItems = [
   { label: 'Tổng quan', to: '/admin', icon: LayoutDashboard, exact: true },
   { label: 'Quản lý xe', to: '/admin/cars', icon: Car },
   { label: 'Quản lý người dùng', to: '/admin/users', icon: Users },
+  { label: 'Duyệt KYC', to: '/admin/kyc', icon: ShieldCheck },
   { label: 'Thương hiệu & Model', to: '/admin/brands', icon: Tag },
   { label: 'Quản lý đơn thuê', to: '/admin/rentals', icon: FileText },
-  { label: 'Quản lý hóa đơn', to: '/admin/invoices', icon: Receipt },
+  { label: 'Đơn mua xe', to: '/admin/sale-orders', icon: ShoppingBag },
+  { label: 'Quản lý đánh giá', to: '/admin/reviews', icon: MessageSquare },
   { label: 'Báo cáo', to: '/admin/reports', icon: BarChart3 },
 ];
+
+const ADMIN_USER_KEY = 'autohub_admin_user';
+const ADMIN_TOKEN_KEY = 'autohub_admin_token';
+
+function readAdminDisplayEmail(): string {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem(ADMIN_USER_KEY) : null;
+    if (raw) {
+      const u = JSON.parse(raw) as { email?: string };
+      if (u?.email) return u.email;
+    }
+  } catch {
+    /* ignore */
+  }
+  const t = typeof window !== 'undefined' ? localStorage.getItem(ADMIN_TOKEN_KEY) : null;
+  return getEmailFromToken(t ?? '') ?? '';
+}
 
 const AdminSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { email, logout } = useAuthStore();
   const [collapsed, setCollapsed] = useState(false);
+  const adminEmail = readAdminDisplayEmail();
 
   const handleLogout = () => {
-    logout();
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+    localStorage.removeItem(ADMIN_USER_KEY);
     navigate('/admin/login');
   };
 
@@ -76,7 +98,7 @@ const AdminSidebar = () => {
             </div>
             <div className="min-w-0">
               <p className="text-xs text-gray-400">Quản trị viên</p>
-              <p className="text-sm text-white font-medium truncate">{email}</p>
+              <p className="text-sm text-white font-medium truncate">{adminEmail || '—'}</p>
             </div>
           </div>
         </div>

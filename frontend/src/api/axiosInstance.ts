@@ -1,9 +1,8 @@
 import axios from 'axios';
-
-const BASE_URL = 'http://localhost:8081';
+import { API_BASE_URL } from '../config/api';
 
 const axiosInstance = axios.create({
-  baseURL: BASE_URL,
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -12,14 +11,22 @@ const axiosInstance = axios.create({
 // Request interceptor – attach JWT token
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Ưu tiên token admin khi đang ở /admin/*
-    let token = localStorage.getItem('autohub_token');
+    if (config.data instanceof FormData) {
+      delete (config.headers as Record<string, string>)['Content-Type'];
+    }
+    // Khu vực admin (trừ trang đăng nhập): chỉ gửi autohub_admin_token — không fallback user token.
+    let token: string | null = null;
     try {
-      const isAdminRoute = typeof window !== 'undefined' && window.location?.pathname?.startsWith('/admin');
-      if (isAdminRoute) {
-        token = localStorage.getItem('autohub_admin_token') || token;
+      const path = typeof window !== 'undefined' ? window.location?.pathname ?? '' : '';
+      const isAdminApp = path.startsWith('/admin') && path !== '/admin/login';
+      if (isAdminApp) {
+        token = localStorage.getItem('autohub_admin_token');
+      } else {
+        token = localStorage.getItem('autohub_token');
       }
-    } catch { }
+    } catch {
+      token = localStorage.getItem('autohub_token');
+    }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -32,9 +39,16 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      const isAdminRoute = typeof window !== 'undefined' && window.location?.pathname?.startsWith('/admin');
-      if (isAdminRoute) {
+    const reqUrl = String(error.config?.url ?? '');
+    const isAuthEndpoint =
+      reqUrl.includes('/api/auth/login') ||
+      reqUrl.includes('/api/auth/register') ||
+      reqUrl.includes('/api/auth/forgot-password') ||
+      reqUrl.includes('/api/auth/reset-password');
+    if (error.response?.status === 401 && !isAuthEndpoint) {
+      const path = typeof window !== 'undefined' ? window.location?.pathname ?? '' : '';
+      const isAdminApp = path.startsWith('/admin') && path !== '/admin/login';
+      if (isAdminApp) {
         localStorage.removeItem('autohub_admin_token');
         localStorage.removeItem('autohub_admin_user');
         window.location.href = '/admin/login';

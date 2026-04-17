@@ -26,7 +26,11 @@ public class Invoice extends BaseEntity {
     private Float taxRate;
 
     @ManyToOne
-    @JoinColumn(name="rental_id")
+    @JoinColumn(name = "rental_id", nullable = true)
     private Rental rental;
+
+    @ManyToOne
+    @JoinColumn(name = "sale_order_id", nullable = true)
+    private SaleOrder saleOrder;
 
 }

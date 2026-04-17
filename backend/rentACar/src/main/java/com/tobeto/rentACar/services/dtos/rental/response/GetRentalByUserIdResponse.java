@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
@@ -19,5 +20,16 @@ public class GetRentalByUserIdResponse {
     private String paymentMethod;
     private String paymentStatus;
     private String rentalStatus;
+    private Double depositAmount;
+    private String depositStatus;
+    private String insuranceCode;
+    private Double insuranceFeeAmount;
+    private Double extraFeesAmount;
+    private String pickupDistrict;
+    private LocalDateTime cancelledAt;
+    private String cancellationReason;
+    private Double refundDepositAmount;
+    private Double cancellationFeeAmount;
+    private Boolean hasReview;
     private GetCarByIdResponse car;
 }
