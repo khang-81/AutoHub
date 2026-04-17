@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -31,6 +31,7 @@ import type { Car as CarType, Rental } from '../../types';
 const CarDetail = () => {
   const queryClient = useQueryClient();
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, userId } = useAuthStore();
   const { showToast } = useToast();
@@ -130,8 +131,18 @@ const CarDetail = () => {
     return m;
   }, [canRent, canBuy, canScheduleViewing]);
 
+  const forcedBookingMode = useMemo((): 'rent' | 'buy' | 'view' | null => {
+    const path = location.pathname.toLowerCase();
+    if (path.endsWith('/rent')) return 'rent';
+    if (path.endsWith('/buy')) return 'buy';
+    if (path.endsWith('/view')) return 'view';
+    return null;
+  }, [location.pathname]);
+
   const bookingModeResolved =
-    availableBookingModes.length > 0 && availableBookingModes.includes(bookingMode)
+    forcedBookingMode && availableBookingModes.includes(forcedBookingMode)
+      ? forcedBookingMode
+      : availableBookingModes.length > 0 && availableBookingModes.includes(bookingMode)
       ? bookingMode
       : availableBookingModes[0] ?? 'rent';
 
@@ -502,13 +513,42 @@ const CarDetail = () => {
             {bookingModeCount > 0 && (
             <div className="card p-6 sticky top-24">
               <h2 className="font-heading font-semibold text-navy text-lg mb-1">
-                Thuê xe, mua xe hoặc đặt lịch xem
+                {forcedBookingMode === 'rent'
+                  ? 'Đặt thuê xe'
+                  : forcedBookingMode === 'buy'
+                    ? 'Đặt mua xe'
+                    : forcedBookingMode === 'view'
+                      ? 'Đặt lịch xem xe'
+                      : 'Thuê xe, mua xe hoặc đặt lịch xem'}
               </h2>
               <p className="text-xs text-gray-500 mb-4">
-                Chọn một tùy chọn bên dưới để tiếp tục.
+                {forcedBookingMode
+                  ? 'Đây là trang chuyên biệt cho thao tác bạn đã chọn.'
+                  : 'Chọn một tùy chọn bên dưới để tiếp tục.'}
               </p>
 
-              {bookingModeCount > 1 && (
+              {!forcedBookingMode && (canRent || canBuy) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+                  {canRent && (
+                    <Link
+                      to={`/cars/${id}/rent`}
+                      className="text-center px-3 py-2 rounded-lg border border-primary/20 text-primary text-sm font-medium hover:bg-primary/5"
+                    >
+                      Mở trang thuê xe riêng
+                    </Link>
+                  )}
+                  {canBuy && (
+                    <Link
+                      to={`/cars/${id}/buy`}
+                      className="text-center px-3 py-2 rounded-lg border border-amber-200 text-amber-700 text-sm font-medium hover:bg-amber-50"
+                    >
+                      Mở trang mua xe riêng
+                    </Link>
+                  )}
+                </div>
+              )}
+
+              {!forcedBookingMode && bookingModeCount > 1 && (
                 <div className="flex flex-wrap gap-1 p-1 rounded-xl bg-gray-100 mb-5" role="tablist" aria-label="Hình thức">
                   {canRent && (
                     <button

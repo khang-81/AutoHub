@@ -73,6 +73,9 @@ function RoutesWithChatbot() {
           <Route path="/cars/mua" element={<CarListing />} />
           <Route path="/cars" element={<CarListing />} />
           <Route path="/cars/:id" element={<CarDetail />} />
+          <Route path="/cars/:id/rent" element={<CarDetail />} />
+          <Route path="/cars/:id/buy" element={<CarDetail />} />
+          <Route path="/cars/:id/view" element={<CarDetail />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/about" element={<About />} />
         </Route>
