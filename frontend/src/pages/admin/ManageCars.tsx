@@ -4,6 +4,7 @@ import { Plus, Pencil, Trash2, Search, Car } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useLocation } from 'react-router-dom';
 import { getAllCarsApi, addCarApi, updateCarApi, deleteCarApi } from '../../api/cars';
 import { getAllRentalsApi } from '../../api/rentals';
 import { getAllModelsApi } from '../../api/models';
@@ -44,12 +45,14 @@ const schema = z
 type FormData = z.infer<typeof schema>;
 
 const ManageCars = () => {
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const [modalOpen, setModalOpen] = useState(false);
   const [editCar, setEditCar] = useState<CarType | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
+  const isSaleModule = location.pathname.startsWith('/admin/cars/sale');
 
   const { data: cars = [], isLoading } = useQuery<CarType[]>({ queryKey: ['cars'], queryFn: getAllCarsApi });
   const { data: rentals = [] } = useQuery<Rental[]>({ queryKey: ['rentals-for-cars'], queryFn: getAllRentalsApi });
@@ -107,9 +110,9 @@ const ManageCars = () => {
       modelYear: 2023,
       kilometer: 0,
       minFindeksRate: 500,
-      dailyPrice: 0,
-      salePrice: undefined,
-      listingType: 'RENT_ONLY',
+      dailyPrice: isSaleModule ? 1 : 0,
+      salePrice: isSaleModule ? 100000000 : undefined,
+      listingType: isSaleModule ? 'SALE_ONLY' : 'RENT_ONLY',
       modelId: 0,
       colorId: 0,
     });
@@ -142,7 +145,13 @@ const ManageCars = () => {
     }
   };
 
-  const filtered = cars.filter((c) => {
+  const moduleCars = cars.filter((c) => {
+    const lt = (c.listingType || 'RENT_ONLY').toUpperCase();
+    if (isSaleModule) return lt === 'SALE_ONLY' || lt === 'BOTH';
+    return lt === 'RENT_ONLY' || lt === 'BOTH';
+  });
+
+  const filtered = moduleCars.filter((c) => {
     const q = search.toLowerCase();
     return (
       c.model?.brand?.name?.toLowerCase().includes(q) ||
@@ -157,12 +166,16 @@ const ManageCars = () => {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="font-heading font-bold text-2xl text-navy">Quản lý xe</h1>
-          <p className="text-gray-400 text-sm mt-1">Tổng {cars.length} xe</p>
+          <h1 className="font-heading font-bold text-2xl text-navy">
+            {isSaleModule ? 'Quản lý xe mua' : 'Quản lý xe thuê'}
+          </h1>
+          <p className="text-gray-400 text-sm mt-1">
+            Tổng {moduleCars.length} xe {isSaleModule ? 'đang bán/niêm yết' : 'phục vụ cho thuê'}
+          </p>
         </div>
         <button onClick={openAdd} className="btn-primary flex items-center gap-2">
           <Plus className="w-5 h-5" />
-          Thêm xe mới
+          {isSaleModule ? 'Thêm xe mua' : 'Thêm xe thuê'}
         </button>
       </div>
 
@@ -193,9 +206,13 @@ const ManageCars = () => {
                   <th className="text-left px-5 py-4 font-medium">Biển số</th>
                   <th className="text-left px-5 py-4 font-medium">Năm</th>
                   <th className="text-left px-5 py-4 font-medium">Màu</th>
-                  <th className="text-left px-5 py-4 font-medium">Loại</th>
-                  <th className="text-right px-5 py-4 font-medium">Giá</th>
-                  <th className="text-center px-5 py-4 font-medium">Trạng thái</th>
+                  <th className="text-left px-5 py-4 font-medium">Loại niêm yết</th>
+                  <th className="text-right px-5 py-4 font-medium">
+                    {isSaleModule ? 'Giá bán' : 'Giá thuê'}
+                  </th>
+                  <th className="text-center px-5 py-4 font-medium">
+                    {isSaleModule ? 'Trạng thái bán' : 'Trạng thái thuê'}
+                  </th>
                   <th className="text-right px-5 py-4 font-medium">Thao tác</th>
                 </tr>
               </thead>
@@ -243,17 +260,44 @@ const ManageCars = () => {
                         {car.saleStatus ? ` • ${car.saleStatus}` : ''}
                       </td>
                       <td className="px-5 py-4 text-right text-xs">
-                        <div className="font-semibold text-primary">{formatCurrency(car.dailyPrice)}/ngày</div>
-                        {(car.salePrice ?? 0) > 0 && (
-                          <div className="text-amber-700 font-medium mt-0.5">Mua: {formatCurrency(car.salePrice!)}</div>
+                        {isSaleModule ? (
+                          <div className="text-amber-700 font-semibold">
+                            {formatCurrency(car.salePrice ?? 0)}
+                          </div>
+                        ) : (
+                          <>
+                            <div className="font-semibold text-primary">{formatCurrency(car.dailyPrice)}/ngày</div>
+                            {(car.salePrice ?? 0) > 0 && (
+                              <div className="text-amber-700 font-medium mt-0.5">
+                                Mua: {formatCurrency(car.salePrice!)}
+                              </div>
+                            )}
+                          </>
                         )}
                       </td>
                       <td className="px-5 py-4 text-center">
                         <span
-                          className={`inline-flex items-center gap-1.5 mx-auto px-3 py-1.5 rounded-lg text-xs font-medium ${busy ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'
-                            }`}
+                          className={`inline-flex items-center gap-1.5 mx-auto px-3 py-1.5 rounded-lg text-xs font-medium ${
+                            isSaleModule
+                              ? (car.saleStatus || 'AVAILABLE').toUpperCase() === 'SOLD'
+                                ? 'bg-gray-100 text-gray-600'
+                                : (car.saleStatus || 'AVAILABLE').toUpperCase() === 'RESERVED'
+                                  ? 'bg-amber-50 text-amber-700'
+                                  : 'bg-green-50 text-green-700'
+                              : busy
+                                ? 'bg-red-50 text-red-600'
+                                : 'bg-green-50 text-green-700'
+                          }`}
                         >
-                          {busy ? 'Đang thuê' : 'Trống'}
+                          {isSaleModule
+                            ? (car.saleStatus || 'AVAILABLE').toUpperCase() === 'SOLD'
+                              ? 'Đã bán'
+                              : (car.saleStatus || 'AVAILABLE').toUpperCase() === 'RESERVED'
+                                ? 'Đang giữ chỗ'
+                                : 'Có thể bán'
+                            : busy
+                              ? 'Đang thuê'
+                              : 'Trống'}
                         </span>
                       </td>
                       <td className="px-5 py-4 text-right">
@@ -280,7 +324,7 @@ const ManageCars = () => {
             {filtered.length === 0 && (
               <div className="text-center py-16 text-gray-400">
                 <Car className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                Không tìm thấy xe
+                Không tìm thấy xe phù hợp module
               </div>
             )}
           </div>
@@ -291,7 +335,7 @@ const ManageCars = () => {
       <Modal
         isOpen={modalOpen}
         onClose={() => { setModalOpen(false); setEditCar(null); reset(); }}
-        title={editCar ? 'Chỉnh sửa xe' : 'Thêm xe mới'}
+        title={editCar ? 'Chỉnh sửa xe' : isSaleModule ? 'Thêm xe mua' : 'Thêm xe thuê'}
         size="xl"
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -334,9 +378,17 @@ const ManageCars = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Loại niêm yết *</label>
             <select {...register('listingType')} className="input-field">
-              <option value="RENT_ONLY">Chỉ cho thuê</option>
-              <option value="SALE_ONLY">Chỉ bán</option>
-              <option value="BOTH">Thuê & bán</option>
+              {isSaleModule ? (
+                <>
+                  <option value="SALE_ONLY">Chỉ bán</option>
+                  <option value="BOTH">Thuê & bán</option>
+                </>
+              ) : (
+                <>
+                  <option value="RENT_ONLY">Chỉ cho thuê</option>
+                  <option value="BOTH">Thuê & bán</option>
+                </>
+              )}
             </select>
           </div>
 

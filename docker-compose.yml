@@ -81,9 +81,9 @@ services:
         # Luôn rỗng: SPA gọi /api/* qua Nginx → api:8081 (tránh ERR_CONNECTION_REFUSED tới localhost:8081 khi API không publish port)
         VITE_API_URL: ""
     platform: linux/amd64
-    # Mặc định 3000 để trùng cổng Vite dev; đổi WEB_PORT trong .env nếu cổng bận (vd. 8080).
+    # Mặc định 3001 để tránh xung đột cổng 3000 (thường đã có app khác dùng).
     ports:
-      - "${WEB_PORT:-3000}:80"
+      - "${WEB_PORT:-3001}:80"
     depends_on:
       api:
         condition: service_healthy

@@ -21,15 +21,16 @@ import { getEmailFromToken } from '../../utils/helpers';
 
 const navItems = [
   { label: 'Tổng quan', to: '/admin', icon: LayoutDashboard, exact: true },
-  { label: 'Quản lý xe', to: '/admin/cars', icon: Car },
+  { label: 'Quản lý xe thuê', to: '/admin/cars/rent', icon: Car },
+  { label: 'Quản lý xe mua', to: '/admin/cars/sale', icon: ShoppingBag },
   { label: 'Quản lý người dùng', to: '/admin/users', icon: Users },
-  { label: 'Duyệt KYC', to: '/admin/kyc', icon: ShieldCheck },
-  { label: 'Thương hiệu & Model', to: '/admin/brands', icon: Tag },
+  { label: 'Quản lý GPLX', to: '/admin/kyc', icon: ShieldCheck },
+  { label: 'Quản lý thương hiệu & Model', to: '/admin/brands', icon: Tag },
   { label: 'Quản lý đơn thuê', to: '/admin/rentals', icon: FileText },
-  { label: 'Đơn mua xe', to: '/admin/sale-orders', icon: ShoppingBag },
-  { label: 'Lịch xem xe', to: '/admin/viewing-appointments', icon: CalendarClock },
+  { label: 'Quản lý đơn mua', to: '/admin/sale-orders', icon: ShoppingBag },
+  { label: 'Quản lý lịch xem xe', to: '/admin/viewing-appointments', icon: CalendarClock },
   { label: 'Quản lý đánh giá', to: '/admin/reviews', icon: MessageSquare },
-  { label: 'Báo cáo', to: '/admin/reports', icon: BarChart3 },
+  { label: 'Báo cáo doanh thu', to: '/admin/reports', icon: BarChart3 },
 ];
 
 const ADMIN_USER_KEY = 'autohub_admin_user';
