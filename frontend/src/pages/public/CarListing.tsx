@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useSearchParams, useLocation, useNavigate, NavLink } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { SlidersHorizontal, Search, X, ChevronLeft, ChevronRight, LayoutGrid, List, KeyRound, Tag } from 'lucide-react';
 import { searchCarsApi } from '../../api/cars';
 import { getAllBrandsApi } from '../../api/brands';
@@ -11,7 +11,6 @@ import type { Brand, Color, PagedCarsResponse } from '../../types';
 
 const ITEMS_PER_PAGE = 9;
 
-const PATH_CARS_RENT = '/cars';
 const PATH_CARS_SALE = '/cars/mua';
 
 export type ListingPageMode = 'rent' | 'sale';
@@ -43,15 +42,12 @@ function buildPageItems(current: number, total: number): (number | 'ellipsis')[]
 const CarListing = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
-  const navigate = useNavigate();
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const listingMode = listingFromPathname(location.pathname);
   const brandParam = searchParams.get('brand') || '';
-  const searchParamsStr = searchParams.toString();
-  const qs = useMemo(() => (searchParamsStr ? `?${searchParamsStr}` : ''), [searchParamsStr]);
 
   const [filters, setFilters] = useState({
     colorId: '',
@@ -112,25 +108,6 @@ const CarListing = () => {
       subtitle: isLoading ? 'Đang tải…' : `${n} xe sẵn sàng — đặt nhanh, nhận xe thuận tiện`,
     };
   }, [listingMode, isLoading, totalElements]);
-
-  const tabClass = (active: boolean, accent: 'rent' | 'sale') => {
-    const base =
-      'relative flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-bold transition-all duration-200 md:px-6 md:py-4 md:text-base';
-    if (active) {
-      if (accent === 'rent') {
-        return `${base} bg-emerald-500 text-white shadow-lg shadow-emerald-900/25 ring-2 ring-white/20`;
-      }
-      return `${base} bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg shadow-orange-900/20 ring-2 ring-white/25`;
-    }
-    return `${base} bg-white/10 text-gray-200 hover:bg-white/15 hover:text-white`;
-  };
-
-  const navigateListingMode = (mode: ListingPageMode) => {
-    setPage(1);
-    const q = qs;
-    if (mode === 'sale') navigate(`${PATH_CARS_SALE}${q}`);
-    else navigate(`${PATH_CARS_RENT}${q}`);
-  };
 
   const setBrandFilter = (value: string) => {
     setPage(1);
@@ -204,37 +181,6 @@ const CarListing = () => {
             {heroCopy.subtitle}
           </p>
 
-          <div className="max-w-3xl rounded-2xl bg-black/25 p-1.5 ring-1 ring-white/10 backdrop-blur-md">
-            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-              <NavLink
-                to={`${PATH_CARS_RENT}${qs}`}
-                className={({ isActive }) => tabClass(isActive, 'rent')}
-                end
-                onClick={() => setPage(1)}
-              >
-                <KeyRound className="h-5 w-5 shrink-0 opacity-90" />
-                <span className="text-left leading-tight">
-                  <span className="block">Cho thuê</span>
-                  <span className="mt-0.5 block text-[11px] font-normal opacity-90 md:text-xs">
-                    Theo ngày, linh hoạt
-                  </span>
-                </span>
-              </NavLink>
-              <NavLink
-                to={`${PATH_CARS_SALE}${qs}`}
-                className={({ isActive }) => tabClass(isActive, 'sale')}
-                onClick={() => setPage(1)}
-              >
-                <Tag className="h-5 w-5 shrink-0 opacity-90" />
-                <span className="text-left leading-tight">
-                  <span className="block">Mua xe</span>
-                  <span className="mt-0.5 block text-[11px] font-normal opacity-90 md:text-xs">
-                    Niêm yết bán, sở hữu xe
-                  </span>
-                </span>
-              </NavLink>
-            </div>
-          </div>
         </div>
       </header>
 
@@ -291,18 +237,6 @@ const CarListing = () => {
                     <X className="h-3 w-3" /> Xóa tất cả
                   </button>
                 )}
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Danh mục</label>
-                <select
-                  value={listingMode}
-                  onChange={(e) => navigateListingMode(e.target.value as ListingPageMode)}
-                  className="input-field text-sm"
-                >
-                  <option value="rent">Xe cho thuê</option>
-                  <option value="sale">Xe đang bán</option>
-                </select>
               </div>
 
               <div>
