@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, Car, ChevronDown, User, LogOut, LayoutDashboard } from 'lucide-react';
+import { Menu, X, ChevronDown, User, LogOut, LayoutDashboard } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import BrandLogo from '../ui/BrandLogo';
 
 const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -51,16 +52,9 @@ const Navbar = () => {
                 }`}
         >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center justify-between h-20">
-                    {/* Logo */}
-                    <Link to="/" className="flex items-center gap-2 group">
-                        <div className="bg-primary rounded-lg p-2">
-                            <Car className="w-6 h-6 text-white" />
-                        </div>
-                        <span className="font-heading font-bold text-xl text-white">
-                            Auto<span className="text-primary">Hub</span>
-                        </span>
-                    </Link>
+                <div className="flex items-center justify-between min-h-[5.25rem] py-2.5 sm:min-h-[5.5rem] sm:py-3">
+                    {/* Logo thương hiệu — cỡ nav, không khung */}
+                    <BrandLogo to="/" size="nav" variant="light" />
 
                     {/* Desktop nav links */}
                     <div className="hidden md:flex items-center gap-8">

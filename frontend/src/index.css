@@ -65,6 +65,20 @@
   .listing-search-shell {
     @apply rounded-2xl border border-gray-100/90 bg-white p-2 shadow-[0_20px_50px_-12px_rgba(27,42,74,0.18)] md:p-2.5;
   }
+
+  /**
+   * Bù chiều cao navbar fixed — nền navy 7rem liền với header,
+   * sau đó chuyển sang màu trang (--pad-nav-tail, mặc định gray-50) để không còn khe sáng.
+   */
+  .pad-top-nav {
+    padding-top: 7rem;
+    background-image: linear-gradient(
+      180deg,
+      #1b2a4a 0,
+      #1b2a4a 7rem,
+      var(--pad-nav-tail, #f9fafb) 7rem
+    );
+  }
 }
 
 /* Custom scrollbar */

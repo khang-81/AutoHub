@@ -115,12 +115,13 @@ const CarDetail = () => {
     listingType === 'SALE_ONLY' &&
     saleStatusUp === 'AVAILABLE' &&
     (car.salePrice ?? 0) > 0;
-  /** Khớp backend: xe niêm yết bán, còn AVAILABLE hoặc RESERVED, có giá — có thể đặt lịch xem (không cần trùng canBuy). */
+  /** Xe bán: xem trước khi mua. Xe thuê: xem/xác nhận xe trước khi đặt chuyến — khớp backend ViewingAppointmentManager. */
   const canScheduleViewing =
     !!car &&
-    listingType === 'SALE_ONLY' &&
-    (saleStatusUp === 'AVAILABLE' || saleStatusUp === 'RESERVED') &&
-    (car.salePrice ?? 0) > 0;
+    ((listingType === 'SALE_ONLY' &&
+      (saleStatusUp === 'AVAILABLE' || saleStatusUp === 'RESERVED') &&
+      (car.salePrice ?? 0) > 0) ||
+      (listingType === 'RENT_ONLY' && car.dailyPrice > 0));
 
   const bookingModeCount = [canRent, canBuy, canScheduleViewing].filter(Boolean).length;
 
@@ -146,6 +147,29 @@ const CarDetail = () => {
       : availableBookingModes.length > 0 && availableBookingModes.includes(bookingMode)
       ? bookingMode
       : availableBookingModes[0] ?? 'rent';
+
+  /** Có tab Thuê / Mua / Xem — tiêu đề ngoài & trong panel không lặp lại nhãn tab. */
+  const tabbedMultiMode = !forcedBookingMode && bookingModeCount > 1;
+
+  const bookingCardHeading = useMemo(() => {
+    if (forcedBookingMode === 'rent') return 'Đặt thuê xe';
+    if (forcedBookingMode === 'buy') return 'Đặt mua xe';
+    if (forcedBookingMode === 'view') return 'Đặt lịch xem xe';
+    if (bookingModeCount <= 1 && availableBookingModes[0]) {
+      const m = availableBookingModes[0];
+      if (m === 'rent') return 'Đặt thuê xe';
+      if (m === 'buy') return 'Đặt mua xe';
+      return 'Đặt lịch xem xe';
+    }
+    return 'Đặt xe';
+  }, [forcedBookingMode, bookingModeCount, availableBookingModes]);
+
+  const bookingCardSubtitle = useMemo(() => {
+    if (forcedBookingMode) {
+      return 'Đây là trang chuyên biệt cho thao tác bạn đã chọn.';
+    }
+    return 'Điền thông tin và gửi yêu cầu.';
+  }, [forcedBookingMode]);
 
   const viewingMutation = useMutation({
     mutationFn: () =>
@@ -314,13 +338,13 @@ const CarDetail = () => {
   };
 
   if (isLoading) return (
-    <div className="pt-20 min-h-screen flex items-center justify-center">
+    <div className="min-h-screen pad-top-nav flex items-center justify-center">
       <LoadingSpinner size="lg" text="Đang tải thông tin xe..." />
     </div>
   );
 
   if (!car) return (
-    <div className="pt-20 min-h-screen flex items-center justify-center">
+    <div className="min-h-screen pad-top-nav flex items-center justify-center">
       <div className="text-center">
         <p className="text-gray-500 text-xl">Không tìm thấy xe</p>
         <Link to="/cars" className="btn-primary mt-4 inline-block">Quay lại</Link>
@@ -329,7 +353,7 @@ const CarDetail = () => {
   );
 
   return (
-    <div className="pt-20 min-h-screen bg-gray-50">
+    <div className="min-h-screen pad-top-nav">
       {/* Back */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -515,40 +539,11 @@ const CarDetail = () => {
           <div className="lg:col-span-1 space-y-6">
             {bookingModeCount > 0 && (
             <div className="card p-6 sticky top-24">
-              <h2 className="font-heading font-semibold text-navy text-lg mb-1">
-                {forcedBookingMode === 'rent'
-                  ? 'Đặt thuê xe'
-                  : forcedBookingMode === 'buy'
-                    ? 'Đặt mua xe'
-                    : forcedBookingMode === 'view'
-                      ? 'Đặt lịch xem xe'
-                      : 'Thuê xe, mua xe hoặc đặt lịch xem'}
-              </h2>
-              <p className="text-xs text-gray-500 mb-4">
-                {forcedBookingMode
-                  ? 'Đây là trang chuyên biệt cho thao tác bạn đã chọn.'
-                  : 'Chọn một tùy chọn bên dưới để tiếp tục.'}
-              </p>
-
-              {!forcedBookingMode && (canRent || canBuy) && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
-                  {canRent && (
-                    <Link
-                      to={`/cars/${id}/rent`}
-                      className="text-center px-3 py-2 rounded-lg border border-primary/20 text-primary text-sm font-medium hover:bg-primary/5"
-                    >
-                      Mở trang thuê xe riêng
-                    </Link>
-                  )}
-                  {canBuy && (
-                    <Link
-                      to={`/cars/${id}/buy`}
-                      className="text-center px-3 py-2 rounded-lg border border-amber-200 text-amber-700 text-sm font-medium hover:bg-amber-50"
-                    >
-                      Mở trang mua xe riêng
-                    </Link>
-                  )}
-                </div>
+              {!tabbedMultiMode && (
+                <>
+                  <h2 className="font-heading font-semibold text-navy text-lg mb-1">{bookingCardHeading}</h2>
+                  <p className="text-xs text-gray-500 mb-4">{bookingCardSubtitle}</p>
+                </>
               )}
 
               {!forcedBookingMode && bookingModeCount > 1 && (
@@ -804,9 +799,15 @@ const CarDetail = () => {
                       <CalendarClock className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="font-heading font-semibold text-navy text-lg">Đặt lịch xem xe</h3>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Chọn khung giờ phù hợp để được tư vấn trực tiếp tại showroom.
+                      {!tabbedMultiMode && (
+                        <h3 className="font-heading font-semibold text-navy text-lg">Đặt lịch xem xe</h3>
+                      )}
+                      <p
+                        className={`text-xs text-gray-500 ${tabbedMultiMode ? '' : 'mt-1'}`}
+                      >
+                        {listingType === 'RENT_ONLY'
+                          ? 'Chọn giờ đến xem xe trước khi thuê; admin sẽ xác nhận địa điểm và chi tiết.'
+                          : 'Chọn khung giờ phù hợp để được tư vấn trực tiếp tại showroom.'}
                       </p>
                     </div>
                   </div>
@@ -910,7 +911,9 @@ const CarDetail = () => {
 
               {bookingModeResolved === 'buy' && canBuy && (
               <div className="rounded-xl border-2 border-amber-100 bg-amber-50/30 p-4 space-y-4">
-                <h3 className="font-heading font-semibold text-navy text-lg">Mua xe</h3>
+                {!tabbedMultiMode && (
+                  <h3 className="font-heading font-semibold text-navy text-lg">Mua xe</h3>
+                )}
                 <p className="text-sm text-gray-500">
                   Giá niêm yết <span className="font-bold text-amber-700">{formatCurrency(car.salePrice!)}</span>
                 </p>

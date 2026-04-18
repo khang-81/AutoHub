@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { getEmailFromToken } from '../../utils/helpers';
+import BrandLogo from '../ui/BrandLogo';
 
 const navItems = [
   { label: 'Tổng quan', to: '/admin', icon: LayoutDashboard, exact: true },
@@ -72,21 +73,20 @@ const AdminSidebar = () => {
       className={`bg-navy min-h-screen flex flex-col transition-all duration-300 ${collapsed ? 'w-16' : 'w-64'
         }`}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-navy-400">
-        {!collapsed && (
-          <Link to="/" className="flex items-center gap-2">
-            <div className="bg-primary rounded-lg p-1.5">
-              <Car className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-heading font-bold text-white">
-              Auto<span className="text-primary">Hub</span>
-            </span>
-          </Link>
-        )}
+      {/* Header — logo lớn; sidebar thu gọn: chỉ biểu tượng mark + nút mở */}
+      <div
+        className={`border-b border-navy-400 ${
+          collapsed
+            ? 'flex flex-col items-center gap-2 py-3 px-1'
+            : 'flex items-center justify-between gap-2 p-3 sm:p-4'
+        }`}
+      >
+        <BrandLogo to="/admin" size={collapsed ? 'sm' : 'lg'} variant="light" />
         <button
+          type="button"
           onClick={() => setCollapsed(!collapsed)}
-          className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-navy-400 transition-colors ml-auto"
+          className={`text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-navy-400 transition-colors shrink-0 ${collapsed ? '' : 'ml-auto'}`}
+          aria-label={collapsed ? 'Mở menu' : 'Thu gọn menu'}
         >
           {collapsed ? <Menu className="w-5 h-5" /> : <X className="w-5 h-5" />}
         </button>

@@ -3,7 +3,7 @@ import { Car, Users, Award, Headphones, Target, Eye, Heart } from 'lucide-react'
 
 const About = () => {
   return (
-    <div className="pt-20">
+    <div className="pad-top-nav" style={{ ['--pad-nav-tail' as string]: '#ffffff' }}>
       {/* Hero */}
       <section
         className="py-24 text-white"

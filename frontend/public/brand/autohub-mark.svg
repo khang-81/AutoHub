@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="ahg" x1="12" y1="8" x2="52" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5E7B9"/>
+      <stop offset="0.5" stop-color="#C9A227"/>
+      <stop offset="1" stop-color="#876C18"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#ahg)"/>
+  <rect x="3" y="3" width="58" height="58" rx="14" stroke="#1B2A4A" stroke-opacity="0.14" fill="none"/>
+  <!-- Xe nh�n nghi�ng -->
+  <g fill="#1B2A4A">
+    <ellipse cx="18" cy="41" rx="7" ry="7"/>
+    <ellipse cx="46" cy="41" rx="7" ry="7"/>
+    <path d="M8 39V34l8-10h32l8 10v5H8zm4-2h40l-6-8H18l-6 8z"/>
+    <path fill="#2A3A6B" d="M26 22h20l4 2v2H22l4-4z"/>
+    <path fill="#FAF3DC" fill-opacity="0.4" d="M28 24h16l2 1.5H26L28 24z"/>
+  </g>
+</svg>

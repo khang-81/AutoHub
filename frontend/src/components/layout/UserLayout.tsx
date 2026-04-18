@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, User, FileText, LogOut, Car, ShieldCheck, IdCard, ShoppingBag, CalendarClock } from 'lucide-react';
+import { LayoutDashboard, User, FileText, LogOut, ShieldCheck, IdCard, ShoppingBag, CalendarClock } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import BrandLogo from '../ui/BrandLogo';
 
 const navItems = [
   { label: 'Tổng quan', to: '/dashboard', icon: LayoutDashboard, exact: true },
@@ -29,12 +30,9 @@ const UserLayout = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Top bar */}
-      <div className="bg-navy text-white px-4 py-3 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
-          <Car className="w-5 h-5 text-primary" />
-          <span className="font-heading font-bold">Auto<span className="text-primary">Hub</span></span>
-        </Link>
+      {/* Top bar — logo lớn, dễ nhận diện */}
+      <div className="bg-navy text-white px-4 py-3 sm:py-4 flex items-center justify-between gap-4 border-b border-navy-400/80">
+        <BrandLogo to="/" size="xl" variant="light" />
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-300 hidden sm:block">{email}</span>
           <button onClick={handleLogout} className="flex items-center gap-1.5 text-sm text-gray-300 hover:text-primary transition-colors">
