@@ -276,6 +276,8 @@ export interface Role {
 // ─── Contact ─────────────────────────────────────────────────────────────────
 export interface ContactMailRequest {
   name: string;
+  /** Khớp backend `ContactMailRequest.surname` */
+  surname?: string;
   email: string;
   subject: string;
   message: string;

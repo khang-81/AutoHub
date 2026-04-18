@@ -77,18 +77,25 @@ const Navbar = () => {
                         {isAuthenticated ? (
                             <div className="relative">
                                 <button
+                                    type="button"
                                     onClick={() => setProfileOpen(!profileOpen)}
-                                    className="flex items-center gap-2 text-gray-200 hover:text-primary transition-colors"
+                                    className="flex items-center gap-1.5 text-gray-200 hover:text-primary transition-colors rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-navy"
+                                    aria-label="Tài khoản"
+                                    aria-expanded={profileOpen}
                                 >
-                                    <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                                        <User className="w-4 h-4 text-white" />
+                                    <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center">
+                                        <User className="w-[18px] h-[18px] text-white" />
                                     </div>
-                                    <span className="text-sm font-medium max-w-[120px] truncate">{email}</span>
-                                    <ChevronDown className={`w-4 h-4 transition-transform ${profileOpen ? 'rotate-180' : ''}`} />
+                                    <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${profileOpen ? 'rotate-180' : ''}`} />
                                 </button>
 
                                 {profileOpen && (
-                                    <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
+                                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
+                                        {email ? (
+                                            <p className="px-4 py-2 text-xs text-gray-500 border-b border-gray-100 truncate" title={email}>
+                                                {email}
+                                            </p>
+                                        ) : null}
                                         {isAdmin ? (
                                             <Link
                                                 to="/admin"

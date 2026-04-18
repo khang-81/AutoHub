@@ -1,19 +1,42 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Car, FileText, User, ArrowRight, TrendingUp, ShieldAlert } from 'lucide-react';
+import {
+  Car,
+  FileText,
+  User,
+  ArrowRight,
+  TrendingUp,
+  ShieldAlert,
+  ShoppingBag,
+  Timer,
+  Receipt,
+} from 'lucide-react';
 import { getRentalsByUserIdApi } from '../../api/rentals';
+import { getMySaleOrdersApi } from '../../api/saleOrders';
 import { getProfileApi } from '../../api/users';
 import { useAuthStore } from '../../store/authStore';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate, CAR_PLACEHOLDER } from '../../utils/helpers';
-import type { RentalByUser } from '../../types';
+import type { RentalByUser, SaleOrder } from '../../types';
+
+const saleStatusLabel: Record<string, string> = {
+  PENDING_PAYMENT: 'Chờ thanh toán',
+  PENDING_ADMIN_CONFIRM: 'Chờ xác nhận',
+  COMPLETED: 'Hoàn tất',
+  CANCELLED: 'Đã hủy',
+};
 
 const UserDashboard = () => {
   const { email } = useAuthStore();
 
-  const { data: rentals = [], isLoading } = useQuery<RentalByUser[]>({
+  const { data: rentals = [], isLoading: rentalsLoading } = useQuery<RentalByUser[]>({
     queryKey: ['myRentals'],
     queryFn: getRentalsByUserIdApi,
+  });
+
+  const { data: saleOrders = [], isLoading: saleOrdersLoading } = useQuery<SaleOrder[]>({
+    queryKey: ['mySaleOrders'],
+    queryFn: getMySaleOrdersApi,
   });
 
   const { data: profile } = useQuery({
@@ -24,11 +47,38 @@ const UserDashboard = () => {
   const totalSpent = rentals.reduce((sum, r) => sum + (r.totalPrice || 0), 0);
   const activeRentals = rentals.filter((r) => !r.returnDate).length;
 
-  const stats = [
-    { icon: Car, label: 'Tổng lần thuê', value: rentals.length, color: 'bg-blue-50 text-blue-600' },
-    { icon: TrendingUp, label: 'Đang thuê', value: activeRentals, color: 'bg-green-50 text-green-600' },
-    { icon: FileText, label: 'Tổng chi tiêu', value: formatCurrency(totalSpent), color: 'bg-primary/10 text-primary' },
+  const pendingSaleCount = saleOrders.filter(
+    (o) => o.orderStatus === 'PENDING_PAYMENT' || o.orderStatus === 'PENDING_ADMIN_CONFIRM'
+  ).length;
+  const totalPurchaseValue = saleOrders
+    .filter((o) => o.orderStatus !== 'CANCELLED')
+    .reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+
+  const rentalStats = [
+    { icon: Car, label: 'Tổng lần thuê', value: String(rentals.length), color: 'bg-blue-50 text-blue-600' },
+    { icon: TrendingUp, label: 'Đang thuê', value: String(activeRentals), color: 'bg-green-50 text-green-600' },
+    { icon: FileText, label: 'Tổng chi tiêu thuê', value: formatCurrency(totalSpent), color: 'bg-primary/10 text-primary' },
   ];
+
+  const saleStats = [
+    { icon: ShoppingBag, label: 'Tổng đơn mua', value: String(saleOrders.length), color: 'bg-violet-50 text-violet-600' },
+    {
+      icon: Timer,
+      label: 'Đơn chờ xử lý',
+      value: String(pendingSaleCount),
+      color: 'bg-amber-50 text-amber-700',
+    },
+    {
+      icon: Receipt,
+      label: 'Giá trị đơn mua (chưa hủy)',
+      value: formatCurrency(totalPurchaseValue),
+      color: 'bg-emerald-50 text-emerald-700',
+    },
+  ];
+
+  const recentSales = [...saleOrders].sort((a, b) => b.id - a.id).slice(0, 3);
+
+  const isLoading = rentalsLoading || saleOrdersLoading;
 
   return (
     <div>
@@ -62,25 +112,49 @@ const UserDashboard = () => {
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        {stats.map((stat) => (
+      {/* Stats — Thuê */}
+      <div className="mb-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Thuê xe</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        {rentalStats.map((stat) => (
           <div key={stat.label} className="bg-white rounded-2xl shadow-sm p-5">
             <div className="flex items-center gap-4">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.color}`}>
                 <stat.icon className="w-6 h-6" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-gray-400 text-xs">{stat.label}</p>
-                <p className="font-heading font-bold text-xl text-navy">{stat.value}</p>
+                <p className="font-heading font-bold text-xl text-navy truncate">{stat.value}</p>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Recent rentals */}
-      <div className="bg-white rounded-2xl shadow-sm p-6">
+      {/* Stats — Mua */}
+      <div className="mb-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Mua xe</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        {saleStats.map((stat) => (
+          <div key={stat.label} className="bg-white rounded-2xl shadow-sm p-5">
+            <div className="flex items-center gap-4">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.color}`}>
+                <stat.icon className="w-6 h-6" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-gray-400 text-xs leading-snug">{stat.label}</p>
+                <p className="font-heading font-bold text-xl text-navy truncate">{stat.value}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Recent activity */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="bg-white rounded-2xl shadow-sm p-6">
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-heading font-semibold text-navy">Lần thuê gần đây</h2>
           <Link
@@ -131,6 +205,70 @@ const UserDashboard = () => {
             ))}
           </div>
         )}
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm p-6">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="font-heading font-semibold text-navy">Đơn mua gần đây</h2>
+          <Link
+            to="/dashboard/sale-orders"
+            className="text-primary text-sm font-medium flex items-center gap-1 hover:gap-2 transition-all"
+          >
+            Xem tất cả <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+
+        {isLoading ? (
+          <LoadingSpinner />
+        ) : recentSales.length === 0 ? (
+          <div className="text-center py-12">
+            <ShoppingBag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-400">Bạn chưa có đơn mua xe</p>
+            <Link to="/cars/mua" className="btn-primary mt-4 inline-block text-sm">
+              Xem xe đang bán
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {recentSales.map((order) => (
+              <div
+                key={order.id}
+                className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
+              >
+                <img
+                  src={order.car?.imagePath || CAR_PLACEHOLDER}
+                  alt=""
+                  className="w-16 h-12 object-cover rounded-lg flex-shrink-0"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = CAR_PLACEHOLDER;
+                  }}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-navy text-sm truncate">
+                    {order.car?.model?.brand?.name} {order.car?.model?.name}
+                  </p>
+                  <p className="text-gray-400 text-xs">Đơn #{order.id}</p>
+                </div>
+                <div className="text-right flex-shrink-0 max-w-[42%]">
+                  <p className="font-semibold text-primary text-sm">{formatCurrency(order.totalPrice)}</p>
+                  <span
+                    className={`badge text-xs mt-0.5 inline-block max-w-full truncate ${
+                      order.orderStatus === 'COMPLETED'
+                        ? 'bg-green-100 text-green-800'
+                        : order.orderStatus === 'CANCELLED'
+                          ? 'bg-gray-100 text-gray-600'
+                          : 'bg-amber-100 text-amber-800'
+                    }`}
+                    title={saleStatusLabel[order.orderStatus || ''] || order.orderStatus}
+                  >
+                    {saleStatusLabel[order.orderStatus || ''] || order.orderStatus}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        </div>
       </div>
     </div>
   );

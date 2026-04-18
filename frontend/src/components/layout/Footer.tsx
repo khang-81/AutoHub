@@ -3,22 +3,25 @@ import { Phone, Mail, MapPin } from 'lucide-react';
 import BrandLogo from '../ui/BrandLogo';
 
 // Các component SVG được tối ưu để đồng bộ hoàn toàn với style của lucide-react
-const FacebookIcon = ({ className }) => (
+const FacebookIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
   </svg>
 );
 
-const TiktokIcon = ({ className }) => (
+const InstagramIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/>
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
   </svg>
 );
 
-const YoutubeIcon = ({ className }) => (
+const LinkedInIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"/>
-    <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/>
+    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+    <rect x="2" y="9" width="4" height="12" />
+    <circle cx="4" cy="4" r="2" />
   </svg>
 );
 
@@ -36,26 +39,26 @@ const Footer = () => {
               Chúng tôi mang đến trải nghiệm lái xe tuyệt vời với giá cả minh bạch.
             </p>
             <div className="flex gap-4">
-              <a 
-                href="#" 
+              <a
+                href="#"
                 className="w-10 h-10 bg-navy-400/50 rounded-full flex items-center justify-center hover:bg-primary hover:-translate-y-1 transition-all duration-300 group"
                 aria-label="Facebook"
               >
                 <FacebookIcon className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
               </a>
-              <a 
-                href="#" 
+              <a
+                href="#"
                 className="w-10 h-10 bg-navy-400/50 rounded-full flex items-center justify-center hover:bg-primary hover:-translate-y-1 transition-all duration-300 group"
-                aria-label="TikTok"
+                aria-label="Instagram"
               >
-                <TiktokIcon className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
+                <InstagramIcon className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
               </a>
-              <a 
-                href="#" 
+              <a
+                href="#"
                 className="w-10 h-10 bg-navy-400/50 rounded-full flex items-center justify-center hover:bg-primary hover:-translate-y-1 transition-all duration-300 group"
-                aria-label="YouTube"
+                aria-label="LinkedIn"
               >
-                <YoutubeIcon className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
+                <LinkedInIcon className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
               </a>
             </div>
           </div>
@@ -108,7 +111,7 @@ const Footer = () => {
             <ul className="space-y-4 text-sm text-gray-400">
               <li className="flex items-start gap-3 group">
                 <MapPin className="w-5 h-5 text-primary flex-shrink-0 mt-0.5 group-hover:scale-110 transition-transform duration-300" />
-                <span className="group-hover:text-white transition-colors duration-300">Ngoc Hoi, Ha Noi</span>
+                <span className="group-hover:text-white transition-colors duration-300">Phúc Am, Ngọc Hồi, Hà Nội</span>
               </li>
               <li className="flex items-center gap-3 group">
                 <Phone className="w-5 h-5 text-primary flex-shrink-0 group-hover:scale-110 transition-transform duration-300" />
