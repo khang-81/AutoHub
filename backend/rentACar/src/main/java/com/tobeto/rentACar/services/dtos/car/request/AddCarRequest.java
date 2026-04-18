@@ -21,8 +21,8 @@ public class AddCarRequest {
     private String plate;
 
     @NotNull
-    @Min(value = 2005, message = "Production year must be between 2005 to 2024!")
-    @Max(value = 2024, message = "Production year must be between 2005 to 2024!")
+    @Min(value = 2005, message = "Production year must be between 2005 and 2030!")
+    @Max(value = 2030, message = "Production year must be between 2005 and 2030!")
     private short modelYear;
 
     /** Bắt buộc với RENT_ONLY; bằng 0 với SALE_ONLY. */

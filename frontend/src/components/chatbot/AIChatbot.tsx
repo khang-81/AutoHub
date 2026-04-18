@@ -1,22 +1,24 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Bot, User, Loader2, Minimize2, Maximize2 } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, User, Loader2 } from 'lucide-react';
 import { sendChatMessage } from '../../api/gemini';
 import type { ChatMessage } from '../../api/gemini';
 
 const QUICK_QUESTIONS = [
-  '💰 Giá thuê xe bao nhiêu?',
+  '💰 Giá thuê và giá mua xe?',
+  '🛒 Quy trình mua xe?',
   '📋 Điều kiện thuê xe?',
-  '🚗 Quy trình thuê như thế nào?',
+  '🛞 Quy trình thuê xe?',
+  '📅 Đặt lịch xem xe?',
   '📞 Liên hệ hỗ trợ',
 ];
 
 const AIChatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'model',
-      content: '👋 Xin chào! Tôi là **AutoBot** - trợ lý AI của AutoHub.\n\nTôi có thể giúp bạn:\n- Tư vấn chọn xe phù hợp\n- Giải thích quy trình thuê xe\n- Trả lời mọi thắc mắc\n\nBạn cần hỗ trợ gì? 😊',
+      content:
+        '👋 Xin chào! Tôi là **AutoBot** - trợ lý AI của AutoHub.\n\nTôi có thể giúp bạn:\n- **Thuê xe** tự lái (giá/ngày, điều kiện, quy trình)\n- **Mua xe** (giá bán, đặt mua, xem xe)\n- Hướng dẫn dùng website\n\nBạn cần hỗ trợ gì? 😊',
     },
   ]);
   const [input, setInput] = useState('');
@@ -80,14 +82,14 @@ const AIChatbot = () => {
       {/* Floating button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-primary rounded-full shadow-lg hover:bg-primary/90 hover:scale-110 transition-all duration-200 flex items-center justify-center group"
+        className="fixed bottom-5 right-5 z-50 w-12 h-12 bg-primary rounded-full shadow-lg hover:bg-primary/90 hover:scale-105 transition-all duration-200 flex items-center justify-center group"
         aria-label="Mở chat AI"
       >
         {isOpen ? (
-          <X className="w-6 h-6 text-white" />
+          <X className="w-5 h-5 text-white" />
         ) : (
           <>
-            <MessageCircle className="w-6 h-6 text-white" />
+            <MessageCircle className="w-5 h-5 text-white" />
             {unread > 0 && (
               <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
                 {unread}
@@ -105,140 +107,117 @@ const AIChatbot = () => {
       {/* Chat window */}
       {isOpen && (
         <div
-          className={`fixed right-6 z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden transition-all duration-200 ${
-            isMinimized ? 'bottom-24 h-14 w-80' : 'bottom-24 w-96 h-[560px]'
-          }`}
-          style={{ maxHeight: 'calc(100vh - 120px)' }}
+          className="fixed bottom-20 right-5 z-50 w-[min(100vw-1.5rem,18rem)] sm:w-80 flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl transition-all duration-200"
+          style={{ height: 'min(420px, calc(100vh - 5.5rem))', maxHeight: 'calc(100vh - 5.5rem)' }}
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-navy to-navy/90 text-white px-4 py-3 flex items-center gap-3 flex-shrink-0">
-            <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-              <Bot className="w-5 h-5 text-white" />
+          <div className="flex flex-shrink-0 items-center gap-2.5 bg-gradient-to-r from-navy to-navy/90 px-3 py-2.5 text-white">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary">
+              <Bot className="h-4 w-4 text-white" />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm">AutoBot AI</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold leading-tight">AutoBot AI</p>
               <div className="flex items-center gap-1">
-                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                <span className="text-xs text-gray-300">Trực tuyến • Powered by Gemini</span>
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-400" />
+                <span className="text-[10px] text-gray-300 sm:text-xs">Trực tuyến • Gemini</span>
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setIsMinimized(!isMinimized)}
-                className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
-                title={isMinimized ? 'Mở rộng' : 'Thu nhỏ'}
-              >
-                {isMinimized ? (
-                  <Maximize2 className="w-4 h-4" />
-                ) : (
-                  <Minimize2 className="w-4 h-4" />
-                )}
-              </button>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="rounded-lg p-1.5 transition-colors hover:bg-white/10"
+              aria-label="Đóng chat"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
-          {!isMinimized && (
-            <>
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-                {messages.map((msg, i) => (
-                  <div
-                    key={i}
-                    className={`flex gap-2.5 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
-                  >
-                    {/* Avatar */}
-                    <div
-                      className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${
-                        msg.role === 'user' ? 'bg-primary' : 'bg-navy'
-                      }`}
-                    >
-                      {msg.role === 'user' ? (
-                        <User className="w-4 h-4 text-white" />
-                      ) : (
-                        <Bot className="w-4 h-4 text-white" />
-                      )}
-                    </div>
-
-                    {/* Bubble */}
-                    <div
-                      className={`max-w-[75%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                        msg.role === 'user'
-                          ? 'bg-primary text-white rounded-tr-sm'
-                          : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-tl-sm'
-                      }`}
-                    >
-                      {renderMessage(msg.content)}
-                    </div>
-                  </div>
-                ))}
-
-                {/* Loading indicator */}
-                {loading && (
-                  <div className="flex gap-2.5">
-                    <div className="w-8 h-8 bg-navy rounded-full flex-shrink-0 flex items-center justify-center">
-                      <Bot className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="bg-white shadow-sm border border-gray-100 px-4 py-3 rounded-2xl rounded-tl-sm flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                      <span className="text-xs text-gray-400">AutoBot đang trả lời...</span>
-                    </div>
-                  </div>
-                )}
-
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Quick questions */}
-              {messages.length <= 1 && (
-                <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 flex-shrink-0">
-                  <p className="text-xs text-gray-400 mb-2">Câu hỏi thường gặp:</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {QUICK_QUESTIONS.map((q) => (
-                      <button
-                        key={q}
-                        onClick={() => handleSend(q)}
-                        className="text-xs bg-white border border-gray-200 hover:border-primary hover:text-primary px-2.5 py-1 rounded-full transition-colors"
-                      >
-                        {q}
-                      </button>
-                    ))}
-                  </div>
+          {/* Messages */}
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-gray-50 p-3">
+            {messages.map((msg, i) => (
+              <div
+                key={i}
+                className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+              >
+                <div
+                  className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full ${
+                    msg.role === 'user' ? 'bg-primary' : 'bg-navy'
+                  }`}
+                >
+                  {msg.role === 'user' ? (
+                    <User className="h-3.5 w-3.5 text-white" />
+                  ) : (
+                    <Bot className="h-3.5 w-3.5 text-white" />
+                  )}
                 </div>
-              )}
+                <div
+                  className={`max-w-[78%] rounded-2xl px-3 py-2 text-xs leading-relaxed ${
+                    msg.role === 'user'
+                      ? 'rounded-tr-sm bg-primary text-white'
+                      : 'rounded-tl-sm border border-gray-100 bg-white text-gray-800 shadow-sm'
+                  }`}
+                >
+                  {renderMessage(msg.content)}
+                </div>
+              </div>
+            ))}
 
-              {/* Input */}
-              <div className="px-4 py-3 bg-white border-t border-gray-100 flex-shrink-0">
-                <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2">
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-                    placeholder="Nhập câu hỏi..."
-                    className="flex-1 bg-transparent text-sm outline-none text-gray-700 placeholder:text-gray-400"
-                    disabled={loading}
-                  />
+            {loading && (
+              <div className="flex gap-2">
+                <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-navy">
+                  <Bot className="h-3.5 w-3.5 text-white" />
+                </div>
+                <div className="flex items-center gap-2 rounded-2xl rounded-tl-sm border border-gray-100 bg-white px-3 py-2 shadow-sm">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                  <span className="text-[11px] text-gray-400">Đang trả lời...</span>
+                </div>
+              </div>
+            )}
+
+            <div ref={messagesEndRef} />
+          </div>
+
+          {messages.length <= 1 && (
+            <div className="flex-shrink-0 border-t border-gray-100 bg-gray-50 px-3 py-2">
+              <p className="mb-1.5 text-[10px] text-gray-400">Câu hỏi thường gặp:</p>
+              <div className="flex flex-wrap gap-1">
+                {QUICK_QUESTIONS.map((q) => (
                   <button
-                    onClick={() => handleSend()}
-                    disabled={!input.trim() || loading}
-                    className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center disabled:opacity-40 hover:bg-primary/90 transition-colors flex-shrink-0"
+                    key={q}
+                    type="button"
+                    onClick={() => handleSend(q)}
+                    className="rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[10px] transition-colors hover:border-primary hover:text-primary sm:text-xs"
                   >
-                    <Send className="w-4 h-4 text-white" />
+                    {q}
                   </button>
-                </div>
-                <p className="text-xs text-gray-400 text-center mt-1.5">
-                  AutoBot AI • AutoHub
-                </p>
+                ))}
               </div>
-            </>
+            </div>
           )}
+
+          <div className="flex-shrink-0 border-t border-gray-100 bg-white px-3 py-2">
+            <div className="flex items-center gap-1.5 rounded-lg bg-gray-100 px-2.5 py-1.5">
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+                placeholder="Nhập câu hỏi..."
+                className="min-w-0 flex-1 bg-transparent text-xs text-gray-700 outline-none placeholder:text-gray-400"
+                disabled={loading}
+              />
+              <button
+                type="button"
+                onClick={() => handleSend()}
+                disabled={!input.trim() || loading}
+                className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-primary transition-colors hover:bg-primary/90 disabled:opacity-40"
+              >
+                <Send className="h-3.5 w-3.5 text-white" />
+              </button>
+            </div>
+            <p className="mt-1 text-center text-[10px] text-gray-400">AutoBot • AutoHub</p>
+          </div>
         </div>
       )}
     </>

@@ -50,19 +50,28 @@ public class RentalsController {
         return rentalService.add(request);
     }
 
+    @PreAuthorize("hasRole('admin')")
     @PutMapping("/update")
     public Result update(@RequestBody @Valid UpdateRentalRequest request){
         return rentalService.update(request);
     }
 
+    @PreAuthorize("hasRole('admin')")
     @DeleteMapping("/delete")
     public  Result delete(@RequestBody @Valid DeleteRentalRequest request){
         return rentalService.delete(request);
     }
 
+    @PreAuthorize("hasRole('admin')")
     @GetMapping("/getAll")
     public List<GetAllRentalsResponse> getAll(){
         return rentalService.getAll();
+    }
+
+    /** Dữ liệu tối thiểu cho lịch đặt xe (trang công khai). */
+    @GetMapping("/public/busy-ranges/{carId}")
+    public List<RentalBusyRangeResponse> getPublicBusyRanges(@PathVariable int carId) {
+        return rentalService.getPublicBusyRangesForCar(carId);
     }
 
     @GetMapping("/getById/{id}")
@@ -85,11 +94,24 @@ public class RentalsController {
             @RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) String startDate,
             @RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) String endDate,
             @RequestParam("carId") int carId,
-            @RequestParam("userId") int userId) {
+            @RequestParam("userId") int userId,
+            HttpServletRequest httpRequest) {
 
-        // Parse the date portion of the date-time strings
-        LocalDate parsedStartDate = LocalDate.parse(startDate.substring(0, 10)); // Extract the date part
-        LocalDate parsedEndDate = LocalDate.parse(endDate.substring(0, 10)); // Extract the date part
+        String tokenWithPrefix = httpRequest.getHeader("Authorization");
+        if (tokenWithPrefix == null || !tokenWithPrefix.startsWith("Bearer ")) {
+            throw new BusinessException("Yêu cầu đăng nhập.");
+        }
+        String token = tokenWithPrefix.replace("Bearer ", "");
+        int tokenUserId = jwtService.extractUserId(token);
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAdmin = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_admin".equals(a.getAuthority()) || "admin".equals(a.getAuthority()));
+        if (!isAdmin && tokenUserId != userId) {
+            throw new BusinessException("Bạn không có quyền tra cứu đơn thuê này.");
+        }
+
+        LocalDate parsedStartDate = LocalDate.parse(startDate.substring(0, 10));
+        LocalDate parsedEndDate = LocalDate.parse(endDate.substring(0, 10));
 
         FindRentalIdRequest request = new FindRentalIdRequest(parsedStartDate, parsedEndDate, carId, userId);
 

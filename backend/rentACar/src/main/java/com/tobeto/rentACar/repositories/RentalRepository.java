@@ -30,4 +30,13 @@ public interface RentalRepository extends JpaRepository<Rental, Integer> {
 
     @Query("select u.email from Rental r join r.user u where r.id = :id")
     Optional<String> findUserEmailByRentalId(@Param("id") int id);
+
+    /**
+     * Khớp logic hiển thị lịch bận trên CarDetail: đơn chưa trả xe, không hoàn tất/hủy.
+     */
+    @Query("SELECT r FROM Rental r WHERE r.car.id = :carId "
+            + "AND r.returnDate IS NULL "
+            + "AND (r.rentalStatus IS NULL OR (r.rentalStatus <> 'COMPLETED' AND r.rentalStatus <> 'CANCELLED')) "
+            + "AND r.startDate IS NOT NULL AND r.endDate IS NOT NULL")
+    List<Rental> findBlockingRentalsForPublicCalendar(@Param("carId") int carId);
 }

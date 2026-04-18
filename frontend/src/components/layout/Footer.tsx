@@ -40,21 +40,21 @@ const Footer = () => {
             </p>
             <div className="flex gap-4">
               <a
-                href="#"
+                href="https://www.facebook.com/"
                 className="w-10 h-10 bg-navy-400/50 rounded-full flex items-center justify-center hover:bg-primary hover:-translate-y-1 transition-all duration-300 group"
                 aria-label="Facebook"
               >
                 <FacebookIcon className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
               </a>
               <a
-                href="#"
+                href="https://www.instagram.com/"
                 className="w-10 h-10 bg-navy-400/50 rounded-full flex items-center justify-center hover:bg-primary hover:-translate-y-1 transition-all duration-300 group"
                 aria-label="Instagram"
               >
                 <InstagramIcon className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
               </a>
               <a
-                href="#"
+                href="https://www.linkedin.com/"
                 className="w-10 h-10 bg-navy-400/50 rounded-full flex items-center justify-center hover:bg-primary hover:-translate-y-1 transition-all duration-300 group"
                 aria-label="LinkedIn"
               >

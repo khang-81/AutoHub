@@ -13,12 +13,13 @@ import { useToast } from '../../components/ui/Toast';
 import Modal from '../../components/ui/Modal';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { formatCurrency, CAR_PLACEHOLDER } from '../../utils/helpers';
+import { MIN_MODEL_YEAR, getMaxModelYear } from '../../config/vehicleYears';
 import type { Car as CarType, CarModel, Color, Rental } from '../../types';
 
 const schema = z
   .object({
     plate: z.string().min(1, 'Nhập biển số'),
-    modelYear: z.number().min(2005).max(2024),
+    modelYear: z.number().min(MIN_MODEL_YEAR).max(getMaxModelYear()),
     kilometer: z.number().min(0),
     listingType: z.enum(['RENT_ONLY', 'SALE_ONLY']),
     dailyPrice: z.number().min(0),
@@ -347,7 +348,16 @@ const ManageCars = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Năm sản xuất *</label>
-              <input {...register('modelYear', { valueAsNumber: true })} type="number" className="input-field" />
+              <input
+                {...register('modelYear', { valueAsNumber: true })}
+                type="number"
+                min={MIN_MODEL_YEAR}
+                max={getMaxModelYear()}
+                className="input-field"
+              />
+              <p className="text-gray-400 text-xs mt-0.5">
+                {MIN_MODEL_YEAR} – {getMaxModelYear()} (khớp backend tối đa 2030)
+              </p>
               {errors.modelYear && <p className="text-red-500 text-xs mt-1">{errors.modelYear.message}</p>}
             </div>
           </div>

@@ -7,6 +7,7 @@ import { Mail, Phone, MapPin, Send, CalendarClock, MessageSquare } from 'lucide-
 import { sendContactEmailApi } from '../../api/contact';
 import type { ContactMailRequest } from '../../types';
 import { useToast } from '../../components/ui/Toast';
+import { getApiErrorMessage } from '../../utils/helpers';
 
 /** Tách họ / tên cho body gửi mail (backend có `name` + `surname`) */
 function splitNameForMail(fullName: string): { name: string; surname: string } {
@@ -90,7 +91,11 @@ const Contact = () => {
       showToast('Tin nhắn đã được gửi! Chúng tôi sẽ liên hệ sớm.', 'success');
       contactForm.reset();
     },
-    onError: () => showToast('Có lỗi khi gửi tin nhắn', 'error'),
+    onError: (err: unknown) =>
+      showToast(
+        getApiErrorMessage(err, 'Có lỗi khi gửi tin nhắn. Nếu máy chủ chưa cấu hình email (MAIL_*), vui lòng gọi hotline hoặc email trực tiếp.'),
+        'error'
+      ),
   });
 
   const viewingMutation = useMutation({
@@ -99,7 +104,11 @@ const Contact = () => {
       showToast('Yêu cầu đặt lịch đã được gửi! Chúng tôi sẽ xác nhận qua điện thoại hoặc email.', 'success');
       viewingForm.reset();
     },
-    onError: () => showToast('Có lỗi khi gửi yêu cầu', 'error'),
+    onError: (err: unknown) =>
+      showToast(
+        getApiErrorMessage(err, 'Có lỗi khi gửi yêu cầu. Kiểm tra kết nối hoặc liên hệ trực tiếp qua hotline.'),
+        'error'
+      ),
   });
 
   return (

@@ -133,4 +133,18 @@ export function isJwtExpired(token: string): boolean {
   }
 }
 
+/** Lấy message từ body lỗi Axios/Spring (message hoặc field đầu tiên). */
+export function getApiErrorMessage(err: unknown, fallback: string): string {
+  const e = err as { response?: { data?: { message?: string } | Record<string, string> } };
+  const d = e?.response?.data;
+  if (d && typeof d === 'object' && 'message' in d && typeof (d as { message?: unknown }).message === 'string') {
+    return (d as { message: string }).message;
+  }
+  if (d && typeof d === 'object') {
+    const first = Object.values(d).find((v) => typeof v === 'string');
+    if (first) return first as string;
+  }
+  return fallback;
+}
+
 export const CAR_PLACEHOLDER = 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=800&q=80';

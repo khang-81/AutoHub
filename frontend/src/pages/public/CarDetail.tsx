@@ -9,7 +9,7 @@ import {
   Phone, MessageSquare, Clock3, Info,
 } from 'lucide-react';
 import { getCarByIdApi } from '../../api/cars';
-import { getAllRentalsApi, getInsuranceOptionsApi, addRentalApi } from '../../api/rentals';
+import { getPublicBusyRangesForCarApi, getInsuranceOptionsApi, addRentalApi } from '../../api/rentals';
 import { addSaleOrderApi } from '../../api/saleOrders';
 import { createViewingAppointmentApi } from '../../api/viewingAppointments';
 import { getProfileApi } from '../../api/users';
@@ -27,7 +27,7 @@ import {
   getUserIdFromToken,
 } from '../../utils/helpers';
 import { HANOI_DISTRICTS } from '../../data/hanoiDistricts';
-import type { Car as CarType, Rental } from '../../types';
+import type { Car as CarType } from '../../types';
 
 const CarDetail = () => {
   const queryClient = useQueryClient();
@@ -55,7 +55,11 @@ const CarDetail = () => {
     queryFn: () => getCarByIdApi(Number(id)),
     enabled: !!id,
   });
-  const { data: rentals = [] } = useQuery<Rental[]>({ queryKey: ['rentals'], queryFn: getAllRentalsApi });
+  const { data: busyRangeRows = [] } = useQuery({
+    queryKey: ['rental-busy-ranges', id],
+    queryFn: () => getPublicBusyRangesForCarApi(Number(id)),
+    enabled: !!id,
+  });
 
   const { data: insuranceOptions = [] } = useQuery({
     queryKey: ['insuranceOptions'],
@@ -74,20 +78,11 @@ const CarDetail = () => {
     enabled: !!id,
   });
 
-  const bookedRanges = rentals
-    .filter((r) =>
-      r.car?.id === Number(id) &&
-      !r.returnDate &&
-      r.rentalStatus !== 'COMPLETED' &&
-      r.rentalStatus !== 'CANCELLED' &&
-      !!r.startDate &&
-      !!r.endDate
-    )
-    .map((r) => ({
-      start: new Date(`${r.startDate}T00:00:00`),
-      end: new Date(`${r.endDate}T00:00:00`),
-      label: `${r.startDate} - ${r.endDate}`,
-    }));
+  const bookedRanges = busyRangeRows.map((r) => ({
+    start: new Date(`${r.startDate}T00:00:00`),
+    end: new Date(`${r.endDate}T00:00:00`),
+    label: `${r.startDate} - ${r.endDate}`,
+  }));
 
   const isBookedDate = (date: Date) =>
     bookedRanges.some((range) => date >= range.start && date <= range.end);
@@ -198,6 +193,15 @@ const CarDetail = () => {
       navigate('/login', { state: { from: { pathname: `/cars/${id}` } } });
       return;
     }
+    if (profileLoading) {
+      showToast('Đang kiểm tra hồ sơ...', 'info');
+      return;
+    }
+    if (profile?.kycStatus !== 'APPROVED') {
+      showToast('Vui lòng xác minh CCCD + GPLX trước khi đặt lịch xem xe.', 'info');
+      navigate('/dashboard/kyc');
+      return;
+    }
     if (!viewingDate) {
       showToast('Chọn ngày giờ xem xe', 'info');
       return;
@@ -241,6 +245,7 @@ const CarDetail = () => {
     mutationFn: addRentalApi,
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['rentals'] });
+      queryClient.invalidateQueries({ queryKey: ['rental-busy-ranges', id] });
       queryClient.invalidateQueries({ queryKey: ['myRentals'] });
       queryClient.invalidateQueries({ queryKey: ['reviews'] });
       queryClient.invalidateQueries({ queryKey: ['car', id] });

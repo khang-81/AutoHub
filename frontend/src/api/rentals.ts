@@ -12,6 +12,15 @@ export const getInsuranceOptionsApi = async (): Promise<InsuranceOptionDto[]> =>
   return res.data;
 };
 
+/** Khoảng ngày đã có đơn (công khai, không token) — dùng cho lịch trên trang chi tiết xe. */
+export const getPublicBusyRangesForCarApi = async (
+  carId: number
+): Promise<{ startDate: string; endDate: string }[]> => {
+  const res = await axiosInstance.get(`/api/rentals/public/busy-ranges/${carId}`);
+  const data = res.data;
+  return Array.isArray(data) ? data : [];
+};
+
 export const getAllRentalsApi = async () => {
   const res = await axiosInstance.get('/api/rentals/getAll');
   return res.data;

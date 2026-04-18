@@ -191,6 +191,16 @@ public class RentalManager implements RentalService {
     }
 
     @Override
+    public List<RentalBusyRangeResponse> getPublicBusyRangesForCar(int carId) {
+        if (!carRepository.existsById(carId)) {
+            throw new NotFoundException(messageService.getMessage(Messages.Car.getCarNotFoundMessage));
+        }
+        return rentalRepository.findBlockingRentalsForPublicCalendar(carId).stream()
+                .map(r -> new RentalBusyRangeResponse(r.getStartDate(), r.getEndDate()))
+                .toList();
+    }
+
+    @Override
     public GetRentalByIdResponse getById(int id, int actorUserId, boolean isAdmin) {
 
         Rental rental = rentalRepository.findById(id).orElseThrow(

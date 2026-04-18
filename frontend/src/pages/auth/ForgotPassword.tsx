@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { Car, Mail } from 'lucide-react';
 import { forgotPasswordApi } from '../../api/auth';
 import { useToast } from '../../components/ui/Toast';
+import { getApiErrorMessage } from '../../utils/helpers';
 
 const schema = z.object({
   email: z.string().email('Email không hợp lệ'),
@@ -39,8 +40,13 @@ const ForgotPassword = () => {
         showToast(res.message || 'Không thể gửi yêu cầu', 'error');
       }
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      showToast(error?.response?.data?.message || 'Đã có lỗi xảy ra', 'error');
+      showToast(
+        getApiErrorMessage(
+          err,
+          'Không gửi được email. Kiểm tra kết nối hoặc cấu hình MAIL trên máy chủ.'
+        ),
+        'error'
+      );
     } finally {
       setLoading(false);
     }

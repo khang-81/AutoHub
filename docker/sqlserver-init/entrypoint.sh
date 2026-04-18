@@ -41,9 +41,9 @@ for i in $(seq 1 60); do
   sleep 2
 done
 
-# Kiểm tra schema từ [master] — không login -d autohub (tránh 18456 / Msg 904 khi recovery).
+# Kiểm tra schema từ [master] — dùng OBJECT_ID (ổn định hơn INFORMATION_SCHEMA khi DB tồn tại).
 set +e
-SCHEMA_LINE=$(run_master -h -1 -W -Q "SET NOCOUNT ON; SELECT CASE WHEN EXISTS (SELECT 1 FROM autohub.INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = N'dbo' AND TABLE_NAME = N'roles') THEN 1 ELSE 0 END;" 2>/dev/null | tail -n 1 | tr -d '[:space:]')
+SCHEMA_LINE=$(run_master -h -1 -W -Q "SET NOCOUNT ON; SELECT CASE WHEN OBJECT_ID(N'autohub.dbo.roles', N'U') IS NOT NULL THEN 1 ELSE 0 END;" 2>/dev/null | tail -n 1 | tr -d '[:space:]')
 set -e
 SCHEMA_LINE=${SCHEMA_LINE:-0}
 

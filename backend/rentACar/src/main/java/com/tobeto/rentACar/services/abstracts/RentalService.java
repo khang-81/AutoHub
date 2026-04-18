@@ -16,6 +16,10 @@ public interface RentalService {
     Result update(UpdateRentalRequest request);
     Result delete(DeleteRentalRequest request);
     List<GetAllRentalsResponse> getAll();
+
+    /** Chỉ khoảng ngày — dùng cho SPA công khai, không lộ danh sách đơn đầy đủ. */
+    List<RentalBusyRangeResponse> getPublicBusyRangesForCar(int carId);
+
     GetRentalByIdResponse getById(int id, int actorUserId, boolean isAdmin);
 
     GetRentalIdResponse getRentalId(FindRentalIdRequest request);

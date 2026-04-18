@@ -35,13 +35,13 @@ public class SecurityConfiguration {
     private final JwtAuthFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
 
-    /** Công khai: tài liệu API, đăng ký user, vai trò, thương hiệu, liên hệ, AI proxy, file KYC tĩnh. */
+    /** Công khai: tài liệu API, vai trò (đọc), thương hiệu, liên hệ, AI proxy, file KYC tĩnh.
+     *  Không mở /api/users/** — xem UsersController + JWT. */
     private static final String[] PUBLIC_PREFIXES = {
             "/swagger-ui/**",
             "/v2/api-docs",
             "/v3/api-docs",
             "/v3/api-docs/**",
-            "/api/users/**",
             "/api/roles/**",
             "/api/brands/**",
             "/api/contact/**",
@@ -85,15 +85,13 @@ public class SecurityConfiguration {
                         .requestMatchers(PUBLIC_PREFIXES).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/cars/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/rentals/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/sale-orders/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/rentals/insurance-options").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/rentals/public/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/models/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/colors/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/invoices/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/customers/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/rentals/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/sale-orders/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/customers/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/invoices/**").permitAll()
                         .anyRequest().authenticated())

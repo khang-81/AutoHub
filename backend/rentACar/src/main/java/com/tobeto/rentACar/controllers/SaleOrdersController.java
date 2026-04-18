@@ -38,6 +38,7 @@ public class SaleOrdersController {
         return saleOrderService.add(request, userId);
     }
 
+    @PreAuthorize("hasRole('admin')")
     @GetMapping("/getAll")
     public List<GetAllSaleOrdersResponse> getAll() {
         return saleOrderService.getAll();
@@ -60,6 +61,9 @@ public class SaleOrdersController {
     @GetMapping("/getByUserId")
     public List<GetAllSaleOrdersResponse> getByUserId(HttpServletRequest request) {
         String tokenWithPrefix = request.getHeader("Authorization");
+        if (tokenWithPrefix == null || !tokenWithPrefix.startsWith("Bearer ")) {
+            throw new BusinessException("Yêu cầu đăng nhập.");
+        }
         String token = tokenWithPrefix.replace("Bearer ", "");
         int userId = jwtService.extractUserId(token);
         return saleOrderService.getByUserId(userId);

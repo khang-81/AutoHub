@@ -8,6 +8,7 @@ import { getAllColorsApi } from '../../api/colors';
 import CarCard, { CarListRow } from '../../components/ui/CarCard';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import type { Brand, Color, PagedCarsResponse } from '../../types';
+import { MIN_MODEL_YEAR, getMaxModelYear } from '../../config/vehicleYears';
 
 const ITEMS_PER_PAGE = 9;
 
@@ -301,8 +302,8 @@ const CarListing = () => {
                 <input
                   type="number"
                   placeholder="VD: 2020"
-                  min={2005}
-                  max={2024}
+                  min={MIN_MODEL_YEAR}
+                  max={getMaxModelYear()}
                   value={filters.minYear}
                   onChange={(e) => updateFilter('minYear', e.target.value)}
                   className="input-field text-sm"
