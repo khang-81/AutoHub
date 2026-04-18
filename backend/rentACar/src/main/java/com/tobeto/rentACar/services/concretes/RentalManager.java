@@ -22,6 +22,7 @@ import com.tobeto.rentACar.services.dtos.rental.request.AddRentalRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.DeleteRentalRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.FindRentalIdRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.UpdateRentalRequest;
+import com.tobeto.rentACar.services.dtos.rental.request.UserReturnCarRequest;
 import com.tobeto.rentACar.services.dtos.rental.response.*;
 
 import com.tobeto.rentACar.services.policy.RentalPolicy;
@@ -374,6 +375,49 @@ public class RentalManager implements RentalService {
         ));
 
         return new SuccessResult("Admin đã xác nhận đơn thuê.");
+    }
+
+    @Override
+    @Transactional
+    public Result returnCarByUser(int rentalId, int userId, UserReturnCarRequest body) {
+        Rental rental = rentalRepository.findById(rentalId).orElseThrow(
+                () -> new NotFoundException(messageService.getMessage(Messages.Rental.getRentalNotFoundMessage)));
+
+        if (rental.getUser() == null || rental.getUser().getId() != userId) {
+            throw new BusinessException("Bạn không có quyền xác nhận trả xe cho đơn này.");
+        }
+        if (rental.getReturnDate() != null) {
+            throw new BusinessException("Đơn đã được ghi nhận trả xe.");
+        }
+        String rs = normRentalToken(rental.getRentalStatus());
+        if ("CANCELLED".equals(rs)) {
+            throw new BusinessException("Đơn đã hủy, không thể trả xe.");
+        }
+        if (!"CONFIRMED".equals(rs)) {
+            throw new BusinessException(
+                    "Chỉ có thể trả xe khi đơn đã được admin xác nhận (đang thuê). Trạng thái hiện tại: "
+                            + (rs.isBlank() ? "—" : rs) + ".");
+        }
+        if (body.getEndKilometer() == null) {
+            throw new BusinessException("Vui lòng nhập số km đồng hồ khi trả xe.");
+        }
+        long endKm = body.getEndKilometer();
+        long startKm = rental.getStartKilometer() != null ? rental.getStartKilometer() : 0L;
+        if (endKm < startKm) {
+            throw new BusinessException("Số km trả xe phải lớn hơn hoặc bằng km lúc nhận xe (" + startKm + " km).");
+        }
+
+        LocalDate returnDate = body.getReturnDate() != null ? body.getReturnDate() : LocalDate.now();
+        if (returnDate.isBefore(rental.getStartDate())) {
+            throw new BusinessException("Ngày trả xe không được trước ngày bắt đầu thuê.");
+        }
+
+        rental.setReturnDate(returnDate);
+        rental.setEndKilometer(endKm);
+        rental.setRentalStatus("COMPLETED");
+        rentalRepository.save(rental);
+
+        return new SuccessResult("Đã xác nhận trả xe. Cảm ơn bạn đã sử dụng dịch vụ AutoHub!");
     }
 
 }

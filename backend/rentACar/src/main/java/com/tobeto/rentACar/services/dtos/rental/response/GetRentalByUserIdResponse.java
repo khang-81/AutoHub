@@ -16,6 +16,8 @@ public class GetRentalByUserIdResponse {
     private LocalDate startDate;
     private LocalDate endDate;
     private LocalDate returnDate;
+    /** Km đồng hồ lúc nhận xe (snapshot) — dùng khi khách trả xe */
+    private Long startKilometer;
     private double totalPrice;
     private String paymentMethod;
     private String paymentStatus;

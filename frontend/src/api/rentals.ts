@@ -64,6 +64,15 @@ export const getRentalIdApi = async (
   return res.data;
 };
 
+/** Khách xác nhận trả xe (đơn CONFIRMED). */
+export const returnRentalByUserApi = async (
+  rentalId: number,
+  body: { endKilometer: number; returnDate?: string }
+) => {
+  const res = await axiosInstance.put(`/api/rentals/${rentalId}/return`, body);
+  return res.data;
+};
+
 export const returnCarApi = async (data: {
   id: number;
   startDate: string;

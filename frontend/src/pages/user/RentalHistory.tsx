@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Car, Calendar, DollarSign, FileText, Eye, X, Receipt, Star } from 'lucide-react';
-import { getRentalsByUserIdApi, cancelRentalApi } from '../../api/rentals';
+import { Car, Calendar, DollarSign, FileText, Eye, X, Receipt, Star, Undo2 } from 'lucide-react';
+import { getRentalsByUserIdApi, cancelRentalApi, returnRentalByUserApi } from '../../api/rentals';
 import { addReviewApi } from '../../api/reviews';
 import { getMyInvoicesApi } from '../../api/invoices';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
-import { formatCurrency, formatDate, CAR_PLACEHOLDER } from '../../utils/helpers';
+import { formatCurrency, formatDate, CAR_PLACEHOLDER, getApiErrorMessage } from '../../utils/helpers';
 import { Link } from 'react-router-dom';
 import type { RentalByUser, Invoice } from '../../types';
 
@@ -20,6 +20,9 @@ const RentalHistory = () => {
   const [reviewRentalId, setReviewRentalId] = useState<number | null>(null);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
+  const [returnTarget, setReturnTarget] = useState<RentalByUser | null>(null);
+  const [returnKm, setReturnKm] = useState('');
+  const [returnDateStr, setReturnDateStr] = useState('');
 
   const { data: rentals = [], isLoading, isError, error, refetch } = useQuery<RentalByUser[]>({
     queryKey: ['myRentals'],
@@ -37,6 +40,38 @@ const RentalHistory = () => {
       [...rentals].sort((a, b) => b.id - a.id),
     [rentals]
   );
+
+  const returnUserMutation = useMutation({
+    mutationFn: async () => {
+      if (!returnTarget) throw new Error('no rental');
+      const km = Number.parseInt(String(returnKm).replace(/\s/g, ''), 10);
+      if (Number.isNaN(km) || km < 0) throw new Error('invalid-km');
+      const startKm = returnTarget.startKilometer ?? returnTarget.car?.kilometer ?? 0;
+      if (km < startKm) throw new Error('km-below-start');
+      return returnRentalByUserApi(returnTarget.id, {
+        endKilometer: km,
+        returnDate: returnDateStr || undefined,
+      });
+    },
+    onSuccess: (data: { message?: string }) => {
+      showToast(data?.message || 'Đã xác nhận trả xe', 'success');
+      queryClient.invalidateQueries({ queryKey: ['myRentals'] });
+      queryClient.invalidateQueries({ queryKey: ['rentals'] });
+      queryClient.invalidateQueries({ queryKey: ['cars'] });
+      queryClient.invalidateQueries({ queryKey: ['rental-busy-ranges'] });
+      setReturnTarget(null);
+      setReturnKm('');
+      setReturnDateStr('');
+    },
+    onError: (err: unknown) => {
+      let msg = getApiErrorMessage(err, 'Không thể xác nhận trả xe');
+      if (err instanceof Error) {
+        if (err.message === 'invalid-km') msg = 'Vui lòng nhập số km hợp lệ';
+        if (err.message === 'km-below-start') msg = 'Số km khi trả phải lớn hơn hoặc bằng km nhận xe';
+      }
+      showToast(msg, 'error');
+    },
+  });
 
   const cancelMutation = useMutation({
     mutationFn: ({ id, reason }: { id: number; reason?: string }) => cancelRentalApi(id, reason),
@@ -150,8 +185,31 @@ const RentalHistory = () => {
               !rental.returnDate;
             const canReview =
               status === 'COMPLETED' && rental.hasReview !== true;
+            const canReturnCar =
+              !rental.returnDate && status === 'CONFIRMED';
             return (
-              <div key={rental.id} className="bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+              <div
+                key={rental.id}
+                className={`overflow-hidden rounded-2xl bg-white transition-shadow ${
+                  canReturnCar
+                    ? 'ring-2 ring-emerald-500 shadow-md shadow-emerald-600/15 ring-offset-2 ring-offset-[rgb(248,250,252)] hover:shadow-lg hover:shadow-emerald-600/20'
+                    : 'shadow-sm hover:shadow-md'
+                }`}
+              >
+                {canReturnCar && (
+                  <div className="flex items-center justify-between gap-2 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-50 via-teal-50/80 to-emerald-50 px-4 py-2.5 sm:px-5">
+                    <span className="flex items-center gap-2 text-sm font-semibold text-emerald-900">
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
+                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-600" />
+                      </span>
+                      Đơn này đang thuê — xác nhận trả xe tại đây
+                    </span>
+                    <span className="hidden rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white sm:inline">
+                      Ưu tiên
+                    </span>
+                  </div>
+                )}
                 <div className="flex flex-col sm:flex-row">
                   {/* Car image */}
                   <div className="sm:w-48 h-40 sm:h-auto flex-shrink-0 bg-gray-100">
@@ -175,12 +233,19 @@ const RentalHistory = () => {
                         <p className="text-gray-400 text-sm">#{rental.id}</p>
                       </div>
                       <span
-                        className={`badge text-sm ${rental.returnDate
-                          ? 'bg-gray-100 text-gray-500'
-                          : 'bg-green-100 text-green-700'
-                          }`}
+                        className={`badge text-sm ${
+                          rental.returnDate
+                            ? 'bg-gray-100 text-gray-500'
+                            : canReturnCar
+                              ? 'border border-emerald-300 bg-emerald-100 font-semibold text-emerald-900'
+                              : 'bg-green-100 text-green-700'
+                        }`}
                       >
-                        {rental.returnDate ? '✓ Đã trả xe' : '🚗 Đang thuê'}
+                        {rental.returnDate
+                          ? '✓ Đã trả xe'
+                          : canReturnCar
+                            ? '🔑 Chờ xác nhận trả xe'
+                            : '🚗 Đang thuê'}
                       </span>
                     </div>
 
@@ -228,6 +293,24 @@ const RentalHistory = () => {
 
                     {/* Actions */}
                     <div className="flex flex-wrap items-center gap-2">
+                      {canReturnCar && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReturnTarget(rental);
+                            setReturnDateStr(new Date().toISOString().slice(0, 10));
+                            const startKm =
+                              rental.startKilometer ??
+                              rental.car?.kilometer ??
+                              0;
+                            setReturnKm(String(Math.max(0, Number(startKm)) + 100));
+                          }}
+                          className="order-first flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-3 text-sm font-bold text-white shadow-md shadow-emerald-700/30 ring-2 ring-emerald-400/40 transition hover:from-emerald-500 hover:to-teal-500 hover:shadow-lg hover:shadow-emerald-600/35 sm:w-auto sm:justify-start"
+                        >
+                          <Undo2 className="h-5 w-5 shrink-0" strokeWidth={2.5} />
+                          Trả xe ngay
+                        </button>
+                      )}
                       {hasInvoice && (
                         <button
                           onClick={() => setInvoiceRentalId(rental.id)}
@@ -275,6 +358,76 @@ const RentalHistory = () => {
           })}
         </div>
       )}
+
+      {/* Trả xe (khách) */}
+      <Modal
+        isOpen={!!returnTarget}
+        onClose={() => {
+          setReturnTarget(null);
+          setReturnKm('');
+          setReturnDateStr('');
+        }}
+        title="Xác nhận trả xe"
+        size="sm"
+      >
+        {returnTarget && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Đơn <strong>#{returnTarget.id}</strong> —{' '}
+              {returnTarget.car?.model?.brand?.name} {returnTarget.car?.model?.name}
+            </p>
+            <p className="text-xs text-gray-500">
+              Chỉ khả dụng khi đơn đã được admin xác nhận. Sau khi trả xe, trạng thái chuyển thành hoàn tất và bạn có thể đánh giá chuyến đi.
+            </p>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Ngày trả xe</label>
+              <input
+                type="date"
+                value={returnDateStr}
+                onChange={(e) => setReturnDateStr(e.target.value)}
+                className="input-field w-full"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Số km đồng hồ khi trả
+              </label>
+              <input
+                type="number"
+                min={Math.max(0, returnTarget.startKilometer ?? returnTarget.car?.kilometer ?? 0)}
+                value={returnKm}
+                onChange={(e) => setReturnKm(e.target.value)}
+                className="input-field w-full"
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                Km nhận xe (tham chiếu):{' '}
+                {returnTarget.startKilometer ?? returnTarget.car?.kilometer ?? '—'}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => returnUserMutation.mutate()}
+                disabled={returnUserMutation.isPending}
+                className="btn-primary flex-1"
+              >
+                {returnUserMutation.isPending ? 'Đang gửi...' : 'Xác nhận trả xe'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setReturnTarget(null);
+                  setReturnKm('');
+                  setReturnDateStr('');
+                }}
+                className="btn-outline flex-1"
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Review modal */}
       <Modal

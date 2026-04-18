@@ -9,6 +9,7 @@ import com.tobeto.rentACar.services.dtos.rental.request.CancelRentalRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.DeleteRentalRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.FindRentalIdRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.UpdateRentalRequest;
+import com.tobeto.rentACar.services.dtos.rental.request.UserReturnCarRequest;
 import com.tobeto.rentACar.services.dtos.rental.response.*;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -130,6 +131,21 @@ public class RentalsController {
         int userID = jwtService.extractUserId(token);
 
         return rentalService.getByUserId(userID);
+    }
+
+    /** Khách xác nhận đã trả xe (đơn đã CONFIRMED). */
+    @PutMapping("/{id}/return")
+    public Result returnCarByUser(
+            @PathVariable int id,
+            @RequestBody @Valid UserReturnCarRequest body,
+            HttpServletRequest httpRequest) {
+        String tokenWithPrefix = httpRequest.getHeader("Authorization");
+        if (tokenWithPrefix == null || !tokenWithPrefix.startsWith("Bearer ")) {
+            throw new BusinessException("Yêu cầu đăng nhập.");
+        }
+        String token = tokenWithPrefix.replace("Bearer ", "");
+        int userId = jwtService.extractUserId(token);
+        return rentalService.returnCarByUser(id, userId, body);
     }
 
     @PutMapping("/submitTransfer/{id}")

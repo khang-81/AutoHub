@@ -10,6 +10,7 @@ import {
   ShoppingBag,
   Timer,
   Receipt,
+  Undo2,
 } from 'lucide-react';
 import { getRentalsByUserIdApi } from '../../api/rentals';
 import { getMySaleOrdersApi } from '../../api/saleOrders';
@@ -46,6 +47,9 @@ const UserDashboard = () => {
 
   const totalSpent = rentals.reduce((sum, r) => sum + (r.totalPrice || 0), 0);
   const activeRentals = rentals.filter((r) => !r.returnDate).length;
+  const hasReturnableRental = rentals.some(
+    (r) => !r.returnDate && r.rentalStatus === 'CONFIRMED'
+  );
 
   const pendingSaleCount = saleOrders.filter(
     (o) => o.orderStatus === 'PENDING_PAYMENT' || o.orderStatus === 'PENDING_ADMIN_CONFIRM'
@@ -90,7 +94,9 @@ const UserDashboard = () => {
           </div>
           <div>
             <h1 className="font-heading font-bold text-xl text-navy">Xin chào! 👋</h1>
-            <p className="text-gray-500 text-sm">{email}</p>
+            <p className="text-gray-500 text-sm" title={email || undefined}>
+              Tài khoản thành viên
+            </p>
           </div>
         </div>
       </div>
@@ -131,6 +137,28 @@ const UserDashboard = () => {
           </div>
         ))}
       </div>
+      {hasReturnableRental && (
+        <div className="mb-6 -mt-2 flex flex-col gap-3 rounded-2xl border-2 border-emerald-500/70 bg-gradient-to-r from-emerald-50 to-teal-50 p-4 shadow-md shadow-emerald-600/10 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
+              <Undo2 className="h-5 w-5" strokeWidth={2.5} />
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-emerald-800">Trả xe</p>
+              <p className="font-heading text-sm font-semibold text-navy sm:text-base">
+                Bạn có đơn đang thuê đã xác nhận — nhớ xác nhận trả xe (ngày và km).
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/dashboard/rentals"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-emerald-700"
+          >
+            Đến trả xe
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      )}
 
       {/* Stats — Mua */}
       <div className="mb-2">

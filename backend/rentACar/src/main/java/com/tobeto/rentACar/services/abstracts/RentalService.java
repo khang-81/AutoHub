@@ -5,6 +5,7 @@ import com.tobeto.rentACar.services.dtos.rental.request.AddRentalRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.DeleteRentalRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.FindRentalIdRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.UpdateRentalRequest;
+import com.tobeto.rentACar.services.dtos.rental.request.UserReturnCarRequest;
 import com.tobeto.rentACar.services.dtos.rental.response.*;
 
 
@@ -31,5 +32,8 @@ public interface RentalService {
 
     /** user hoặc admin hủy đơn; actorUserId từ JWT */
     Result cancel(int rentalId, int actorUserId, boolean isAdmin, String reason);
+
+    /** Khách xác nhận đã trả xe (đơn CONFIRMED, chưa có returnDate). */
+    Result returnCarByUser(int rentalId, int userId, UserReturnCarRequest body);
 
 }

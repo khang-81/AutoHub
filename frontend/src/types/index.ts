@@ -170,6 +170,8 @@ export interface RentalByUser {
   startDate: string;
   endDate: string;
   returnDate: string | null;
+  /** Km lúc nhận xe — để nhập km trả hợp lệ */
+  startKilometer?: number | null;
   totalPrice: number;
   paymentMethod?: 'CASH' | 'BANK_TRANSFER';
   paymentStatus?: 'PENDING_TRANSFER' | 'PENDING_CONFIRM' | 'PAID' | 'UNPAID' | 'FAILED' | 'CANCELLED';
