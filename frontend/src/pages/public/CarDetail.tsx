@@ -24,6 +24,7 @@ import {
   formatDateTimeForApi,
   formatDate,
   CAR_PLACEHOLDER,
+  getUserIdFromToken,
 } from '../../utils/helpers';
 import { HANOI_DISTRICTS } from '../../data/hanoiDistricts';
 import type { Car as CarType, Rental } from '../../types';
@@ -33,7 +34,7 @@ const CarDetail = () => {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated, userId } = useAuthStore();
+  const { isAuthenticated, userId, token } = useAuthStore();
   const { showToast } = useToast();
 
   const [startDate, setStartDate] = useState<Date | null>(null);
@@ -258,7 +259,9 @@ const CarDetail = () => {
       showToast('Vui lòng chọn ngày thuê và trả xe', 'info');
       return;
     }
-    if (!userId) {
+    const uidFromToken = token ? getUserIdFromToken(token) : null;
+    const effectiveUserId = uidFromToken ?? userId;
+    if (!effectiveUserId) {
       showToast('Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại', 'error');
       navigate('/login');
       return;
@@ -283,7 +286,7 @@ const CarDetail = () => {
       startDate: formatDateForApi(startDate),
       endDate: formatDateForApi(endDate),
       carId: car.id,
-      userId,
+      userId: effectiveUserId,
       paymentMethod,
       insuranceCode: insuranceCode || 'NONE',
       extraFeesAmount: extrasNum,

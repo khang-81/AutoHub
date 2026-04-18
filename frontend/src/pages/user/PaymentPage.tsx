@@ -26,12 +26,24 @@ const PaymentPage = () => {
     queryKey: ['rental', rentalId],
     queryFn: () => getRentalByIdApi(Number(rentalId)),
     enabled: !!rentalId,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   });
 
   const transferMutation = useMutation({
-    mutationFn: (id: number) => submitTransferApi(id),
+    mutationFn: async (id: number) => {
+      await queryClient.fetchQuery({
+        queryKey: ['rental', rentalId],
+        queryFn: () => getRentalByIdApi(Number(rentalId)),
+      });
+      return submitTransferApi(id);
+    },
+    retry: false,
     onSuccess: () => {
       showToast(`Đặt xe thành công! Đơn #${rental?.id} đang chờ admin xác nhận.`, 'success');
+      queryClient.invalidateQueries({ queryKey: ['rental', rentalId] });
+      queryClient.invalidateQueries({ queryKey: ['myRentals'] });
       navigate('/dashboard/rentals');
     },
     onError: (err: unknown) => {
@@ -50,8 +62,9 @@ const PaymentPage = () => {
   if (isLoading) return <LoadingSpinner />;
   if (!rental) return <div className="text-center text-gray-500">Không tìm thấy đơn thuê.</div>;
 
-  const bankAwaitingTransfer =
-    rental.paymentMethod === 'BANK_TRANSFER' && rental.rentalStatus === 'PENDING_PAYMENT';
+  const rs = (rental.rentalStatus ?? '').trim().toUpperCase();
+  const pm = (rental.paymentMethod ?? '').trim().toUpperCase();
+  const bankAwaitingTransfer = pm === 'BANK_TRANSFER' && rs === 'PENDING_PAYMENT';
 
   const insLabel =
     !rental.insuranceCode || rental.insuranceCode === 'NONE'
@@ -124,30 +137,31 @@ const PaymentPage = () => {
 
           <div className="flex justify-center mt-8">
             <button
+              type="button"
               onClick={() => transferMutation.mutate(rental.id)}
-              disabled={transferMutation.isPending}
+              disabled={transferMutation.isPending || transferMutation.isSuccess}
               className="btn-primary min-w-[260px] text-center"
             >
-              {transferMutation.isPending ? 'Đang gửi...' : 'Xác nhận chuyển khoản'}
+              {transferMutation.isPending ? 'Đang gửi...' : transferMutation.isSuccess ? 'Đã gửi' : 'Xác nhận chuyển khoản'}
             </button>
           </div>
         </div>
-      ) : rental.paymentMethod === 'BANK_TRANSFER' ? (
+      ) : pm === 'BANK_TRANSFER' ? (
         <div className="bg-white rounded-2xl shadow-sm p-6 space-y-3 text-sm text-gray-700">
           <h2 className="font-semibold text-navy text-base">Trạng thái thanh toán chuyển khoản</h2>
-          {rental.rentalStatus === 'PENDING_ADMIN_CONFIRM' && (
+          {rs === 'PENDING_ADMIN_CONFIRM' && (
             <p>Đã gửi xác nhận chuyển khoản. Vui lòng chờ admin xác nhận đơn.</p>
           )}
-          {rental.rentalStatus === 'CONFIRMED' && (
+          {rs === 'CONFIRMED' && (
             <p>Đơn đã được xác nhận. Chi tiết xem tại lịch sử thuê xe.</p>
           )}
-          {rental.rentalStatus === 'COMPLETED' && (
+          {rs === 'COMPLETED' && (
             <p>Chuyến thuê đã hoàn tất.</p>
           )}
-          {rental.rentalStatus === 'CANCELLED' && (
+          {rs === 'CANCELLED' && (
             <p>Đơn thuê đã hủy.</p>
           )}
-          {!['PENDING_ADMIN_CONFIRM', 'CONFIRMED', 'COMPLETED', 'CANCELLED'].includes(rental.rentalStatus || '') && (
+          {!['PENDING_ADMIN_CONFIRM', 'CONFIRMED', 'COMPLETED', 'CANCELLED'].includes(rs) && (
             <p>Đơn không còn ở bước thanh toán trên trang này.</p>
           )}
           <button type="button" onClick={() => navigate('/dashboard/rentals')} className="btn-primary inline-flex items-center gap-2 mt-4">

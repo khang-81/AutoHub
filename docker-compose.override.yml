@@ -1,8 +1,10 @@
 services:
   # Dev override: chạy Vite trong container để hot-reload UI ngay khi sửa code.
   web:
-    build: null
-    image: node:22-alpine
+    # `build: null` không xóa build khi merge → Compose vẫn build + tag trùng `image` → ghi đè image Node (mất npm).
+    build: !reset null
+    # Tag khác `node:22-bookworm-slim@…` trong Dockerfile để tránh nhầm lẫn khi có build cũ.
+    image: node:22-bookworm
     working_dir: /app
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 80"
     environment:

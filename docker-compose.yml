@@ -75,6 +75,8 @@ services:
         condition: service_completed_successfully
 
   web:
+    # Luôn tách tên image app khỏi `node:*` / `nginx:*` — tránh Compose tag build đè lên base FROM.
+    image: rentacar-web
     build:
       context: ./frontend
       args:

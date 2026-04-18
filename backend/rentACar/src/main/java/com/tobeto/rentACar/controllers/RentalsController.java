@@ -34,7 +34,19 @@ public class RentalsController {
     private final JwtService jwtService;
 
     @PostMapping("/add")
-    public AddRentalResponse add(@RequestBody @Valid AddRentalRequest request){
+    public AddRentalResponse add(@RequestBody @Valid AddRentalRequest request, HttpServletRequest httpRequest) {
+        String tokenWithPrefix = httpRequest.getHeader("Authorization");
+        if (tokenWithPrefix == null || !tokenWithPrefix.startsWith("Bearer ")) {
+            throw new BusinessException("Yêu cầu đăng nhập để đặt xe.");
+        }
+        String token = tokenWithPrefix.replace("Bearer ", "");
+        Integer tokenUserIdBoxed = jwtService.extractUserId(token);
+        if (tokenUserIdBoxed == null) {
+            throw new BusinessException("Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.");
+        }
+        int tokenUserId = tokenUserIdBoxed;
+        // Luôn gắn đơn với user trong JWT (tránh lệch userId từ client cache / persist).
+        request.setUserId(tokenUserId);
         return rentalService.add(request);
     }
 
@@ -89,6 +101,9 @@ public class RentalsController {
     public List<GetRentalByUserIdResponse> getRentals(HttpServletRequest request) {
 
         String tokenWithPrefix = request.getHeader("Authorization");
+        if (tokenWithPrefix == null || !tokenWithPrefix.startsWith("Bearer ")) {
+            throw new BusinessException("Yêu cầu đăng nhập.");
+        }
         String token = tokenWithPrefix.replace("Bearer ", "");
         int userID = jwtService.extractUserId(token);
 

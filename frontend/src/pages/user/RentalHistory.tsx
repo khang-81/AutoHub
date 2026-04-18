@@ -21,7 +21,7 @@ const RentalHistory = () => {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
 
-  const { data: rentals = [], isLoading } = useQuery<RentalByUser[]>({
+  const { data: rentals = [], isLoading, isError, error, refetch } = useQuery<RentalByUser[]>({
     queryKey: ['myRentals'],
     queryFn: getRentalsByUserIdApi,
     refetchOnMount: 'always',
@@ -116,6 +116,18 @@ const RentalHistory = () => {
       {isLoading ? (
         <div className="bg-white rounded-2xl shadow-sm p-8">
           <LoadingSpinner />
+        </div>
+      ) : isError ? (
+        <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
+          <p className="text-red-600 font-medium mb-2">Không tải được lịch sử thuê xe</p>
+          <p className="text-gray-500 text-sm mb-4">
+            {(error as { response?: { data?: { message?: string } } })?.response?.data?.message
+              || (error as Error)?.message
+              || 'Vui lòng thử lại sau.'}
+          </p>
+          <button type="button" className="btn-primary" onClick={() => refetch()}>
+            Thử lại
+          </button>
         </div>
       ) : sortedRentals.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-sm p-12 text-center">

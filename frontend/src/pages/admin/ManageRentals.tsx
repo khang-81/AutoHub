@@ -52,6 +52,8 @@ const ManageRentals = () => {
     mutationFn: confirmRentalApi,
     onSuccess: () => {
       showToast('Đã xác nhận đơn thuê', 'success');
+      // Đơn chuyển sang CONFIRMED — không còn khớp bộ lọc « Chờ duyệt », tránh cảm giác « mất đơn ».
+      setFilterStatus((cur) => (cur === 'pending' ? 'confirmed' : cur));
       invalidateRentalRelated();
     },
     onError: () => showToast('Lỗi khi xác nhận đơn', 'error'),

@@ -86,7 +86,10 @@ export function getUserIdFromToken(token: string): number | null {
         .join('')
     );
     const payload = JSON.parse(jsonPayload);
-    return payload.userId || payload.id || null;
+    const raw = payload.id ?? payload.userId;
+    if (raw == null || raw === '') return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
   } catch {
     return null;
   }
