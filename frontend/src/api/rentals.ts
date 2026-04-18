@@ -23,17 +23,9 @@ export const getRentalByIdApi = async (id: number) => {
 };
 
 export const getRentalsByUserIdApi = async () => {
-  try {
-    const res = await axiosInstance.get('/api/rentals/getRentalsByUserId');
-    return res.data;
-  } catch (err: unknown) {
-    const e = err as { response?: { status?: number } };
-    // Backend throws 404 when no rentals found - treat as empty array
-    if (e?.response?.status === 404 || e?.response?.status === 400) {
-      return [];
-    }
-    throw err;
-  }
+  const res = await axiosInstance.get('/api/rentals/getRentalsByUserId');
+  const data = res.data;
+  return Array.isArray(data) ? data : [];
 };
 
 export const addRentalApi = async (data: AddRentalRequest) => {

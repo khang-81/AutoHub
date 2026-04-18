@@ -43,6 +43,20 @@ public class JwtService {
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
+        Object raw = claims.get("id");
+        if (raw == null) {
+            return null;
+        }
+        if (raw instanceof Number) {
+            return ((Number) raw).intValue();
+        }
+        if (raw instanceof String) {
+            try {
+                return Integer.parseInt(((String) raw).trim());
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
         return claims.get("id", Integer.class);
     }
     private Date extractExpiration(String token) {

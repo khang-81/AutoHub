@@ -10,8 +10,16 @@ import java.util.Optional;
 
 public interface RentalRepository extends JpaRepository<Rental, Integer> {
 
-
     List<Rental> findByUserId(int userId);
+
+    /** JOIN FETCH tránh LazyInitialization / N+1 khi map sang DTO (lịch sử user sau admin xác nhận). */
+    @Query("SELECT DISTINCT r FROM Rental r "
+            + "JOIN FETCH r.car c "
+            + "JOIN FETCH c.model m "
+            + "JOIN FETCH m.brand "
+            + "LEFT JOIN FETCH c.color "
+            + "WHERE r.user.id = :userId")
+    List<Rental> findAllForUserHistoryWithCarGraph(@Param("userId") int userId);
 
     @Query("select case when count(r)>0 then true else false end from Rental r " +
             "where r.car.id = :carId and r.startDate <= :endDate and r.endDate >= :startDate " +

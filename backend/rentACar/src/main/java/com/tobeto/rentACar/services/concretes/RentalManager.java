@@ -28,11 +28,13 @@ import com.tobeto.rentACar.services.policy.RentalPolicy;
 import com.tobeto.rentACar.services.rules.RentalBusinessRule;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @AllArgsConstructor
@@ -216,8 +218,9 @@ public class RentalManager implements RentalService {
                 .orElse(null);
     }
 
+    @Transactional(readOnly = true)
     public List<GetRentalByUserIdResponse> getByUserId(int userId) {
-        List<Rental> rentals = rentalRepository.findByUserId(userId);
+        List<Rental> rentals = rentalRepository.findAllForUserHistoryWithCarGraph(userId);
         return rentals.stream()
                 .map(rental -> {
                     GetRentalByUserIdResponse dto = this.modelMapperService.forResponse()
@@ -279,23 +282,55 @@ public class RentalManager implements RentalService {
         Rental rental = rentalRepository.findById(id).orElseThrow(
                 () -> new NotFoundException(messageService.getMessage(Messages.Rental.getRentalNotFoundMessage)));
 
-        if ("CANCELLED".equals(rental.getRentalStatus())) {
+        String rs = normRentalToken(rental.getRentalStatus());
+        String ps = normRentalToken(rental.getPaymentStatus());
+        String payMethod = normRentalToken(rental.getPaymentMethod());
+
+        if ("CANCELLED".equals(rs)) {
             throw new BusinessException("Đơn thuê đã bị hủy.");
         }
         if (rental.getUser() == null || rental.getUser().getId() != userId) {
             throw new BusinessException("Bạn không có quyền cập nhật đơn thuê này.");
         }
-        if (!"BANK_TRANSFER".equals(rental.getPaymentMethod())) {
+        if (!"BANK_TRANSFER".equals(payMethod)) {
             throw new BusinessException("Đơn thuê này không dùng phương thức chuyển khoản.");
         }
-        if (!"PENDING_PAYMENT".equals(rental.getRentalStatus())) {
-            throw new BusinessException("Đơn thuê chưa ở trạng thái chờ thanh toán.");
+        // Đã gửi CK — idempotent (kể cả DB lệch: rental=PENDING_ADMIN nhưng payment vẫn PENDING_TRANSFER).
+        if ("PENDING_ADMIN_CONFIRM".equals(rs)) {
+            if (!"PENDING_CONFIRM".equals(ps) && "PENDING_TRANSFER".equals(ps)) {
+                rental.setPaymentStatus("PENDING_CONFIRM");
+                rentalRepository.save(rental);
+            }
+            return new SuccessResult("Đã gửi xác nhận chuyển khoản. Vui lòng chờ admin xác nhận.");
+        }
+        if ("CONFIRMED".equals(rs) || "COMPLETED".equals(rs)) {
+            return new SuccessResult("Đơn đã được xử lý. Xem chi tiết tại lịch sử thuê xe.");
+        }
+        // Đã bấm gửi nhưng rental_status chưa cập nhật (chỉ payment sang PENDING_CONFIRM).
+        if ("PENDING_PAYMENT".equals(rs) && "PENDING_CONFIRM".equals(ps)) {
+            rental.setRentalStatus("PENDING_ADMIN_CONFIRM");
+            rentalRepository.save(rental);
+            return new SuccessResult("Đã gửi xác nhận chuyển khoản. Vui lòng chờ admin xác nhận.");
+        }
+        if (!"PENDING_PAYMENT".equals(rs)) {
+            throw new BusinessException(
+                    "Không thể gửi xác nhận lúc này (đơn: " + (rs.isBlank() ? "—" : rs)
+                            + ", thanh toán: " + (ps.isBlank() ? "—" : ps) + ").");
         }
 
         rental.setPaymentStatus("PENDING_CONFIRM");
         rental.setRentalStatus("PENDING_ADMIN_CONFIRM");
         rentalRepository.save(rental);
         return new SuccessResult("Đã gửi xác nhận chuyển khoản. Vui lòng chờ admin xác nhận.");
+    }
+
+    /** Chuẩn hóa trạng thái từ DB (khoảng trắng, khác hoa/thường). */
+    private static String normRentalToken(String s) {
+        if (s == null) {
+            return "";
+        }
+        String t = s.strip().toUpperCase(Locale.ROOT);
+        return t.isEmpty() ? "" : t;
     }
 
     @Override

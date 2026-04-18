@@ -146,7 +146,10 @@ const CarListing = () => {
   const cardVariant = listingMode === 'sale' ? 'sale' : 'rent';
 
   return (
-    <div className="min-h-screen bg-[#f4f6fa] pt-20">
+    <div
+      className="min-h-screen pad-top-nav"
+      style={{ ['--pad-nav-tail' as string]: '#f4f6fa' }}
+    >
       <header
         className={`relative pb-14 pt-8 md:pb-16 md:pt-10 ${
           listingMode === 'sale' ? 'listing-hero--sale' : 'listing-hero--rent'

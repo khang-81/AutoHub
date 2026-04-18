@@ -1,5 +1,6 @@
 # Build static assets (VITE_* nhúng lúc build) → phục vụ bằng Nginx
-FROM node:22-alpine AS build
+# Ghim digest: tránh dùng nhầm tag local (vd. sau khi Compose tag image web trùng tên `node:*` → mất npm).
+FROM node:22-bookworm-slim@sha256:f3a68cf41a855d227d1b0ab832bed9749469ef38cf4f58182fb8c893bc462383 AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./

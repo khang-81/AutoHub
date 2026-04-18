@@ -3,7 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Car, Lock, Mail, Eye, EyeOff, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, ShieldCheck, AlertCircle } from 'lucide-react';
+import BrandLogo from '../../components/ui/BrandLogo';
 import { loginApi } from '../../api/auth';
 import { getUserRolesApi } from '../../api/users';
 import { getUserIdFromToken, getEmailFromToken, isJwtExpired } from '../../utils/helpers';
@@ -88,16 +89,11 @@ const AdminLogin = () => {
       </div>
 
       <div className="w-full max-w-md relative z-10">
-        {/* Logo */}
+        {/* Logo thương hiệu — mark vàng + AutoHub */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-3 mb-4">
-            <div className="bg-primary rounded-xl p-3 shadow-lg shadow-primary/30">
-              <Car className="w-8 h-8 text-white" />
-            </div>
-            <span className="font-heading font-bold text-3xl text-white">
-              Auto<span className="text-primary">Hub</span>
-            </span>
-          </Link>
+          <div className="flex justify-center mb-5">
+            <BrandLogo to="/" size="xl" variant="light" />
+          </div>
           <div className="flex items-center justify-center gap-2 mt-2">
             <ShieldCheck className="w-4 h-4 text-primary" />
             <p className="text-gray-400 text-sm font-medium tracking-wider uppercase">

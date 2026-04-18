@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, Car, ChevronDown, User, LogOut, LayoutDashboard } from 'lucide-react';
+import { Menu, X, ChevronDown, User, LogOut, LayoutDashboard } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import BrandLogo from '../ui/BrandLogo';
 
 const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -51,16 +52,9 @@ const Navbar = () => {
                 }`}
         >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center justify-between h-20">
-                    {/* Logo */}
-                    <Link to="/" className="flex items-center gap-2 group">
-                        <div className="bg-primary rounded-lg p-2">
-                            <Car className="w-6 h-6 text-white" />
-                        </div>
-                        <span className="font-heading font-bold text-xl text-white">
-                            Auto<span className="text-primary">Hub</span>
-                        </span>
-                    </Link>
+                <div className="flex items-center justify-between min-h-[5.25rem] py-2.5 sm:min-h-[5.5rem] sm:py-3">
+                    {/* Logo thương hiệu — cỡ nav, không khung */}
+                    <BrandLogo to="/" size="nav" variant="light" />
 
                     {/* Desktop nav links */}
                     <div className="hidden md:flex items-center gap-8">
@@ -83,18 +77,25 @@ const Navbar = () => {
                         {isAuthenticated ? (
                             <div className="relative">
                                 <button
+                                    type="button"
                                     onClick={() => setProfileOpen(!profileOpen)}
-                                    className="flex items-center gap-2 text-gray-200 hover:text-primary transition-colors"
+                                    className="flex items-center gap-1.5 text-gray-200 hover:text-primary transition-colors rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-navy"
+                                    aria-label="Tài khoản"
+                                    aria-expanded={profileOpen}
                                 >
-                                    <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                                        <User className="w-4 h-4 text-white" />
+                                    <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center">
+                                        <User className="w-[18px] h-[18px] text-white" />
                                     </div>
-                                    <span className="text-sm font-medium max-w-[120px] truncate">{email}</span>
-                                    <ChevronDown className={`w-4 h-4 transition-transform ${profileOpen ? 'rotate-180' : ''}`} />
+                                    <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${profileOpen ? 'rotate-180' : ''}`} />
                                 </button>
 
                                 {profileOpen && (
-                                    <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
+                                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
+                                        {email ? (
+                                            <p className="px-4 py-2 text-xs text-gray-500 border-b border-gray-100 truncate" title={email}>
+                                                {email}
+                                            </p>
+                                        ) : null}
                                         {isAdmin ? (
                                             <Link
                                                 to="/admin"

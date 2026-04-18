@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Search, Shield, Clock, ThumbsUp, ChevronRight,
-  Star, MapPin, ArrowRight, Car, Users, Award, Headphones
+  Star, MapPin, ArrowRight, Car
 } from 'lucide-react';
 import { getAllCarsApi } from '../../api/cars';
 import { getAllBrandsApi } from '../../api/brands';
@@ -60,11 +60,12 @@ const steps = [
   },
 ];
 
+/** Đồng bộ với trang Giới thiệu (About) */
 const stats = [
-  { icon: Car, value: '500+', label: 'Xe cho thuê' },
-  { icon: Users, value: '10,000+', label: 'Khách hàng' },
-  { icon: Award, value: '50+', label: 'Thành phố' },
-  { icon: Headphones, value: '24/7', label: 'Hỗ trợ' },
+  { value: '65+', label: 'Xe trong hệ thống' },
+  { value: '1,000+', label: 'Lượt đặt xe hoàn tất' },
+  { value: '120+', label: 'Xã, Phường' },
+  { value: '24/7', label: 'Hỗ trợ trực tuyến' },
 ];
 
 const Home = () => {
@@ -107,10 +108,10 @@ const Home = () => {
           backgroundPosition: 'center',
         }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-28">
           <div className="inline-flex items-center gap-2 bg-primary/20 border border-primary/30 rounded-full px-4 py-2 mb-6">
             <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-            <span className="text-primary text-sm font-medium">Nền tảng thuê xe #1 Việt Nam</span>
+            <span className="text-primary text-sm font-medium">Một trong những nền tảng thuê xe #1 Việt Nam</span>
           </div>
 
           <h1 className="font-heading font-bold text-4xl md:text-6xl lg:text-7xl text-white mb-6 leading-tight">
