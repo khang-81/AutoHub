@@ -15,8 +15,8 @@ const About = () => {
             AutoHub – Hành trình của <span className="text-primary">niềm tin</span>
           </h1>
           <p className="text-gray-300 text-lg leading-relaxed">
-            Từ năm 2020, AutoHub đã trở thành nền tảng thuê xe ô tô hàng đầu Việt Nam,
-            mang đến cho hàng ngàn khách hàng những chuyến đi an toàn, thoải mái và đáng nhớ.
+            Từ 2020, AutoHub phát triển từ showroom kết hợp nền tảng đặt xe trực tuyến,
+            phục vụ khách tại Hà Nội và vùng lân cận với quy trình rõ ràng và giá minh bạch.
           </p>
         </div>
       </section>
@@ -26,10 +26,10 @@ const About = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
-              { icon: Car, value: '500+', label: 'Xe cho thuê' },
-              { icon: Users, value: '10,000+', label: 'Khách hàng' },
-              { icon: Award, value: '50+', label: 'Thành phố' },
-              { icon: Headphones, value: '24/7', label: 'Hỗ trợ' },
+              { icon: Car, value: '65+', label: 'Xe trong hệ thống' },
+              { icon: Users, value: '1,000+', label: 'Lượt đặt xe hoàn tất' },
+              { icon: Award, value: '120+', label: 'Xã, Phường' },
+              { icon: Headphones, value: '24/7', label: 'Hỗ trợ trực tuyến' },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -56,7 +56,7 @@ const About = () => {
               {
                 icon: Eye,
                 title: 'Tầm nhìn',
-                desc: 'Trở thành nền tảng công nghệ cho thuê xe ô tô lớn nhất Đông Nam Á vào năm 2030, kết nối hàng triệu người dùng.',
+                desc: 'Mở rộng dịch vụ và mạng lưới đối tác, mang trải nghiệm đặt xe minh bạch tới nhiều hộ gia đình và doanh nghiệp nhỏ hơn.',
               },
               {
                 icon: Heart,
@@ -96,8 +96,8 @@ const About = () => {
                   trong việc tìm kiếm dịch vụ thuê xe uy tín, giá minh bạch.
                 </p>
                 <p>
-                  Với đội ngũ hơn 50 nhân sự tận tâm và mạng lưới xe rộng khắp 50 tỉnh thành,
-                  chúng tôi tự hào phục vụ hơn 10,000 khách hàng mỗi năm.
+                  Đội ngũ vận hành tập trung tại Hà Nội, phối hợp đối tác cho thuê và xưởng dịch vụ,
+                  đã đồng hành hàng nghìn lượt đặt xe — từ đi làm hằng ngày đến chuyến đi dài ngày.
                 </p>
                 <p>
                   Mỗi chuyến đi với AutoHub không chỉ là việc thuê một chiếc xe – đó là cam kết
