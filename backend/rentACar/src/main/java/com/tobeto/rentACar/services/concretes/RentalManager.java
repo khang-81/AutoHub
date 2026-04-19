@@ -7,6 +7,7 @@ import com.tobeto.rentACar.core.utilities.messages.MessageService;
 import com.tobeto.rentACar.core.utilities.mappers.ModelMapperService;
 import com.tobeto.rentACar.core.utilities.results.Result;
 import com.tobeto.rentACar.core.utilities.results.SuccessResult;
+import com.tobeto.rentACar.entities.concretes.Car;
 import com.tobeto.rentACar.entities.concretes.Rental;
 import com.tobeto.rentACar.repositories.CarRepository;
 import com.tobeto.rentACar.repositories.RentalRepository;
@@ -356,7 +357,8 @@ public class RentalManager implements RentalService {
             if (!"PENDING_CONFIRM".equals(rental.getPaymentStatus())) {
                 throw new BusinessException("Khách hàng chưa gửi xác nhận chuyển khoản.");
             }
-            rental.setPaymentStatus("PAID");
+            // Đã nhận cọc (~30%) qua CK — phần còn lại quyết toán khi trả xe
+            rental.setPaymentStatus("DEPOSIT_PAID");
         } else if ("CASH".equals(rental.getPaymentMethod())) {
             rental.setPaymentStatus("UNPAID");
         }
@@ -412,12 +414,52 @@ public class RentalManager implements RentalService {
             throw new BusinessException("Ngày trả xe không được trước ngày bắt đầu thuê.");
         }
 
+        Car carEntity = carRepository.findById(rental.getCar().getId()).orElseThrow(
+                () -> new NotFoundException(messageService.getMessage(Messages.Car.getCarNotFoundMessage)));
+        double dailyPrice = carEntity.getDailyPrice() != null ? carEntity.getDailyPrice() : 0d;
+
+        long lateDays = RentalPolicy.lateChargeDays(rental.getEndDate(), returnDate);
+        double lateFee = RentalPolicy.lateReturnFeeTotal(lateDays, dailyPrice);
+
+        if (body.getAdditionalIncidentalFees() != null && body.getAdditionalIncidentalFees() < 0) {
+            throw new BusinessException("Phí phát sinh không được âm.");
+        }
+        double incidentals = body.getAdditionalIncidentalFees() != null ? body.getAdditionalIncidentalFees() : 0d;
+
+        double deposit = rental.getDepositAmount() != null ? rental.getDepositAmount() : 0d;
+        double contractTotal = rental.getTotalPrice();
+        String payStatus = normRentalToken(rental.getPaymentStatus());
+
+        double balanceDue;
+        if ("PAID".equals(payStatus)) {
+            // Đơn cũ: admin đã xác nhận thu đủ tiền hợp đồng trước khi đổi luật cọc 30%
+            balanceDue = lateFee + incidentals;
+        } else {
+            // Còn nợ: tổng hợp đồng − cọc đã đặt + phí trễ + phát sinh
+            balanceDue = contractTotal - deposit + lateFee + incidentals;
+        }
+        if (balanceDue < 0) {
+            balanceDue = 0;
+        }
+
+        rental.setLateFeeAmount(lateFee);
+        rental.setReturnAdditionalFees(incidentals);
+        rental.setBalanceDueAtReturn(balanceDue);
         rental.setReturnDate(returnDate);
         rental.setEndKilometer(endKm);
         rental.setRentalStatus("COMPLETED");
+        if (balanceDue <= 0.01d) {
+            rental.setPaymentStatus("PAID");
+        } else {
+            rental.setPaymentStatus("PENDING_FINAL_PAYMENT");
+        }
         rentalRepository.save(rental);
 
-        return new SuccessResult("Đã xác nhận trả xe. Cảm ơn bạn đã sử dụng dịch vụ AutoHub!");
+        String msg = String.format(
+                "Đã xác nhận trả xe. Phí trễ: %,.0f VNĐ. Phí phát sinh: %,.0f VNĐ. "
+                        + "Số tiền còn lại cần thanh toán: %,.0f VNĐ (đã trừ cọc %,.0f VNĐ).",
+                lateFee, incidentals, balanceDue, deposit);
+        return new SuccessResult(msg);
     }
 
 }

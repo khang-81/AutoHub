@@ -79,35 +79,38 @@ const AIChatbot = () => {
 
   return (
     <>
-      {/* Floating button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-5 right-5 z-50 w-12 h-12 bg-primary rounded-full shadow-lg hover:bg-primary/90 hover:scale-105 transition-all duration-200 flex items-center justify-center group"
-        aria-label="Mở chat AI"
-      >
-        {isOpen ? (
-          <X className="w-5 h-5 text-white" />
-        ) : (
-          <>
-            <MessageCircle className="w-5 h-5 text-white" />
-            {unread > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                {unread}
-              </span>
-            )}
-          </>
-        )}
+      {/* Nút nổi + nhãn luôn hiển thị (không cần hover) */}
+      <div className="fixed bottom-5 right-5 z-50 flex max-w-[calc(100vw-1.5rem)] flex-row-reverse items-center gap-3 sm:gap-4">
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary shadow-xl ring-2 ring-primary/30 transition-all duration-200 hover:bg-primary/90 hover:ring-primary/50 hover:scale-[1.03] active:scale-95"
+          aria-label="Mở chat AI"
+        >
+          {isOpen ? (
+            <X className="h-7 w-7 text-white" strokeWidth={2.25} />
+          ) : (
+            <>
+              <MessageCircle className="h-7 w-7 text-white" strokeWidth={2.25} />
+              {unread > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white shadow">
+                  {unread}
+                </span>
+              )}
+            </>
+          )}
+        </button>
         {!isOpen && (
-          <span className="absolute right-16 bg-navy text-white text-xs px-3 py-1.5 rounded-full whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-md">
+          <span className="pointer-events-none select-none rounded-full border border-navy/20 bg-navy px-4 py-2.5 text-sm font-semibold text-white shadow-lg sm:text-base">
             Hỏi AutoBot AI 🤖
           </span>
         )}
-      </button>
+      </div>
 
       {/* Chat window */}
       {isOpen && (
         <div
-          className="fixed bottom-20 right-5 z-50 w-[min(100vw-1.5rem,18rem)] sm:w-80 flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl transition-all duration-200"
+          className="fixed bottom-24 right-5 z-50 w-[min(100vw-1.5rem,18rem)] sm:w-80 flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl transition-all duration-200"
           style={{ height: 'min(420px, calc(100vh - 5.5rem))', maxHeight: 'calc(100vh - 5.5rem)' }}
         >
           {/* Header */}

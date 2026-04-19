@@ -23,6 +23,8 @@ const RentalHistory = () => {
   const [returnTarget, setReturnTarget] = useState<RentalByUser | null>(null);
   const [returnKm, setReturnKm] = useState('');
   const [returnDateStr, setReturnDateStr] = useState('');
+  /** Phí phát sinh khi trả (VNĐ) — xăng, vệ sinh, phụ phí khác */
+  const [returnIncidentals, setReturnIncidentals] = useState('');
 
   const { data: rentals = [], isLoading, isError, error, refetch } = useQuery<RentalByUser[]>({
     queryKey: ['myRentals'],
@@ -48,9 +50,15 @@ const RentalHistory = () => {
       if (Number.isNaN(km) || km < 0) throw new Error('invalid-km');
       const startKm = returnTarget.startKilometer ?? returnTarget.car?.kilometer ?? 0;
       if (km < startKm) throw new Error('km-below-start');
+      let extra = 0;
+      if (String(returnIncidentals).trim() !== '') {
+        extra = Number.parseInt(String(returnIncidentals).replace(/\s/g, ''), 10);
+        if (Number.isNaN(extra) || extra < 0) throw new Error('invalid-incidental');
+      }
       return returnRentalByUserApi(returnTarget.id, {
         endKilometer: km,
         returnDate: returnDateStr || undefined,
+        additionalIncidentalFees: extra > 0 ? extra : undefined,
       });
     },
     onSuccess: (data: { message?: string }) => {
@@ -62,12 +70,14 @@ const RentalHistory = () => {
       setReturnTarget(null);
       setReturnKm('');
       setReturnDateStr('');
+      setReturnIncidentals('');
     },
     onError: (err: unknown) => {
       let msg = getApiErrorMessage(err, 'Không thể xác nhận trả xe');
       if (err instanceof Error) {
         if (err.message === 'invalid-km') msg = 'Vui lòng nhập số km hợp lệ';
         if (err.message === 'km-below-start') msg = 'Số km khi trả phải lớn hơn hoặc bằng km nhận xe';
+        if (err.message === 'invalid-incidental') msg = 'Phí phát sinh phải là số không âm';
       }
       showToast(msg, 'error');
     },
@@ -119,10 +129,13 @@ const RentalHistory = () => {
     return 'Chưa xác định';
   };
   const getPaymentStatusLabel = (rental: RentalByUser) => {
-    if (rental.paymentMethod === 'CASH') return 'Thanh toán khi nhận xe';
-    if (rental.paymentStatus === 'PAID') return 'Đã thanh toán';
-    if (rental.paymentStatus === 'PENDING_CONFIRM') return 'Chờ xác nhận chuyển khoản';
-    if (rental.paymentStatus === 'PENDING_TRANSFER') return 'Chờ chuyển khoản';
+    const ps = rental.paymentStatus;
+    if (ps === 'PAID') return 'Đã thanh toán đủ';
+    if (ps === 'DEPOSIT_PAID') return 'Đã thanh toán cọc (~30%)';
+    if (ps === 'PENDING_FINAL_PAYMENT') return 'Còn nợ — cần thanh toán nốt sau trả xe';
+    if (ps === 'PENDING_CONFIRM') return 'Chờ xác nhận chuyển khoản';
+    if (ps === 'PENDING_TRANSFER') return 'Chờ chuyển khoản';
+    if (rental.paymentMethod === 'CASH') return 'Tiền mặt (cọc / quyết toán khi trả)';
     return 'Chưa thanh toán';
   };
   const getRentalStatusLabel = (rental: RentalByUser) => {
@@ -275,7 +288,7 @@ const RentalHistory = () => {
 
                     {(rental.depositAmount != null && rental.depositAmount > 0) && (
                       <p className="text-xs text-gray-500 mb-2">
-                        Cọc ước tính: {formatCurrency(rental.depositAmount)}
+                        Cọc đặt xe (~30%): {formatCurrency(rental.depositAmount)}
                         {rental.refundDepositAmount != null && status === 'CANCELLED' && (
                           <span className="text-amber-700"> • Hoàn cọc dự kiến: {formatCurrency(rental.refundDepositAmount)}</span>
                         )}
@@ -291,6 +304,26 @@ const RentalHistory = () => {
                       </span>
                     </div>
 
+                    {rental.rentalStatus === 'COMPLETED' &&
+                      rental.balanceDueAtReturn != null &&
+                      rental.balanceDueAtReturn > 0 && (
+                        <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
+                          <strong>Số tiền còn phải thanh toán:</strong>{' '}
+                          {formatCurrency(rental.balanceDueAtReturn)}
+                          <span className="block text-xs text-amber-900/90 mt-1">
+                            {rental.lateFeeAmount != null && rental.lateFeeAmount > 0 && (
+                              <>Phí trễ: {formatCurrency(rental.lateFeeAmount)}</>
+                            )}
+                            {rental.returnAdditionalFees != null && rental.returnAdditionalFees > 0 && (
+                              <>
+                                {rental.lateFeeAmount != null && rental.lateFeeAmount > 0 ? ' · ' : ''}
+                                Phí phát sinh: {formatCurrency(rental.returnAdditionalFees)}
+                              </>
+                            )}
+                          </span>
+                        </div>
+                      )}
+
                     {/* Actions */}
                     <div className="flex flex-wrap items-center gap-2">
                       {canReturnCar && (
@@ -299,6 +332,7 @@ const RentalHistory = () => {
                           onClick={() => {
                             setReturnTarget(rental);
                             setReturnDateStr(new Date().toISOString().slice(0, 10));
+                            setReturnIncidentals('');
                             const startKm =
                               rental.startKilometer ??
                               rental.car?.kilometer ??
@@ -366,6 +400,7 @@ const RentalHistory = () => {
           setReturnTarget(null);
           setReturnKm('');
           setReturnDateStr('');
+          setReturnIncidentals('');
         }}
         title="Xác nhận trả xe"
         size="sm"
@@ -377,8 +412,20 @@ const RentalHistory = () => {
               {returnTarget.car?.model?.brand?.name} {returnTarget.car?.model?.name}
             </p>
             <p className="text-xs text-gray-500">
-              Chỉ khả dụng khi đơn đã được admin xác nhận. Sau khi trả xe, trạng thái chuyển thành hoàn tất và bạn có thể đánh giá chuyến đi.
+              Chỉ khả dụng khi đơn đã được admin xác nhận. Hệ thống sẽ tính phí trễ (nếu trả sau ngày hẹn) và số tiền còn phải trả (giá chuyến − cọc + phát sinh).
             </p>
+            <div className="rounded-lg border border-dashed border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-950">
+              <p className="font-semibold text-amber-900">Quyết toán khi trả xe</p>
+              <p className="mt-1 text-amber-900/85">
+                Còn phải trả = tổng giá chuyến − tiền cọc đã đặt + phí nộp xe muộn + phí phát sinh (nếu có).
+              </p>
+              {returnTarget.depositAmount != null && returnTarget.depositAmount > 0 && (
+                <p className="mt-2 font-medium text-navy">
+                  Tổng chuyến: {formatCurrency(returnTarget.totalPrice)} · Cọc đã đặt:{' '}
+                  {formatCurrency(returnTarget.depositAmount)}
+                </p>
+              )}
+            </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Ngày trả xe</label>
               <input
@@ -404,6 +451,21 @@ const RentalHistory = () => {
                 {returnTarget.startKilometer ?? returnTarget.car?.kilometer ?? '—'}
               </p>
             </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Phí phát sinh khi trả (VNĐ)
+              </label>
+              <input
+                type="number"
+                min={0}
+                step={1000}
+                value={returnIncidentals}
+                onChange={(e) => setReturnIncidentals(e.target.value)}
+                placeholder="0 — xăng, vệ sinh, phụ phí khác"
+                className="input-field w-full"
+              />
+              <p className="mt-1 text-xs text-gray-400">Để trống nếu không phát sinh thêm.</p>
+            </div>
             <div className="flex gap-3">
               <button
                 type="button"
@@ -419,6 +481,7 @@ const RentalHistory = () => {
                   setReturnTarget(null);
                   setReturnKm('');
                   setReturnDateStr('');
+                  setReturnIncidentals('');
                 }}
                 className="btn-outline flex-1"
               >

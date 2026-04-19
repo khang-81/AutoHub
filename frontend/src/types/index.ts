@@ -133,7 +133,15 @@ export interface Rental {
   startKilometer: number;
   totalPrice: number;
   paymentMethod?: 'CASH' | 'BANK_TRANSFER';
-  paymentStatus?: 'PENDING_TRANSFER' | 'PENDING_CONFIRM' | 'PAID' | 'UNPAID' | 'FAILED' | 'CANCELLED';
+  paymentStatus?:
+    | 'PENDING_TRANSFER'
+    | 'PENDING_CONFIRM'
+    | 'DEPOSIT_PAID'
+    | 'PENDING_FINAL_PAYMENT'
+    | 'PAID'
+    | 'UNPAID'
+    | 'FAILED'
+    | 'CANCELLED';
   rentalStatus?: 'PENDING_PAYMENT' | 'PENDING_ADMIN_CONFIRM' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
   depositAmount?: number;
   depositStatus?: string;
@@ -141,6 +149,9 @@ export interface Rental {
   insuranceFeeAmount?: number;
   extraFeesAmount?: number;
   pickupDistrict?: string;
+  lateFeeAmount?: number | null;
+  returnAdditionalFees?: number | null;
+  balanceDueAtReturn?: number | null;
   car: Car;
   user: User;
 }
@@ -172,9 +183,18 @@ export interface RentalByUser {
   returnDate: string | null;
   /** Km lúc nhận xe — để nhập km trả hợp lệ */
   startKilometer?: number | null;
+  endKilometer?: number | null;
   totalPrice: number;
   paymentMethod?: 'CASH' | 'BANK_TRANSFER';
-  paymentStatus?: 'PENDING_TRANSFER' | 'PENDING_CONFIRM' | 'PAID' | 'UNPAID' | 'FAILED' | 'CANCELLED';
+  paymentStatus?:
+    | 'PENDING_TRANSFER'
+    | 'PENDING_CONFIRM'
+    | 'DEPOSIT_PAID'
+    | 'PENDING_FINAL_PAYMENT'
+    | 'PAID'
+    | 'UNPAID'
+    | 'FAILED'
+    | 'CANCELLED';
   rentalStatus?: 'PENDING_PAYMENT' | 'PENDING_ADMIN_CONFIRM' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
   car: Car;
   depositAmount?: number;
@@ -187,6 +207,9 @@ export interface RentalByUser {
   cancellationReason?: string | null;
   refundDepositAmount?: number;
   cancellationFeeAmount?: number;
+  lateFeeAmount?: number | null;
+  returnAdditionalFees?: number | null;
+  balanceDueAtReturn?: number | null;
   hasReview?: boolean;
 }
 

@@ -82,6 +82,18 @@ public class Rental extends BaseEntity {
     @Column(name = "refund_deposit_amount")
     private Double refundDepositAmount;
 
+    /** Phí nộp xe trễ (snapshot khi khách trả xe) */
+    @Column(name = "late_fee_amount")
+    private Double lateFeeAmount;
+
+    /** Phí phát sinh khi trả (xăng, vệ sinh, vượt km… — nhập khi trả) */
+    @Column(name = "return_additional_fees")
+    private Double returnAdditionalFees;
+
+    /** Số tiền còn phải thu sau khi trừ cọc + cộng phí trễ & phát sinh (snapshot) */
+    @Column(name = "balance_due_at_return")
+    private Double balanceDueAtReturn;
+
     @ManyToOne()
     @JoinColumn(name="car_id")
     private Car car;

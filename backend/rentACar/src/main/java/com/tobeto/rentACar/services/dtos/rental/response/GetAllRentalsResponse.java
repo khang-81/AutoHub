@@ -44,6 +44,10 @@ public class GetAllRentalsResponse {
     private Double cancellationFeeAmount;
     private Double refundDepositAmount;
 
+    private Double lateFeeAmount;
+    private Double returnAdditionalFees;
+    private Double balanceDueAtReturn;
+
     private GetCarByIdResponse car;
 
     private GetUserByIdResponse user;

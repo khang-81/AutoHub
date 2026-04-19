@@ -26,9 +26,30 @@ public final class RentalPolicy {
         };
     }
 
+    /** Cọc đặt xe ≈ 30% tổng tiền thuê (làm tròn nghìn), tối thiểu 200k. */
     public static double computeDeposit(double rentalSubtotal) {
-        double pct = rentalSubtotal * 0.15d;
-        return Math.max(500_000d, pct);
+        if (rentalSubtotal <= 0) {
+            return 0;
+        }
+        double raw = rentalSubtotal * 0.30d;
+        double rounded = Math.round(raw / 1000d) * 1000d;
+        return Math.max(200_000d, rounded);
+    }
+
+    /** Số ngày trễ so với ngày trả dự kiến (endDate). Trả đúng hoặc sớm → 0. */
+    public static long lateChargeDays(LocalDate endDate, LocalDate actualReturn) {
+        if (actualReturn == null || endDate == null || !actualReturn.isAfter(endDate)) {
+            return 0;
+        }
+        return ChronoUnit.DAYS.between(endDate, actualReturn);
+    }
+
+    /** Phí trễ: mỗi ngày trễ = 100% giá thuê/ngày của xe (có thể chỉnh hệ số). */
+    public static double lateReturnFeeTotal(long lateDays, double dailyPrice) {
+        if (lateDays <= 0 || dailyPrice <= 0) {
+            return 0;
+        }
+        return lateDays * dailyPrice;
     }
 
     /**

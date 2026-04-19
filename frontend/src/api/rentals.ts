@@ -67,7 +67,7 @@ export const getRentalIdApi = async (
 /** Khách xác nhận trả xe (đơn CONFIRMED). */
 export const returnRentalByUserApi = async (
   rentalId: number,
-  body: { endKilometer: number; returnDate?: string }
+  body: { endKilometer: number; returnDate?: string; additionalIncidentalFees?: number }
 ) => {
   const res = await axiosInstance.put(`/api/rentals/${rentalId}/return`, body);
   return res.data;

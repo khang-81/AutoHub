@@ -485,7 +485,8 @@ const CarDetail = () => {
                 Hủy đơn & hoàn cọc
               </h2>
               <p className="text-sm text-gray-700 mb-3">
-                Tiền cọc được tính tối thiểu <strong>500.000đ</strong> hoặc <strong>15%</strong> giá trị chuyến (tùy mức nào cao hơn).
+                Tiền cọc đặt xe khoảng <strong>30%</strong> giá trị chuyến (làm tròn nghìn đồng), tối thiểu{' '}
+                <strong>200.000đ</strong>. Phần còn lại, phí trễ và phí phát sinh (nếu có) được quyết toán khi trả xe.
               </p>
               <ul className="space-y-2 text-sm text-gray-600 list-disc pl-5">
                 <li>

@@ -127,6 +127,19 @@ else
       ALTER TABLE dbo.users ADD password_reset_token NVARCHAR(64) NULL;
     END;
 
+    IF COL_LENGTH('dbo.rentals', 'late_fee_amount') IS NULL
+    BEGIN
+      ALTER TABLE dbo.rentals ADD late_fee_amount FLOAT NULL;
+    END;
+    IF COL_LENGTH('dbo.rentals', 'return_additional_fees') IS NULL
+    BEGIN
+      ALTER TABLE dbo.rentals ADD return_additional_fees FLOAT NULL;
+    END;
+    IF COL_LENGTH('dbo.rentals', 'balance_due_at_return') IS NULL
+    BEGIN
+      ALTER TABLE dbo.rentals ADD balance_due_at_return FLOAT NULL;
+    END;
+
     IF COL_LENGTH('dbo.users', 'password_reset_expires') IS NULL
     BEGIN
       ALTER TABLE dbo.users ADD password_reset_expires DATETIMEOFFSET(6) NULL;

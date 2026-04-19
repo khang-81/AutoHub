@@ -13,4 +13,7 @@ public class UserReturnCarRequest {
 
     @NotNull(message = "Vui lòng nhập số km đồng hồ khi trả xe")
     private Long endKilometer;
+
+    /** Phí phát sinh khi trả (VNĐ): xăng, vệ sinh, phụ phí khác — bỏ trống = 0 */
+    private Double additionalIncidentalFees;
 }

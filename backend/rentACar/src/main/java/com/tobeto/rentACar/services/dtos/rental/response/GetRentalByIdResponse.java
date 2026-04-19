@@ -22,7 +22,9 @@ public class GetRentalByIdResponse {
 
     private LocalDate returnDate;
 
-    private int startKilometer;
+    private Long startKilometer;
+
+    private Long endKilometer;
 
     private double totalPrice;
 
@@ -43,6 +45,10 @@ public class GetRentalByIdResponse {
     private String cancellationReason;
     private Double cancellationFeeAmount;
     private Double refundDepositAmount;
+
+    private Double lateFeeAmount;
+    private Double returnAdditionalFees;
+    private Double balanceDueAtReturn;
 
     private GetCarByIdResponse car;
 
