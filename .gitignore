@@ -8,3 +8,15 @@
 .env
 .env.local
 .env.*.local
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+*.swp
+Thumbs.db
+Desktop.ini
+
+# Test / coverage (if generated locally)
+**/coverage/
+**/test-output/
