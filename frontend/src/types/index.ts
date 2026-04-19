@@ -239,6 +239,8 @@ export interface Invoice {
 
 export interface SaleOrder {
   id: number;
+  /** ISO date — ngày tạo đơn (báo cáo) */
+  createdDate?: string;
   totalPrice: number;
   paymentMethod?: string;
   paymentStatus?: string;
