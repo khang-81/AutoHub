@@ -79,6 +79,15 @@
       var(--pad-nav-tail, #f9fafb) 7rem
     );
   }
+
+  /**
+   * Đã đăng nhập: không còn navbar/footer public — gỡ bù .pad-top-nav (tránh khoảng trống 7rem).
+   */
+  .public-layout--auth .pad-top-nav {
+    padding-top: 0;
+    background-image: none;
+    background-color: var(--pad-nav-tail, #f9fafb);
+  }
 }
 
 /* Custom scrollbar */
