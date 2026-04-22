@@ -52,6 +52,7 @@ services:
       start_period: 150s
     environment:
       SPRING_PROFILES_ACTIVE: prod
+      PORT: 8081
       SPRING_DATASOURCE_URL: jdbc:sqlserver://db:1433;databaseName=autohub;encrypt=false;trustServerCertificate=true
       SPRING_DATASOURCE_USERNAME: sa
       SPRING_DATASOURCE_PASSWORD: ${MSSQL_SA_PASSWORD}
@@ -84,9 +85,9 @@ services:
         # Luôn rỗng: SPA gọi /api/* qua Nginx → api:8081 (tránh ERR_CONNECTION_REFUSED tới localhost:8081 khi API không publish port)
         VITE_API_URL: ""
     platform: linux/amd64
-    # Mặc định 3001 để tránh xung đột cổng 3000 (thường đã có app khác dùng).
+    # Mặc định 3000 để truy cập trực tiếp tại http://localhost:3000.
     ports:
-      - "${WEB_PORT:-3001}:80"
+      - "${WEB_PORT:-3000}:80"
     depends_on:
       api:
         condition: service_healthy

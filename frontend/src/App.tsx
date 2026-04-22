@@ -80,11 +80,13 @@ function RoutesWithChatbot() {
           <Route path="/about" element={<About />} />
         </Route>
 
-        {/* Auth routes (user) */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+        {/* Auth routes — dùng chung PublicLayout để có Navbar + Footer */}
+        <Route element={<PublicLayout />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+        </Route>
 
         {/* Admin login - standalone, no layout */}
         <Route path="/admin/login" element={<AdminLogin />} />

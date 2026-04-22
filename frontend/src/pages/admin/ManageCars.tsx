@@ -168,7 +168,7 @@ const ManageCars = () => {
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="font-heading font-bold text-2xl text-navy">
-            {isSaleModule ? 'Quản lý xe mua' : 'Quản lý xe thuê'}
+            {isSaleModule ? 'Quản lý xe bán' : 'Quản lý xe thuê'}
           </h1>
           <p className="text-gray-400 text-sm mt-1">
             Tổng {moduleCars.length} xe {isSaleModule ? 'đang bán/niêm yết' : 'phục vụ cho thuê'}
@@ -176,7 +176,7 @@ const ManageCars = () => {
         </div>
         <button onClick={openAdd} className="btn-primary flex items-center gap-2">
           <Plus className="w-5 h-5" />
-          {isSaleModule ? 'Thêm xe mua' : 'Thêm xe thuê'}
+          {isSaleModule ? 'Thêm xe bán' : 'Thêm xe thuê'}
         </button>
       </div>
 
@@ -336,7 +336,7 @@ const ManageCars = () => {
       <Modal
         isOpen={modalOpen}
         onClose={() => { setModalOpen(false); setEditCar(null); reset(); }}
-        title={editCar ? 'Chỉnh sửa xe' : isSaleModule ? 'Thêm xe mua' : 'Thêm xe thuê'}
+        title={editCar ? 'Chỉnh sửa xe' : isSaleModule ? 'Thêm xe bán' : 'Thêm xe thuê'}
         size="xl"
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

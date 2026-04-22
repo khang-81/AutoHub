@@ -23,8 +23,8 @@ import BrandLogo from '../ui/BrandLogo';
 const navItems = [
   { label: 'Tổng quan', to: '/admin', icon: LayoutDashboard, exact: true },
   { label: 'Quản lý xe thuê', to: '/admin/cars/rent', icon: Car },
-  { label: 'Quản lý xe mua', to: '/admin/cars/sale', icon: ShoppingBag },
-  { label: 'Quản lý người dùng', to: '/admin/users', icon: Users },
+  { label: 'Quản lý xe bán', to: '/admin/cars/sale', icon: ShoppingBag },
+  { label: 'Quản lý khách hàng', to: '/admin/users', icon: Users },
   { label: 'Quản lý GPLX', to: '/admin/kyc', icon: ShieldCheck },
   { label: 'Quản lý thương hiệu & Model', to: '/admin/brands', icon: Tag },
   { label: 'Quản lý đơn thuê', to: '/admin/rentals', icon: FileText },

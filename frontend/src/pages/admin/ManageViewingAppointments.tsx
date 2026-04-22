@@ -106,7 +106,7 @@ const ManageViewingAppointments = () => {
       <div className="mb-6">
         <h1 className="font-heading font-bold text-2xl text-navy flex items-center gap-2">
           <CalendarClock className="w-7 h-7 text-primary" />
-          Lịch hẹn xem xe
+          Quản lý lịch xem xe
         </h1>
         <p className="text-gray-400 text-sm mt-1">{rows.length} lịch</p>
       </div>

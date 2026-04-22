@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Car, Mail } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import { forgotPasswordApi } from '../../api/auth';
 import { useToast } from '../../components/ui/Toast';
 import { getApiErrorMessage } from '../../utils/helpers';
@@ -53,23 +53,10 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-navy via-navy-400 to-navy flex items-center justify-center p-4">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl" />
-      </div>
-
+    <div className="bg-gradient-to-br from-navy via-navy-400 to-navy py-16 px-4 flex-1 flex items-center justify-center">
       <div className="relative w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2">
-            <div className="bg-primary rounded-xl p-3">
-              <Car className="w-7 h-7 text-white" />
-            </div>
-            <span className="font-heading font-bold text-2xl text-white">
-              Auto<span className="text-primary">Hub</span>
-            </span>
-          </Link>
-          <p className="text-gray-400 mt-2">Khôi phục quyền truy cập tài khoản</p>
+        <div className="text-center mb-6">
+          <p className="text-gray-300 text-lg font-medium">Khôi phục quyền truy cập tài khoản</p>
         </div>
 
         <div className="bg-white rounded-3xl shadow-2xl p-8">
