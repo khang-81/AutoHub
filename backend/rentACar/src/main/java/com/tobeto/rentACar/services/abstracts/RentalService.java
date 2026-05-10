@@ -36,4 +36,10 @@ public interface RentalService {
     /** Khách xác nhận đã trả xe (đơn CONFIRMED, chưa có returnDate). */
     Result returnCarByUser(int rentalId, int userId, UserReturnCarRequest body);
 
+    /**
+     * Admin đối chiếu trả xe (UC #15). Cho phép cờ `markDispute` để đẩy đơn
+     * sang DISPUTE thay vì COMPLETED, giữ lịch xe bị khoá.
+     */
+    Result adminReturn(int rentalId, UserReturnCarRequest body);
+
 }

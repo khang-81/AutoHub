@@ -151,7 +151,7 @@ export interface Rental {
     | 'UNPAID'
     | 'FAILED'
     | 'CANCELLED';
-  rentalStatus?: 'PENDING_PAYMENT' | 'PENDING_ADMIN_CONFIRM' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+  rentalStatus?: 'PENDING_PAYMENT' | 'PENDING_ADMIN_CONFIRM' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'DISPUTE';
   depositAmount?: number;
   depositStatus?: string;
   insuranceCode?: string;
@@ -161,6 +161,13 @@ export interface Rental {
   lateFeeAmount?: number | null;
   returnAdditionalFees?: number | null;
   balanceDueAtReturn?: number | null;
+  allowedKilometers?: number | null;
+  expectedFuelLevel?: number | null;
+  actualFuelLevel?: number | null;
+  overKmFee?: number | null;
+  missingFuelFee?: number | null;
+  damageNotes?: string | null;
+  damagePhotoUrls?: string | null;
   car: Car;
   user: User;
 }
@@ -208,7 +215,7 @@ export interface RentalByUser {
     | 'UNPAID'
     | 'FAILED'
     | 'CANCELLED';
-  rentalStatus?: 'PENDING_PAYMENT' | 'PENDING_ADMIN_CONFIRM' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+  rentalStatus?: 'PENDING_PAYMENT' | 'PENDING_ADMIN_CONFIRM' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'DISPUTE';
   car: Car;
   depositAmount?: number;
   depositStatus?: string;
@@ -223,6 +230,13 @@ export interface RentalByUser {
   lateFeeAmount?: number | null;
   returnAdditionalFees?: number | null;
   balanceDueAtReturn?: number | null;
+  allowedKilometers?: number | null;
+  expectedFuelLevel?: number | null;
+  actualFuelLevel?: number | null;
+  overKmFee?: number | null;
+  missingFuelFee?: number | null;
+  damageNotes?: string | null;
+  damagePhotoUrls?: string | null;
   hasReview?: boolean;
 }
 

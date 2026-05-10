@@ -47,6 +47,13 @@ public class GetAllRentalsResponse {
     private Double lateFeeAmount;
     private Double returnAdditionalFees;
     private Double balanceDueAtReturn;
+    private Long allowedKilometers;
+    private Integer expectedFuelLevel;
+    private Integer actualFuelLevel;
+    private Double overKmFee;
+    private Double missingFuelFee;
+    private String damageNotes;
+    private String damagePhotoUrls;
 
     private GetCarByIdResponse car;
 

@@ -165,6 +165,17 @@ public class RentalsController {
         return rentalService.confirmByAdmin(id);
     }
 
+    /**
+     * Admin đối chiếu trả xe — Sprint 3 / UC #15.
+     * Body dùng chung {@link UserReturnCarRequest} nhưng admin có thể bật `markDispute=true`
+     * để đẩy đơn sang DISPUTE thay vì COMPLETED (chưa giải phóng lịch xe).
+     */
+    @PreAuthorize("hasRole('admin')")
+    @PutMapping("/admin/{id}/return")
+    public Result adminReturn(@PathVariable int id, @RequestBody @Valid UserReturnCarRequest body) {
+        return rentalService.adminReturn(id, body);
+    }
+
     @GetMapping("/insurance-options")
     public List<InsuranceOptionResponse> insuranceOptions() {
         return List.of(

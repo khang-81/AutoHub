@@ -118,6 +118,47 @@ public final class RentalPolicy {
         return lateDays * dailyPrice;
     }
 
+    /** Hạn mức km/ngày mặc định khi tạo đơn (Mioto-style). */
+    public static final long DEFAULT_KM_QUOTA_PER_DAY = 300L;
+
+    /** Phí vượt km — VNĐ/km. */
+    public static final double OVER_KM_FEE_PER_KM = 5_000d;
+
+    /** Giá ước lượng đổ đầy 1 bình xăng — dùng để tính phí thiếu xăng. */
+    public static final double FULL_TANK_PRICE = 1_500_000d;
+
+    /** Tính hạn mức km cho phép cho 1 đơn rentalDays ngày. */
+    public static long allowedKilometers(long rentalDays) {
+        if (rentalDays <= 0) return 0;
+        return rentalDays * DEFAULT_KM_QUOTA_PER_DAY;
+    }
+
+    /**
+     * Phí vượt km khi trả xe.
+     * @param drivenKm  số km thực tế khách đã chạy
+     * @param allowedKm hạn mức km của đơn (snapshot khi tạo)
+     */
+    public static double overKilometerFee(long drivenKm, Long allowedKm) {
+        if (allowedKm == null || allowedKm <= 0 || drivenKm <= allowedKm) {
+            return 0;
+        }
+        return (drivenKm - allowedKm) * OVER_KM_FEE_PER_KM;
+    }
+
+    /**
+     * Phí thiếu xăng — % thiếu so với kỳ vọng × giá đầy bình.
+     * @param expectedPct kỳ vọng khi trả (mặc định 100%)
+     * @param actualPct   mức xăng thực tế khi khách trả (0..100)
+     */
+    public static double missingFuelFee(Integer expectedPct, Integer actualPct) {
+        if (actualPct == null) return 0;
+        int expected = expectedPct != null ? Math.max(0, Math.min(100, expectedPct)) : 100;
+        int actual = Math.max(0, Math.min(100, actualPct));
+        if (actual >= expected) return 0;
+        double missingRatio = (expected - actual) / 100d;
+        return Math.round(missingRatio * FULL_TANK_PRICE / 1000d) * 1000d;
+    }
+
     /**
      * Tỷ lệ hoàn cọc theo số giờ còn lại đến 0h ngày nhận xe.
      * &gt; 48h: 100%, 24–48h: 50%, &lt; 24h: 0%.

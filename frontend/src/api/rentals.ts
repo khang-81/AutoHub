@@ -70,12 +70,38 @@ export const getRentalIdApi = async (
   return res.data;
 };
 
+/**
+ * Form đối chiếu trả xe (Sprint 3 — UC #15). Dùng chung cho khách & admin.
+ * Backend tự tính lateFee/overKmFee/missingFuelFee dựa trên snapshot lúc tạo đơn.
+ */
+export interface ReturnRentalFormBody {
+  endKilometer: number;
+  returnDate?: string;
+  /** % xăng thực tế khi trả (0..100). */
+  actualFuelLevel?: number;
+  damageNotes?: string;
+  /** CSV URL ảnh hư hại (giữ đơn giản — chưa upload binary). */
+  damagePhotoUrls?: string;
+  additionalIncidentalFees?: number;
+  /** Admin-only: đẩy đơn sang DISPUTE thay vì COMPLETED. */
+  markDispute?: boolean;
+}
+
 /** Khách xác nhận trả xe (đơn CONFIRMED). */
 export const returnRentalByUserApi = async (
   rentalId: number,
-  body: { endKilometer: number; returnDate?: string; additionalIncidentalFees?: number }
+  body: ReturnRentalFormBody
 ) => {
   const res = await axiosInstance.put(`/api/rentals/${rentalId}/return`, body);
+  return res.data;
+};
+
+/** Admin đối chiếu trả xe (Sprint 3) — kèm cờ markDispute để mở DISPUTE. */
+export const adminReturnRentalApi = async (
+  rentalId: number,
+  body: ReturnRentalFormBody
+) => {
+  const res = await axiosInstance.put(`/api/rentals/admin/${rentalId}/return`, body);
   return res.data;
 };
 

@@ -105,6 +105,34 @@ public class Rental extends BaseEntity {
     @Column(name = "balance_due_at_return")
     private Double balanceDueAtReturn;
 
+    /** Số km cho phép theo hợp đồng (snapshot khi tạo đơn) — vượt sẽ tính phụ phí. */
+    @Column(name = "allowed_kilometers")
+    private Long allowedKilometers;
+
+    /** Mức xăng kỳ vọng khi trả (%) — mặc định 100% (đầy bình). */
+    @Column(name = "expected_fuel_level")
+    private Integer expectedFuelLevel;
+
+    /** Mức xăng thực tế khi trả (% — 0..100), nhập tại form trả xe. */
+    @Column(name = "actual_fuel_level")
+    private Integer actualFuelLevel;
+
+    /** Phí vượt km (snapshot khi trả). */
+    @Column(name = "over_km_fee")
+    private Double overKmFee;
+
+    /** Phí thiếu xăng (snapshot khi trả). */
+    @Column(name = "missing_fuel_fee")
+    private Double missingFuelFee;
+
+    /** Ghi chú/biên bản trầy xước, hư hại khi trả xe. */
+    @Column(name = "damage_notes", length = 2000)
+    private String damageNotes;
+
+    /** Ảnh đính kèm hư hại — CSV của URL/đường dẫn (max 1024). */
+    @Column(name = "damage_photo_urls", length = 1024)
+    private String damagePhotoUrls;
+
     /** Mã khuyến mãi đã áp tại lúc tạo đơn (snapshot). null = không dùng. */
     @Column(name = "promotion_code", length = 64)
     private String promotionCode;
