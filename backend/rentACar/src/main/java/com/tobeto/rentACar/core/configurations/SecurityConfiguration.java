@@ -112,13 +112,13 @@ public class SecurityConfiguration {
                         .requestMatchers(PUBLIC_PREFIXES).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/rentals/insurance-options").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/rentals/addon-options").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/rentals/public/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/models/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/invoices/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/customers/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/customers/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/invoices/**").permitAll()
+                        // customers/invoices: yêu cầu authenticated; admin endpoints vẫn cần @PreAuthorize.
+                        // /api/customers/me dùng @AuthenticationPrincipal — cần JWT để biết user.
+                        // (PII leak fix — xem AutoHub Sprint 0.)
                         .anyRequest().authenticated())
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

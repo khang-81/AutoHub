@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -40,5 +41,14 @@ public class AddRentalRequest {
 
     /** Quận nhận xe (Hà Nội) */
     private String pickupDistrict;
+
+    /** Mã khuyến mãi (tuỳ chọn). */
+    private String promotionCode;
+
+    /**
+     * Danh sách add-on stack được (vd: ["EXTRA_DRIVER", "ROADSIDE"]).
+     * Khác với insuranceCode (single tier), khách có thể chọn nhiều add-on.
+     */
+    private List<String> addonCodes;
 
 }

@@ -175,6 +175,19 @@ public class RentalsController {
         );
     }
 
+    /**
+     * Add-on stack được — multi-checkbox ở UI. Khác với insurance-options (single).
+     * Sprint 2 — bảo hiểm chuyến đi multi-package.
+     */
+    @GetMapping("/addon-options")
+    public List<InsuranceOptionResponse> addonOptions() {
+        return List.of(
+                new InsuranceOptionResponse("EXTRA_DRIVER", "Tài xế phụ", 50_000),
+                new InsuranceOptionResponse("ROADSIDE",     "Cứu hộ 24/7", 30_000),
+                new InsuranceOptionResponse("INTERIOR",     "Bảo vệ nội thất", 40_000)
+        );
+    }
+
     @PutMapping("/cancel/{id}")
     public Result cancel(
             @PathVariable int id,

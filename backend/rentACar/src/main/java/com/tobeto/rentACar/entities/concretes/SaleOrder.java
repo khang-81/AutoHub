@@ -36,6 +36,14 @@ public class SaleOrder extends BaseEntity {
     @Column(name = "cancellation_reason", length = 500)
     private String cancellationReason;
 
+    /** Mã khuyến mãi đã áp dụng (snapshot tại thời điểm tạo đơn). null = không dùng. */
+    @Column(name = "promotion_code", length = 64)
+    private String promotionCode;
+
+    /** Số tiền giảm giá tuyệt đối (VNĐ) áp vào totalPrice. null = không có giảm. */
+    @Column(name = "discount_amount")
+    private Double discountAmount;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "car_id")
     private Car car;

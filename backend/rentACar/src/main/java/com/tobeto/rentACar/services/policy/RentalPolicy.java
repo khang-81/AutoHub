@@ -3,7 +3,11 @@ package com.tobeto.rentACar.services.policy;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * Gói bảo hiểm / cọc / hoàn cọc khi hủy — đơn giản hóa theo Mioto (điều chỉnh được qua hằng số).
@@ -12,7 +16,7 @@ public final class RentalPolicy {
 
     private RentalPolicy() {}
 
-    /** Phí bảo hiểm theo ngày (VNĐ) — snapshot vào đơn */
+    /** Phí bảo hiểm tier (lưu vào `insuranceCode`) — vẫn single-select. */
     public static double insuranceFeePerDay(String insuranceCode) {
         if (insuranceCode == null || insuranceCode.isBlank()
                 || "NONE".equalsIgnoreCase(insuranceCode.trim())) {
@@ -24,6 +28,68 @@ public final class RentalPolicy {
             case "PREMIUM" -> 180_000d;
             default -> throw new IllegalArgumentException("Mã gói bảo hiểm không hợp lệ: " + insuranceCode);
         };
+    }
+
+    /**
+     * Phí add-on theo ngày — multi-select (Sprint 2 — bảo hiểm chuyến đi multi-package).
+     * Khác với `insuranceCode` (tier), các add-on này stack được với nhau:
+     *  - EXTRA_DRIVER : Tài xế phụ (50.000/ngày)
+     *  - ROADSIDE     : Cứu hộ 24/7 (30.000/ngày)
+     *  - INTERIOR     : Bảo vệ nội thất (40.000/ngày)
+     */
+    public static double addonFeePerDay(String addonCode) {
+        if (addonCode == null || addonCode.isBlank()) {
+            return 0;
+        }
+        return switch (addonCode.toUpperCase(Locale.ROOT).trim()) {
+            case "EXTRA_DRIVER" -> 50_000d;
+            case "ROADSIDE"     -> 30_000d;
+            case "INTERIOR"     -> 40_000d;
+            default -> throw new IllegalArgumentException("Mã gói add-on không hợp lệ: " + addonCode);
+        };
+    }
+
+    /** Tổng phí add-on/ngày từ danh sách mã (CSV cũng nhận được). */
+    public static double addonsFeePerDay(List<String> codes) {
+        if (codes == null || codes.isEmpty()) {
+            return 0;
+        }
+        Set<String> dedup = new LinkedHashSet<>();
+        for (String raw : codes) {
+            if (raw == null) continue;
+            for (String c : raw.split(",")) {
+                String norm = c.trim().toUpperCase(Locale.ROOT);
+                if (!norm.isEmpty() && !"NONE".equals(norm)) {
+                    dedup.add(norm);
+                }
+            }
+        }
+        double sum = 0;
+        for (String c : dedup) {
+            sum += addonFeePerDay(c);
+        }
+        return sum;
+    }
+
+    /** Chuẩn hoá danh sách add-on về CSV unique để snapshot vào DB. */
+    public static String normalizeAddonsCsv(List<String> codes) {
+        if (codes == null || codes.isEmpty()) return null;
+        Set<String> dedup = new LinkedHashSet<>();
+        for (String raw : codes) {
+            if (raw == null) continue;
+            for (String c : raw.split(",")) {
+                String norm = c.trim().toUpperCase(Locale.ROOT);
+                if (!norm.isEmpty() && !"NONE".equals(norm)) {
+                    dedup.add(norm);
+                }
+            }
+        }
+        return dedup.isEmpty() ? null : String.join(",", dedup);
+    }
+
+    /** Danh sách add-on hợp lệ — dùng để lộ ra REST endpoint. */
+    public static List<String> supportedAddonCodes() {
+        return Arrays.asList("EXTRA_DRIVER", "ROADSIDE", "INTERIOR");
     }
 
     /** Cọc đặt xe ≈ 30% tổng tiền thuê (làm tròn nghìn), tối thiểu 200k. */

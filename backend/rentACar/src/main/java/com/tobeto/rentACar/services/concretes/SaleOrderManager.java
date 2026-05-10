@@ -24,7 +24,9 @@ import com.tobeto.rentACar.services.dtos.saleorder.response.GetAllSaleOrdersResp
 import com.tobeto.rentACar.services.rules.RentalBusinessRule;
 import com.tobeto.rentACar.services.rules.SaleBusinessRule;
 import lombok.AllArgsConstructor;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -42,9 +44,11 @@ public class SaleOrderManager implements SaleOrderService {
     private final RentalBusinessRule rentalBusinessRule;
     private final SaleBusinessRule saleBusinessRule;
     private final BusinessMailNotificationSender businessMailNotificationSender;
+    private final com.tobeto.rentACar.services.abstracts.PromotionService promotionService;
     private MessageService messageService;
 
     @Override
+    @Transactional
     public AddSaleOrderResponse add(AddSaleOrderRequest request, int userId) {
         if (!userRepository.existsById(userId)) {
             throw new BusinessException(messageService.getMessage(Messages.User.getUserNotFoundMessage));
@@ -57,12 +61,20 @@ public class SaleOrderManager implements SaleOrderService {
         saleBusinessRule.assertCarReadyToSell(car);
         saleBusinessRule.assertNoOpenSaleOrderForCar(car.getId());
 
-        double total = car.getSalePrice();
+        double listPrice = car.getSalePrice();
+
+        // Áp dụng mã khuyến mãi (nếu có) trước khi snapshot giá vào đơn (UC Mua xe — discount).
+        var promoApply = promotionService.applyForUse(request.getPromotionCode(), "SALE", listPrice);
+        double discount = promoApply.discountAmount();
+        double total = Math.max(0, listPrice - discount);
+
         SaleOrder order = SaleOrder.builder()
                 .car(carRepository.getReferenceById(car.getId()))
                 .user(userRepository.getReferenceById(userId))
                 .totalPrice(total)
                 .paymentMethod(request.getPaymentMethod())
+                .promotionCode(promoApply.code())
+                .discountAmount(discount > 0 ? discount : null)
                 .build();
 
         if ("BANK_TRANSFER".equals(request.getPaymentMethod())) {
@@ -75,17 +87,43 @@ public class SaleOrderManager implements SaleOrderService {
 
         SaleOrder saved = saleOrderRepository.save(order);
 
+        // Optimistic lock: chuyển AVAILABLE → RESERVED. Nếu tab khác đã chiếm → ném 409 (xử lý ở controller).
+        // OptimisticLockingFailureException là cha của ObjectOptimisticLockingFailureException — bắt 1 cái là đủ.
         car.setSaleStatus(ListingConstants.SALE_RESERVED);
-        carRepository.save(car);
+        try {
+            carRepository.save(car);
+        } catch (OptimisticLockingFailureException e) {
+            throw new BusinessException(
+                    "Xe vừa được khách hàng khác đặt mua. Vui lòng quay lại trang chọn xe và thử lại.");
+        }
 
         AddInvoiceRequest inv = new AddInvoiceRequest();
         inv.setInvoiceNo("INV-S" + saved.getId() + "-" + System.currentTimeMillis());
         inv.setTotalPrice((float) total);
-        inv.setDiscountRate(0f);
+        inv.setDiscountRate(listPrice > 0 ? (float) (discount / listPrice * 100d) : 0f);
         inv.setTaxRate(10f);
         inv.setRentalId(null);
         inv.setSaleOrderId(saved.getId());
         invoiceService.add(inv);
+
+        if (promoApply.code() != null) {
+            promotionService.consume(promoApply.code());
+        }
+
+        // Email xác nhận đã đặt mua (UC Mua xe).
+        userRepository.findById(userId).map(u -> u.getEmail()).ifPresent(email -> businessMailNotificationSender.sendHtmlToUser(
+                email,
+                "[AutoHub] Đã ghi nhận đơn mua xe #" + saved.getId(),
+                BusinessMailNotificationSender.simpleHtmlEmail(
+                        "Đơn mua #" + saved.getId(),
+                        "Cảm ơn bạn đã đặt mua xe trên AutoHub.\n"
+                                + "Tổng tiền (sau giảm giá): " + String.format("%,.0f", total) + " VNĐ.\n"
+                                + (discount > 0 ? "Giảm giá: -" + String.format("%,.0f", discount) + " VNĐ ("
+                                        + (promoApply.code() != null ? promoApply.code() : "") + ").\n" : "")
+                                + "Phương thức thanh toán: " + request.getPaymentMethod() + ".\n"
+                                + "Theo dõi trạng thái đơn tại trang Đơn mua của tôi."
+                )
+        ));
 
         AddSaleOrderResponse res = new AddSaleOrderResponse();
         res.setId(saved.getId());

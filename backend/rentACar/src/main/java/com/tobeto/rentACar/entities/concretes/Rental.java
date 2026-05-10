@@ -58,6 +58,17 @@ public class Rental extends BaseEntity {
     @Column(name = "insurance_fee_amount")
     private Double insuranceFeeAmount;
 
+    /**
+     * Danh sách add-on stack được (CSV: EXTRA_DRIVER,ROADSIDE,…) — snapshot.
+     * Khác với insuranceCode (tier), nhiều mã add-on có thể được chọn cùng lúc.
+     */
+    @Column(name = "addon_codes", length = 256)
+    private String addonCodes;
+
+    /** Tổng phí add-on đã tính vào totalPrice (snapshot). */
+    @Column(name = "addon_fee_amount")
+    private Double addonFeeAmount;
+
     /** Phụ phí giao xe / vượt km / khác — snapshot */
     @Column(name = "extra_fees_amount")
     private Double extraFeesAmount;
@@ -93,6 +104,14 @@ public class Rental extends BaseEntity {
     /** Số tiền còn phải thu sau khi trừ cọc + cộng phí trễ & phát sinh (snapshot) */
     @Column(name = "balance_due_at_return")
     private Double balanceDueAtReturn;
+
+    /** Mã khuyến mãi đã áp tại lúc tạo đơn (snapshot). null = không dùng. */
+    @Column(name = "promotion_code", length = 64)
+    private String promotionCode;
+
+    /** Số tiền giảm giá (VNĐ) đã áp vào totalPrice. null = 0. */
+    @Column(name = "discount_amount")
+    private Double discountAmount;
 
     @ManyToOne()
     @JoinColumn(name="car_id")

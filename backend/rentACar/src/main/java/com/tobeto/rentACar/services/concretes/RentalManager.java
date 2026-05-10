@@ -51,6 +51,7 @@ public class RentalManager implements RentalService {
     private final InvoiceService invoiceService;
     private final List<RentalBusinessRule> rentalBusinessRules;
     private final BusinessMailNotificationSender businessMailNotificationSender;
+    private final com.tobeto.rentACar.services.abstracts.PromotionService promotionService;
     private MessageService messageService;
 
     @Override
@@ -92,9 +93,24 @@ public class RentalManager implements RentalService {
         }
         double insuranceTotal = insFeePerDay * rentalDays;
 
+        // Add-on multi-package (Sprint 2 — bảo hiểm chuyến đi multi-package).
+        double addonFeePerDay;
+        String addonsCsv;
+        try {
+            addonFeePerDay = RentalPolicy.addonsFeePerDay(request.getAddonCodes());
+            addonsCsv = RentalPolicy.normalizeAddonsCsv(request.getAddonCodes());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(e.getMessage());
+        }
+        double addonsTotal = addonFeePerDay * rentalDays;
+
         double extras = request.getExtraFeesAmount() != null ? Math.max(0, request.getExtraFeesAmount()) : 0;
 
-        double totalPrice = baseRental + insuranceTotal + extras;
+        double subtotal = baseRental + insuranceTotal + addonsTotal + extras;
+        // Áp mã khuyến mãi cho RENT (UC Mua/Thuê — discount).
+        var promoApply = promotionService.applyForUse(request.getPromotionCode(), "RENT", subtotal);
+        double discount = promoApply.discountAmount();
+        double totalPrice = Math.max(0, subtotal - discount);
         double depositAmount = RentalPolicy.computeDeposit(totalPrice);
 
         Rental rental = modelMapperService.forRequest().map(request, Rental.class);
@@ -104,10 +120,14 @@ public class RentalManager implements RentalService {
         rental.setTotalPrice(totalPrice);
         rental.setInsuranceCode(insCode);
         rental.setInsuranceFeeAmount(insuranceTotal);
+        rental.setAddonCodes(addonsCsv);
+        rental.setAddonFeeAmount(addonsTotal > 0 ? addonsTotal : null);
         rental.setExtraFeesAmount(extras);
         rental.setPickupDistrict(request.getPickupDistrict());
         rental.setDepositAmount(depositAmount);
         rental.setDepositStatus("PENDING");
+        rental.setPromotionCode(promoApply.code());
+        rental.setDiscountAmount(discount > 0 ? discount : null);
         if ("BANK_TRANSFER".equals(request.getPaymentMethod())) {
             rental.setPaymentStatus("PENDING_TRANSFER");
             rental.setRentalStatus("PENDING_PAYMENT");
@@ -117,15 +137,35 @@ public class RentalManager implements RentalService {
         }
         Rental savedRental = rentalRepository.save(rental);
 
-        // Auto-create invoice right after successful booking so user pages can show
-        // invoice data immediately.
         AddInvoiceRequest invoiceRequest = new AddInvoiceRequest();
         invoiceRequest.setInvoiceNo("INV-" + savedRental.getId() + "-" + System.currentTimeMillis());
         invoiceRequest.setTotalPrice((float) totalPrice);
-        invoiceRequest.setDiscountRate(0f);
+        invoiceRequest.setDiscountRate(subtotal > 0 ? (float) (discount / subtotal * 100d) : 0f);
         invoiceRequest.setTaxRate(10f);
         invoiceRequest.setRentalId(savedRental.getId());
         invoiceService.add(invoiceRequest);
+
+        if (promoApply.code() != null) {
+            promotionService.consume(promoApply.code());
+        }
+
+        // Email xác nhận đặt thuê (UC Thuê xe — Tóm tắt + Thông báo).
+        userRepository.findById(request.getUserId()).map(u -> u.getEmail())
+                .ifPresent(email -> businessMailNotificationSender.sendHtmlToUser(
+                        email,
+                        "[AutoHub] Đã ghi nhận đơn thuê xe #" + savedRental.getId(),
+                        BusinessMailNotificationSender.simpleHtmlEmail(
+                                "Đơn thuê #" + savedRental.getId(),
+                                "Cảm ơn bạn đã đặt xe trên AutoHub.\n"
+                                        + "Từ ngày: " + savedRental.getStartDate() + "\n"
+                                        + "Đến ngày: " + savedRental.getEndDate() + "\n"
+                                        + "Tổng tiền (sau giảm giá): " + String.format("%,.0f", totalPrice) + " VNĐ.\n"
+                                        + (discount > 0 ? "Giảm giá: -" + String.format("%,.0f", discount) + " VNĐ ("
+                                                + (promoApply.code() != null ? promoApply.code() : "") + ").\n" : "")
+                                        + "Tiền cọc: " + String.format("%,.0f", depositAmount) + " VNĐ.\n"
+                                        + "Phương thức thanh toán: " + request.getPaymentMethod() + "."
+                        )
+                ));
 
         Result result = new SuccessResult(messageService.getMessage(Messages.Rental.rentalAddSuccess));
 

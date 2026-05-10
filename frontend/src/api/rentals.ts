@@ -12,6 +12,12 @@ export const getInsuranceOptionsApi = async (): Promise<InsuranceOptionDto[]> =>
   return res.data;
 };
 
+/** Add-on multi-package options (Sprint 2). */
+export const getAddonOptionsApi = async (): Promise<InsuranceOptionDto[]> => {
+  const res = await axiosInstance.get('/api/rentals/addon-options');
+  return res.data;
+};
+
 /** Khoảng ngày đã có đơn (công khai, không token) — dùng cho lịch trên trang chi tiết xe. */
 export const getPublicBusyRangesForCarApi = async (
   carId: number

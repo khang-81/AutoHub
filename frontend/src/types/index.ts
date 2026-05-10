@@ -174,6 +174,10 @@ export interface AddRentalRequest {
   insuranceCode?: string;
   extraFeesAmount?: number;
   pickupDistrict?: string;
+  /** Mã khuyến mãi (tuỳ chọn). Backend re-validate và snapshot vào đơn. */
+  promotionCode?: string;
+  /** Add-on stack được (Sprint 2 — bảo hiểm chuyến đi multi-package). */
+  addonCodes?: string[];
 }
 
 export interface AddRentalResponse {
@@ -265,6 +269,23 @@ export interface SaleOrder {
 export interface AddSaleOrderRequest {
   carId: number;
   paymentMethod: 'CASH' | 'BANK_TRANSFER';
+  /** Mã khuyến mãi (tuỳ chọn). Backend re-validate và snapshot vào đơn. */
+  promotionCode?: string;
+}
+
+export interface ApplyPromotionRequest {
+  code: string;
+  scope: 'RENT' | 'SALE';
+  amount: number;
+}
+
+export interface ApplyPromotionResponse {
+  code: string;
+  description?: string;
+  orderAmount: number;
+  discountAmount: number;
+  finalAmount: number;
+  message?: string;
 }
 
 export interface AddSaleOrderResponse {

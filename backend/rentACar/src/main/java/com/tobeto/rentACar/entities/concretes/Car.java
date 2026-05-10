@@ -48,6 +48,15 @@ public class Car extends BaseEntity {
     @Column(name="image_path")
     private String imagePath;
 
+    /**
+     * Optimistic lock — chống race condition khi 2 khách cùng bấm "Mua ngay" trên cùng 1 xe.
+     * Khi update saleStatus từ AVAILABLE → RESERVED, JPA sinh WHERE version=? — tab thua sẽ ném
+     * OptimisticLockingFailureException để service map sang thông báo "Xe đã được người khác đặt".
+     */
+    @Version
+    @Column(name = "version", nullable = false)
+    private long version;
+
     /** Số chỗ ngồi (UC Tìm kiếm xe thuê — lọc 4/7/9 chỗ). */
     @Column(name = "seats")
     private Integer seats;
