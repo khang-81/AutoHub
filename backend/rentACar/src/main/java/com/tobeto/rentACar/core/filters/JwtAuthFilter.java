@@ -1,6 +1,7 @@
 package com.tobeto.rentACar.core.filters;
 
 import com.tobeto.rentACar.core.services.JwtService;
+import com.tobeto.rentACar.entities.concretes.User;
 import com.tobeto.rentACar.services.abstracts.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -27,12 +28,16 @@ import java.util.List;
 @AllArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    /** Paths where JWT must not gate the request (preflight + public catalog/auth APIs). */
+    /**
+     * Paths where JWT must not gate the request.
+     * - Auth endpoints: register/login/forgot-password/reset-password phải truy cập được khi chưa có token.
+     * - Catalog GET (cars/brands/colors/models/reviews): cho phép đọc ẩn danh nhưng vẫn parse JWT khi có token
+     *   để admin POST/PUT/DELETE đi qua filter và set SecurityContext (cần cho @PreAuthorize).
+     *
+     * LƯU Ý: chỉ skip auth endpoints + preflight; catalog không skip để mutate yêu cầu xác thực hoạt động đúng.
+     */
     private static final List<RequestMatcher> PUBLIC_API_MATCHERS = List.of(
-            new AntPathRequestMatcher("/api/auth/**"),
-            new AntPathRequestMatcher("/api/brands/**"),
-            new AntPathRequestMatcher("/api/cars/**"),
-            new AntPathRequestMatcher("/api/colors/**")
+            new AntPathRequestMatcher("/api/auth/**")
     );
 
     private final JwtService jwtService;
@@ -80,6 +85,26 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if (!jwtService.validateToken(jwt, user)) {
                 rejectInvalidToken(response);
                 return;
+            }
+
+            // Token-version: reset password tăng tokenVersion → mọi JWT cũ bị huỷ.
+            if (user instanceof User userEntity) {
+                Integer tokenTv = jwtService.extractTokenVersion(jwt);
+                int currentTv = userEntity.getTokenVersion();
+                // tokenTv == null → JWT cũ trước khi có claim tv: chỉ chấp nhận nếu currentTv == 0.
+                if (tokenTv == null) {
+                    if (currentTv != 0) {
+                        rejectInvalidToken(response);
+                        return;
+                    }
+                } else if (tokenTv != currentTv) {
+                    rejectInvalidToken(response);
+                    return;
+                }
+                if (!userEntity.isEnabled() || !userEntity.isAccountNonLocked()) {
+                    rejectInvalidToken(response);
+                    return;
+                }
             }
 
             UsernamePasswordAuthenticationToken authenticationToken =

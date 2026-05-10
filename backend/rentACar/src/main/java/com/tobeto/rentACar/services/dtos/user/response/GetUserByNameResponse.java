@@ -17,4 +17,10 @@ public class GetUserByNameResponse {
 
     /** NOT_SUBMITTED | PENDING | APPROVED | REJECTED */
     private String kycStatus;
+
+    /** Tăng mỗi lần reset password để vô hiệu hóa JWT cũ. */
+    private int tokenVersion;
+
+    /** false khi tài khoản bị admin khóa. */
+    private boolean enabled;
 }

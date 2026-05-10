@@ -26,9 +26,14 @@ public class JwtService {
     private long EXPIRATION;
 
     public String generateToken(String email, GetUserByNameResponse userResponse) {
+        return generateToken(email, userResponse, 0);
+    }
+
+    public String generateToken(String email, GetUserByNameResponse userResponse, int tokenVersion) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("id", userResponse.getId());
-        return createToken(claims, email, userResponse.getId());
+        claims.put("tv", tokenVersion);
+        return createToken(claims, email, userResponse.getId(), tokenVersion);
     }
 
     public Boolean validateToken(String token, UserDetails userDetails) {
@@ -59,6 +64,31 @@ public class JwtService {
         }
         return claims.get("id", Integer.class);
     }
+
+    /** null khi JWT cũ không có claim "tv" (token phát hành trước khi triển khai token-version). */
+    public Integer extractTokenVersion(String token) {
+        Claims claims = Jwts
+                .parser()
+                .setSigningKey(getSignKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+        Object raw = claims.get("tv");
+        if (raw == null) {
+            return null;
+        }
+        if (raw instanceof Number) {
+            return ((Number) raw).intValue();
+        }
+        if (raw instanceof String) {
+            try {
+                return Integer.parseInt(((String) raw).trim());
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
     private Date extractExpiration(String token) {
         Claims claims = Jwts
                 .parser()
@@ -79,11 +109,12 @@ public class JwtService {
     }
 
 
-    private String createToken(Map<String, Object> claims, String userName, int id) {
+    private String createToken(Map<String, Object> claims, String userName, int id, int tokenVersion) {
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(userName)
                 .claim("id", id)
+                .claim("tv", tokenVersion)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION))
                 .signWith(getSignKey(), SignatureAlgorithm.HS256)

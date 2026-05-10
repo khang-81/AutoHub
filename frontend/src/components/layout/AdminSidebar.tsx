@@ -15,6 +15,7 @@ import {
   ShoppingBag,
   MessageSquare,
   CalendarClock,
+  Palette,
 } from 'lucide-react';
 import { useState } from 'react';
 import { getEmailFromToken } from '../../utils/helpers';
@@ -27,6 +28,7 @@ const navItems = [
   { label: 'Quản lý khách hàng', to: '/admin/users', icon: Users },
   { label: 'Quản lý GPLX', to: '/admin/kyc', icon: ShieldCheck },
   { label: 'Quản lý thương hiệu & Model', to: '/admin/brands', icon: Tag },
+  { label: 'Quản lý màu sắc', to: '/admin/colors', icon: Palette },
   { label: 'Quản lý đơn thuê', to: '/admin/rentals', icon: FileText },
   { label: 'Quản lý đơn mua', to: '/admin/sale-orders', icon: ShoppingBag },
   { label: 'Quản lý lịch xem xe', to: '/admin/viewing-appointments', icon: CalendarClock },

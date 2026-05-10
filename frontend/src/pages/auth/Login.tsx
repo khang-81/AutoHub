@@ -64,7 +64,10 @@ const Login = () => {
         } else {
           localStorage.removeItem('autohub_admin_token');
           localStorage.removeItem('autohub_admin_user');
-          navigate(from === '/login' ? '/dashboard' : from);
+          // Đặc tả UC Đăng nhập: khách hàng -> Trang chủ. Nếu user bị middleware đẩy về login từ trang khác,
+          // ưu tiên redirect ngược lại trang đó để giữ ngữ cảnh thao tác (Thuê/Mua/...).
+          const target = from && from !== '/login' ? from : '/';
+          navigate(target);
         }
       } else {
         showToast(res.message || 'Đăng nhập thất bại', 'error');

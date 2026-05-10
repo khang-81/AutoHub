@@ -7,6 +7,7 @@ import AdminLayout from './components/layout/AdminLayout';
 import UserLayout from './components/layout/UserLayout';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import AdminProtectedRoute from './components/layout/AdminProtectedRoute';
+import AuthSessionWatcher from './components/layout/AuthSessionWatcher';
 
 // Toast
 import { ToastProvider } from './components/ui/Toast';
@@ -49,6 +50,7 @@ import ManageKyc from './pages/admin/ManageKyc';
 import ManageSaleOrders from './pages/admin/ManageSaleOrders';
 import ManageReviews from './pages/admin/ManageReviews';
 import ManageViewingAppointments from './pages/admin/ManageViewingAppointments';
+import ManageColors from './pages/admin/ManageColors';
 import MyViewingAppointments from './pages/user/MyViewingAppointments';
 
 const queryClient = new QueryClient({
@@ -125,6 +127,7 @@ function RoutesWithChatbot() {
           <Route path="cars/rent" element={<ManageCars />} />
           <Route path="cars/sale" element={<ManageCars />} />
           <Route path="brands" element={<ManageBrands />} />
+          <Route path="colors" element={<ManageColors />} />
           <Route path="rentals" element={<ManageRentals />} />
           <Route path="users" element={<ManageUsers />} />
           <Route path="reports" element={<ManageReports />} />
@@ -149,6 +152,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <BrowserRouter>
+          <AuthSessionWatcher />
           <RoutesWithChatbot />
         </BrowserRouter>
       </ToastProvider>

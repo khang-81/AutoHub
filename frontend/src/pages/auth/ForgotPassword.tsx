@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,6 +8,8 @@ import { forgotPasswordApi } from '../../api/auth';
 import { useToast } from '../../components/ui/Toast';
 import { getApiErrorMessage } from '../../utils/helpers';
 
+const RESEND_COOLDOWN_SECONDS = 60;
+
 const schema = z.object({
   email: z.string().email('Email không hợp lệ'),
 });
@@ -16,8 +18,10 @@ type FormData = z.infer<typeof schema>;
 
 const ForgotPassword = () => {
   const [loading, setLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const intervalRef = useRef<number | null>(null);
 
   const {
     register,
@@ -25,7 +29,19 @@ const ForgotPassword = () => {
     formState: { errors },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
+  // Đếm ngược 60s sau khi gửi OTP — đồng bộ với cooldown phía backend (UC Quên mật khẩu).
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    intervalRef.current = window.setInterval(() => {
+      setCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => {
+      if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
+    };
+  }, [cooldown]);
+
   const onSubmit = async (data: FormData) => {
+    if (cooldown > 0) return;
     setLoading(true);
     try {
       const res = await forgotPasswordApi({ email: data.email.trim() });
@@ -35,6 +51,7 @@ const ForgotPassword = () => {
             'Nếu email đã đăng ký, kiểm tra hộp thư để lấy mã OTP 6 số.',
           'success'
         );
+        setCooldown(RESEND_COOLDOWN_SECONDS);
         navigate(`/reset-password?email=${encodeURIComponent(data.email.trim())}`);
       } else {
         showToast(res.message || 'Không thể gửi yêu cầu', 'error');
@@ -86,13 +103,17 @@ const ForgotPassword = () => {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || cooldown > 0}
               className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : null}
-              {loading ? 'Đang gửi...' : 'Gửi mã OTP'}
+              {loading
+                ? 'Đang gửi...'
+                : cooldown > 0
+                ? `Gửi lại sau ${cooldown}s`
+                : 'Gửi mã OTP'}
             </button>
           </form>
 

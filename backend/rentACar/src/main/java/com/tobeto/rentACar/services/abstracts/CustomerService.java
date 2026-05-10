@@ -17,4 +17,10 @@ public interface CustomerService {
     List<GetAllCustomersResponse> getAll();
     GetCustomerByIdResponse getById(int id);
 
+    /**
+     * Lấy hồ sơ Customer của user đang đăng nhập (theo userId trích từ JWT).
+     * Trả về null khi user chưa từng tạo hồ sơ — frontend dùng để mở form tạo mới.
+     */
+    GetCustomerByIdResponse getMine(int userId);
+
 }

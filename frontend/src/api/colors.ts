@@ -16,6 +16,6 @@ export const updateColorApi = async (data: { id: number; name: string }) => {
 };
 
 export const deleteColorApi = async (id: number) => {
-  const res = await axiosInstance.delete('/api/colors/delete', { data: { id } });
+  const res = await axiosInstance.delete(`/api/colors/delete/${id}`);
   return res.data;
 };

@@ -1,14 +1,13 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { User, Save, UserCheck } from 'lucide-react';
-import { getAllCustomersApi, addCustomerApi, updateCustomerApi } from '../../api/customers';
+import { getMyCustomerApi, addCustomerApi, updateCustomerApi } from '../../api/customers';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../components/ui/Toast';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import type { Customer } from '../../types';
 
 const schema = z.object({
   firstName: z.string().min(1, 'Vui lòng nhập họ'),
@@ -25,9 +24,10 @@ const Profile = () => {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: customers = [], isLoading } = useQuery<Customer[]>({
-    queryKey: ['customers'],
-    queryFn: getAllCustomersApi,
+  // Endpoint /api/customers/me chỉ trả hồ sơ của user đang đăng nhập (theo JWT) — không leak PII.
+  const { data: existingCustomer, isLoading } = useQuery({
+    queryKey: ['customer', 'me'],
+    queryFn: getMyCustomerApi,
   });
 
   const {
@@ -36,11 +36,6 @@ const Profile = () => {
     reset,
     formState: { errors },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
-
-  const existingCustomer = useMemo(() => {
-    if (!userId) return null;
-    return customers.find((c) => c.userId === userId) ?? null;
-  }, [customers, userId]);
 
   useEffect(() => {
     if (!existingCustomer) return;
@@ -57,7 +52,7 @@ const Profile = () => {
     mutationFn: addCustomerApi,
     onSuccess: () => {
       showToast('Đã tạo hồ sơ thành công!', 'success');
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['customer', 'me'] });
     },
     onError: () => showToast('Có lỗi khi tạo hồ sơ', 'error'),
   });
@@ -66,16 +61,20 @@ const Profile = () => {
     mutationFn: updateCustomerApi,
     onSuccess: () => {
       showToast('Cập nhật hồ sơ thành công!', 'success');
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['customer', 'me'] });
     },
     onError: () => showToast('Có lỗi khi cập nhật', 'error'),
   });
 
   const onSubmit = (data: FormData) => {
+    if (!userId) {
+      showToast('Phiên đăng nhập đã hết hạn', 'error');
+      return;
+    }
     if (existingCustomer) {
-      updateMutation.mutate({ ...data, id: existingCustomer.id, userId: userId! });
+      updateMutation.mutate({ ...data, id: existingCustomer.id, userId });
     } else {
-      addMutation.mutate({ ...data, userId: userId! });
+      addMutation.mutate({ ...data, userId });
     }
   };
 
