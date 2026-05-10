@@ -48,4 +48,15 @@ public class AddCarRequest {
     @NotBlank
     private String imagePath;
 
+    /** Số chỗ ngồi (UC Tìm kiếm xe thuê — lọc theo 4/7/9). */
+    @Min(value = 2, message = "Số chỗ tối thiểu là 2")
+    @Max(value = 16, message = "Số chỗ tối đa là 16")
+    private Integer seats;
+
+    /** AUTO | MANUAL — backend chuẩn hoá uppercase trước khi lưu. */
+    private String transmission;
+
+    /** GASOLINE | DIESEL | HYBRID | ELECTRIC */
+    private String fuelType;
+
 }

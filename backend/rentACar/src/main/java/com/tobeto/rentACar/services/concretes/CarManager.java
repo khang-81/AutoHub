@@ -30,9 +30,12 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 
 @Service
@@ -67,6 +70,11 @@ public class CarManager implements CarService {
             Integer minYear,
             String listing,
             String q,
+            Integer seats,
+            String transmission,
+            String fuelType,
+            LocalDate availableFrom,
+            LocalDate availableTo,
             int page,
             int size) {
 
@@ -74,7 +82,9 @@ public class CarManager implements CarService {
         int pageSize = Math.min(50, Math.max(1, size));
         int pageIndex = pageOneBased - 1;
 
-        Specification<Car> spec = CarSpecifications.withFilters(brandId, colorId, minPrice, maxPrice, minYear, listing, q);
+        Specification<Car> spec = CarSpecifications.withFilters(
+                brandId, colorId, minPrice, maxPrice, minYear, listing, q,
+                seats, transmission, fuelType, availableFrom, availableTo);
         Page<Car> result = carRepository.findAll(
                 spec,
                 PageRequest.of(pageIndex, pageSize, Sort.by(Sort.Direction.DESC, "id")));
@@ -210,6 +220,37 @@ public class CarManager implements CarService {
         car.setSaleStatus(ListingConstants.SALE_AVAILABLE);
     }
 
+    private static final Set<String> ALLOWED_TRANSMISSIONS = Set.of("AUTO", "MANUAL");
+    private static final Set<String> ALLOWED_FUEL_TYPES = Set.of("GASOLINE", "DIESEL", "HYBRID", "ELECTRIC");
+
+    /**
+     * Chuẩn hoá transmission/fuelType về uppercase và validate trong tập hợp cho phép.
+     * Cho phép null (chưa khai báo) — Specification chỉ filter khi tham số có giá trị.
+     */
+    private static void normalizeAndValidateRentalSpecs(Car car) {
+        if (car.getTransmission() != null && !car.getTransmission().isBlank()) {
+            String t = car.getTransmission().trim().toUpperCase(Locale.ROOT);
+            if (!ALLOWED_TRANSMISSIONS.contains(t)) {
+                throw new BusinessException("Hộp số không hợp lệ (AUTO hoặc MANUAL).");
+            }
+            car.setTransmission(t);
+        } else {
+            car.setTransmission(null);
+        }
+        if (car.getFuelType() != null && !car.getFuelType().isBlank()) {
+            String f = car.getFuelType().trim().toUpperCase(Locale.ROOT);
+            if (!ALLOWED_FUEL_TYPES.contains(f)) {
+                throw new BusinessException("Loại nhiên liệu không hợp lệ (GASOLINE/DIESEL/HYBRID/ELECTRIC).");
+            }
+            car.setFuelType(f);
+        } else {
+            car.setFuelType(null);
+        }
+        if (car.getSeats() != null && (car.getSeats() < 2 || car.getSeats() > 16)) {
+            throw new BusinessException("Số chỗ ngồi phải trong khoảng 2-16.");
+        }
+    }
+
     @Override
     public Result add(AddCarRequest request) {
 
@@ -227,6 +268,7 @@ public class CarManager implements CarService {
             car.setServiceCity("Hà Nội");
         }
         applySaleStatusOnCar(car);
+        normalizeAndValidateRentalSpecs(car);
 
         carRepository.save(car);
 
@@ -259,6 +301,7 @@ public class CarManager implements CarService {
         } else {
             applySaleStatusOnCar(car);
         }
+        normalizeAndValidateRentalSpecs(car);
 
         carRepository.save(car);
 

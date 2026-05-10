@@ -1,5 +1,5 @@
 import axiosInstance from './axiosInstance';
-import type { AddCarRequest, PagedCarsResponse, UpdateCarRequest } from '../types';
+import type { AddCarRequest, FuelType, PagedCarsResponse, Transmission, UpdateCarRequest } from '../types';
 
 export const getAllCarsApi = async () => {
   const res = await axiosInstance.get('/api/cars/getAll');
@@ -16,6 +16,16 @@ export type SearchCarsParams = {
   minYear?: number;
   listing?: '' | 'rent' | 'sale';
   q?: string;
+  /** UC Tìm kiếm xe thuê — số chỗ ngồi cần khớp chính xác. */
+  seats?: number;
+  /** AUTO | MANUAL */
+  transmission?: Transmission;
+  /** GASOLINE | DIESEL | HYBRID | ELECTRIC */
+  fuelType?: FuelType;
+  /** YYYY-MM-DD — chỉ trả xe rảnh trong khoảng [availableFrom, availableTo]. */
+  availableFrom?: string;
+  /** YYYY-MM-DD */
+  availableTo?: string;
 };
 
 export const searchCarsApi = async (params: SearchCarsParams): Promise<PagedCarsResponse> => {
@@ -29,6 +39,11 @@ export const searchCarsApi = async (params: SearchCarsParams): Promise<PagedCars
   if (params.minYear != null) sp.set('minYear', String(params.minYear));
   if (params.listing) sp.set('listing', params.listing);
   if (params.q != null && params.q !== '') sp.set('q', params.q);
+  if (params.seats != null) sp.set('seats', String(params.seats));
+  if (params.transmission) sp.set('transmission', params.transmission);
+  if (params.fuelType) sp.set('fuelType', params.fuelType);
+  if (params.availableFrom) sp.set('availableFrom', params.availableFrom);
+  if (params.availableTo) sp.set('availableTo', params.availableTo);
   const res = await axiosInstance.get<PagedCarsResponse>(`/api/cars/search?${sp.toString()}`);
   return res.data;
 };

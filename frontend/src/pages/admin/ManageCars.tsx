@@ -28,6 +28,9 @@ const schema = z
     colorId: z.number().min(1, 'Chọn màu'),
     minFindeksRate: z.number().min(0),
     imagePath: z.string().min(1, 'Nhập URL ảnh'),
+    seats: z.number().int().min(2).max(16).optional().nullable(),
+    transmission: z.enum(['', 'AUTO', 'MANUAL']).optional(),
+    fuelType: z.enum(['', 'GASOLINE', 'DIESEL', 'HYBRID', 'ELECTRIC']).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.listingType === 'RENT_ONLY') {
@@ -116,6 +119,9 @@ const ManageCars = () => {
       listingType: isSaleModule ? 'SALE_ONLY' : 'RENT_ONLY',
       modelId: 0,
       colorId: 0,
+      seats: undefined,
+      transmission: '',
+      fuelType: '',
     });
     setModalOpen(true);
   };
@@ -123,6 +129,8 @@ const ManageCars = () => {
   const openEdit = (car: CarType) => {
     setEditCar(car);
     const lt = (car.listingType || 'RENT_ONLY').toUpperCase() as 'RENT_ONLY' | 'SALE_ONLY';
+    const trans = (car.transmission ?? '').toString().toUpperCase();
+    const fuel = (car.fuelType ?? '').toString().toUpperCase();
     reset({
       plate: car.plate,
       modelYear: car.modelYear,
@@ -134,15 +142,26 @@ const ManageCars = () => {
       colorId: car.color?.id,
       minFindeksRate: car.minFindeksRate,
       imagePath: car.imagePath,
+      seats: car.seats ?? undefined,
+      transmission: trans === 'AUTO' || trans === 'MANUAL' ? trans : '',
+      fuelType:
+        fuel === 'GASOLINE' || fuel === 'DIESEL' || fuel === 'HYBRID' || fuel === 'ELECTRIC' ? fuel : '',
     });
     setModalOpen(true);
   };
 
   const onSubmit = (data: FormData) => {
+    // Empty enum string nghĩa là "không khai báo" → gửi null cho backend.
+    const payload = {
+      ...data,
+      transmission: data.transmission ? data.transmission : null,
+      fuelType: data.fuelType ? data.fuelType : null,
+      seats: data.seats ?? null,
+    };
     if (editCar) {
-      updateMutation.mutate({ ...data, id: editCar.id });
+      updateMutation.mutate({ ...payload, id: editCar.id });
     } else {
-      addMutation.mutate(data);
+      addMutation.mutate(payload);
     }
   };
 
@@ -421,6 +440,40 @@ const ManageCars = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Min Findeks Rate</label>
               <input {...register('minFindeksRate', { valueAsNumber: true })} type="number" className="input-field" />
+            </div>
+          </div>
+
+          {/* Thông số phục vụ Tìm kiếm xe thuê (UC #5) */}
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Số chỗ</label>
+              <input
+                {...register('seats', { valueAsNumber: true, setValueAs: (v) => (v === '' || v == null ? undefined : Number(v)) })}
+                type="number"
+                min={2}
+                max={16}
+                className="input-field"
+                placeholder="VD: 5"
+              />
+              {errors.seats && <p className="text-red-500 text-xs mt-1">{errors.seats.message}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Hộp số</label>
+              <select {...register('transmission')} className="input-field">
+                <option value="">— Chưa khai báo —</option>
+                <option value="AUTO">Tự động (AUTO)</option>
+                <option value="MANUAL">Số sàn (MANUAL)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nhiên liệu</label>
+              <select {...register('fuelType')} className="input-field">
+                <option value="">— Chưa khai báo —</option>
+                <option value="GASOLINE">Xăng</option>
+                <option value="DIESEL">Dầu</option>
+                <option value="HYBRID">Hybrid</option>
+                <option value="ELECTRIC">Điện</option>
+              </select>
             </div>
           </div>
 

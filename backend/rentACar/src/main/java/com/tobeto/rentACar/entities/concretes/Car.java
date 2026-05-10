@@ -48,6 +48,18 @@ public class Car extends BaseEntity {
     @Column(name="image_path")
     private String imagePath;
 
+    /** Số chỗ ngồi (UC Tìm kiếm xe thuê — lọc 4/7/9 chỗ). */
+    @Column(name = "seats")
+    private Integer seats;
+
+    /** AUTO | MANUAL — phân loại hộp số. */
+    @Column(name = "transmission", length = 16)
+    private String transmission;
+
+    /** GASOLINE | DIESEL | HYBRID | ELECTRIC */
+    @Column(name = "fuel_type", length = 16)
+    private String fuelType;
+
     @ManyToOne()
     @JoinColumn(name="model_id")
     private Model model;

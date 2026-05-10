@@ -49,6 +49,9 @@ export interface Color {
 // ─── Car ────────────────────────────────────────────────────────────────────
 export type ListingType = 'RENT_ONLY' | 'SALE_ONLY';
 
+export type Transmission = 'AUTO' | 'MANUAL';
+export type FuelType = 'GASOLINE' | 'DIESEL' | 'HYBRID' | 'ELECTRIC';
+
 export interface Car {
   id: number;
   modelYear: number;
@@ -63,6 +66,9 @@ export interface Car {
   salePrice?: number | null;
   saleStatus?: string | null;
   imagePath: string;
+  seats?: number | null;
+  transmission?: Transmission | string | null;
+  fuelType?: FuelType | string | null;
   model: CarModel;
   color: Color;
 }
@@ -86,6 +92,9 @@ export interface AddCarRequest {
   colorId: number;
   minFindeksRate: number;
   imagePath: string;
+  seats?: number | null;
+  transmission?: Transmission | string | null;
+  fuelType?: FuelType | string | null;
 }
 
 export interface UpdateCarRequest extends AddCarRequest {
@@ -346,4 +355,11 @@ export interface CarFilter {
   minYear?: number;
   maxYear?: number;
   search?: string;
+  seats?: number;
+  transmission?: Transmission;
+  fuelType?: FuelType;
+  /** YYYY-MM-DD */
+  availableFrom?: string;
+  /** YYYY-MM-DD */
+  availableTo?: string;
 }

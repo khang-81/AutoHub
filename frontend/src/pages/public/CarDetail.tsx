@@ -88,6 +88,23 @@ const CarDetail = () => {
     bookedRanges.some((range) => date >= range.start && date <= range.end);
   const getDayClassName = (date: Date) => (isBookedDate(date) ? 'booked-day' : '');
 
+  /**
+   * Lưới 30 ngày hiển thị nhanh các ô bận / trống — đặt phía trên DatePicker để khách "đọc"
+   * lịch xe trước khi click. Click ô trống auto-fill ngày nhận (UC Tìm kiếm + chi tiết xe).
+   */
+  const calendarStrip = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const days: { date: Date; busy: boolean }[] = [];
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      days.push({ date: d, busy: isBookedDate(d) });
+    }
+    return days;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busyRangeRows]);
+
   const rentalDays =
     startDate && endDate && car ? calculateRentalDays(startDate, endDate) : 0;
 
@@ -439,22 +456,44 @@ const CarDetail = () => {
             <div className="card p-6">
               <h2 className="font-heading font-semibold text-navy text-lg mb-5">Thông số kỹ thuật</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {[
-                  { icon: Calendar, label: 'Năm sản xuất', value: car.modelYear.toString() },
-                  { icon: Gauge, label: 'Số km đã đi', value: `${(car.kilometer / 1000).toFixed(0)}k km` },
-                  { icon: Palette, label: 'Màu sắc', value: car.color?.name },
-                  { icon: Tag, label: 'Model', value: car.model?.name },
-                  { icon: Car, label: 'Thương hiệu', value: car.model?.brand?.name },
-                  { icon: Fuel, label: 'Nhiên liệu', value: 'Xăng' },
-                ].map((spec) => (
-                  <div key={spec.label} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
-                    <spec.icon className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs text-gray-400">{spec.label}</p>
-                      <p className="font-semibold text-navy text-sm">{spec.value}</p>
+                {(() => {
+                  const fuelLabels: Record<string, string> = {
+                    GASOLINE: 'Xăng',
+                    DIESEL: 'Dầu',
+                    HYBRID: 'Hybrid',
+                    ELECTRIC: 'Điện',
+                  };
+                  const transmissionLabels: Record<string, string> = {
+                    AUTO: 'Tự động',
+                    MANUAL: 'Số sàn',
+                  };
+                  const fuel = car.fuelType
+                    ? fuelLabels[String(car.fuelType).toUpperCase()] ?? String(car.fuelType)
+                    : '—';
+                  const trans = car.transmission
+                    ? transmissionLabels[String(car.transmission).toUpperCase()] ?? String(car.transmission)
+                    : '—';
+                  const seatsText = car.seats != null && car.seats > 0 ? `${car.seats} chỗ` : '—';
+                  const items: { icon: typeof Calendar; label: string; value: string | undefined }[] = [
+                    { icon: Calendar, label: 'Năm sản xuất', value: car.modelYear.toString() },
+                    { icon: Gauge, label: 'Số km đã đi', value: `${(car.kilometer / 1000).toFixed(0)}k km` },
+                    { icon: Palette, label: 'Màu sắc', value: car.color?.name },
+                    { icon: Tag, label: 'Model', value: car.model?.name },
+                    { icon: Car, label: 'Thương hiệu', value: car.model?.brand?.name },
+                    { icon: Fuel, label: 'Nhiên liệu', value: fuel },
+                    { icon: Car, label: 'Hộp số', value: trans },
+                    { icon: Car, label: 'Số chỗ', value: seatsText },
+                  ];
+                  return items.map((spec) => (
+                    <div key={spec.label} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+                      <spec.icon className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs text-gray-400">{spec.label}</p>
+                        <p className="font-semibold text-navy text-sm">{spec.value ?? '—'}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ));
+                })()}
               </div>
             </div>
 
@@ -607,6 +646,47 @@ const CarDetail = () => {
                   </Link>
                 </div>
               )}
+
+              {/* Lịch xe 30 ngày — UC Chi tiết xe yêu cầu hiển thị block calendar */}
+              <div className="mb-5">
+                <p className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-primary" />
+                  Lịch xe 30 ngày tới
+                </p>
+                <div className="grid grid-cols-7 gap-1.5">
+                  {calendarStrip.map(({ date, busy }) => {
+                    const isStart = startDate && date.toDateString() === startDate.toDateString();
+                    const dayLabel = date.getDate();
+                    const monthShort = date.getMonth() + 1;
+                    return (
+                      <button
+                        key={date.toISOString()}
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                          if (busy) return;
+                          setStartDate(date);
+                          if (endDate && date >= endDate) setEndDate(null);
+                        }}
+                        className={`relative aspect-square flex flex-col items-center justify-center rounded-lg text-[11px] leading-tight transition-colors ${
+                          busy
+                            ? 'bg-red-100 text-red-500 cursor-not-allowed'
+                            : isStart
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                        }`}
+                        title={busy ? 'Xe đã có người đặt' : `Còn trống — chọn làm ngày nhận`}
+                      >
+                        <span className="font-semibold">{dayLabel}</span>
+                        <span className="text-[9px] opacity-75">th{monthShort}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-gray-400 mt-2">
+                  Bấm 1 ô trống để chọn nhanh làm ngày nhận xe.
+                </p>
+              </div>
 
               {/* Date pickers */}
               <div className="space-y-4 mb-5">

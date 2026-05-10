@@ -33,6 +33,15 @@ public class GetAllCarsResponse {
 
     private String imagePath;
 
+    /** Số chỗ ngồi (4/5/7/9...) */
+    private Integer seats;
+
+    /** AUTO | MANUAL */
+    private String transmission;
+
+    /** GASOLINE | DIESEL | HYBRID | ELECTRIC */
+    private String fuelType;
+
     private GetModelByIdResponse model;
 
     private GetColorByIdResponse color;

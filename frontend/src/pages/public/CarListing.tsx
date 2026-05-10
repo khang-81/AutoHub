@@ -56,6 +56,12 @@ const CarListing = () => {
     maxPrice: '',
     minYear: '',
     search: '',
+    /** UC Tìm kiếm xe thuê — chỉ áp dụng khi listingMode === 'rent'. */
+    seats: '',
+    transmission: '',
+    fuelType: '',
+    availableFrom: '',
+    availableTo: '',
   });
 
   const [debouncedSearch, setDebouncedSearch] = useState(filters.search);
@@ -68,6 +74,11 @@ const CarListing = () => {
     const minP = filters.minPrice.trim() ? Number(filters.minPrice) : undefined;
     const maxP = filters.maxPrice.trim() ? Number(filters.maxPrice) : undefined;
     const y = filters.minYear.trim() ? Number(filters.minYear) : undefined;
+    const seatsNum = filters.seats.trim() ? Number(filters.seats) : undefined;
+    // Bảo đảm chỉ truyền availableFrom/To khi đủ cả 2 và from <= to.
+    const fromOk = !!filters.availableFrom;
+    const toOk = !!filters.availableTo;
+    const dateOk = fromOk && toOk && filters.availableFrom <= filters.availableTo;
     return {
       page,
       size: ITEMS_PER_PAGE,
@@ -78,6 +89,16 @@ const CarListing = () => {
       minYear: Number.isFinite(y) ? y : undefined,
       listing: listingMode,
       q: debouncedSearch.trim() || undefined,
+      // Các tham số dưới đây backend chỉ áp dụng cho listing=rent.
+      seats: listingMode === 'rent' && Number.isFinite(seatsNum) ? seatsNum : undefined,
+      transmission: listingMode === 'rent' && filters.transmission
+        ? (filters.transmission as 'AUTO' | 'MANUAL')
+        : undefined,
+      fuelType: listingMode === 'rent' && filters.fuelType
+        ? (filters.fuelType as 'GASOLINE' | 'DIESEL' | 'HYBRID' | 'ELECTRIC')
+        : undefined,
+      availableFrom: listingMode === 'rent' && dateOk ? filters.availableFrom : undefined,
+      availableTo: listingMode === 'rent' && dateOk ? filters.availableTo : undefined,
     };
   }, [page, filters, debouncedSearch, brandParam, listingMode]);
 
@@ -130,6 +151,11 @@ const CarListing = () => {
       maxPrice: '',
       minYear: '',
       search: '',
+      seats: '',
+      transmission: '',
+      fuelType: '',
+      availableFrom: '',
+      availableTo: '',
     });
     setSearchParams(new URLSearchParams(), { replace: true });
     setPage(1);
@@ -142,6 +168,10 @@ const CarListing = () => {
     filters.maxPrice,
     filters.minYear,
     filters.search,
+    listingMode === 'rent' ? filters.seats : '',
+    listingMode === 'rent' ? filters.transmission : '',
+    listingMode === 'rent' ? filters.fuelType : '',
+    listingMode === 'rent' && filters.availableFrom && filters.availableTo ? '1' : '',
   ].filter(Boolean).length;
 
   const cardVariant = listingMode === 'sale' ? 'sale' : 'rent';
@@ -309,6 +339,85 @@ const CarListing = () => {
                   className="input-field text-sm"
                 />
               </div>
+
+              {/* Bộ lọc chỉ áp dụng cho thuê xe (UC Tìm kiếm xe thuê) */}
+              {listingMode === 'rent' && (
+                <>
+                  <div className="rounded-xl bg-emerald-50/50 border border-emerald-100 p-3 space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                      Lọc xe thuê nâng cao
+                    </p>
+
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-700">Số chỗ ngồi</label>
+                      <select
+                        value={filters.seats}
+                        onChange={(e) => updateFilter('seats', e.target.value)}
+                        className="input-field text-sm"
+                      >
+                        <option value="">Tất cả</option>
+                        <option value="4">4 chỗ</option>
+                        <option value="5">5 chỗ</option>
+                        <option value="7">7 chỗ</option>
+                        <option value="9">9 chỗ</option>
+                        <option value="16">16 chỗ</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-700">Hộp số</label>
+                      <select
+                        value={filters.transmission}
+                        onChange={(e) => updateFilter('transmission', e.target.value)}
+                        className="input-field text-sm"
+                      >
+                        <option value="">Tất cả</option>
+                        <option value="AUTO">Tự động</option>
+                        <option value="MANUAL">Số sàn</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-700">Nhiên liệu</label>
+                      <select
+                        value={filters.fuelType}
+                        onChange={(e) => updateFilter('fuelType', e.target.value)}
+                        className="input-field text-sm"
+                      >
+                        <option value="">Tất cả</option>
+                        <option value="GASOLINE">Xăng</option>
+                        <option value="DIESEL">Dầu</option>
+                        <option value="HYBRID">Hybrid</option>
+                        <option value="ELECTRIC">Điện</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <p className="mb-1 text-xs font-medium text-gray-700">Khoảng ngày cần thuê</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="date"
+                          value={filters.availableFrom}
+                          onChange={(e) => updateFilter('availableFrom', e.target.value)}
+                          className="input-field text-xs"
+                          placeholder="Từ"
+                        />
+                        <input
+                          type="date"
+                          value={filters.availableTo}
+                          min={filters.availableFrom || undefined}
+                          onChange={(e) => updateFilter('availableTo', e.target.value)}
+                          className="input-field text-xs"
+                          placeholder="Đến"
+                        />
+                      </div>
+                      <p className="mt-1 text-[11px] text-gray-400">
+                        Chọn cả 2 ngày để chỉ hiển thị xe rảnh trong khoảng này.
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </aside>
 

@@ -49,4 +49,12 @@ public class UpdateCarRequest {
     @NotBlank
     private String imagePath;
 
+    @Min(value = 2, message = "Số chỗ tối thiểu là 2")
+    @Max(value = 16, message = "Số chỗ tối đa là 16")
+    private Integer seats;
+
+    private String transmission;
+
+    private String fuelType;
+
 }
