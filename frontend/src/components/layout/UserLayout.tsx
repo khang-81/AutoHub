@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   User,
   FileText,
+  Receipt,
   LogOut,
   ShieldCheck,
   IdCard,
@@ -20,6 +21,7 @@ const navItems = [
   { label: 'Lịch sử thuê xe', to: '/dashboard/rentals', icon: FileText },
   { label: 'Đơn mua xe', to: '/dashboard/sale-orders', icon: ShoppingBag },
   { label: 'Lịch xem xe', to: '/dashboard/viewing-appointments', icon: CalendarClock },
+  { label: 'Hóa đơn', to: '/dashboard/invoices', icon: Receipt },
   { label: 'Đổi mật khẩu', to: '/dashboard/change-password', icon: ShieldCheck },
 ];
 
