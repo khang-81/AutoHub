@@ -1,6 +1,22 @@
 import axios from 'axios';
 import { API_BASE_URL } from '../config/api';
 
+/**
+ * Sự kiện custom phát ra khi server trả 401 (token cũ / hết hạn / bị token-version vô hiệu).
+ * Component AuthSessionWatcher (mount ở App) lắng nghe và dùng react-router để chuyển trang
+ * mà không cần full reload (giữ SPA state, scroll, v.v.).
+ */
+export const AUTH_UNAUTHORIZED_EVENT = 'autohub:unauthorized';
+
+export interface UnauthorizedEventDetail {
+  scope: 'admin' | 'user';
+}
+
+const ADMIN_TOKEN_KEY = 'autohub_admin_token';
+const ADMIN_USER_KEY = 'autohub_admin_user';
+const USER_TOKEN_KEY = 'autohub_token';
+const USER_DISPLAY_KEY = 'autohub_user';
+
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -8,24 +24,22 @@ const axiosInstance = axios.create({
   },
 });
 
-// Request interceptor – attach JWT token
 axiosInstance.interceptors.request.use(
   (config) => {
     if (config.data instanceof FormData) {
       delete (config.headers as Record<string, string>)['Content-Type'];
     }
-    // Khu vực admin (trừ trang đăng nhập): chỉ gửi autohub_admin_token — không fallback user token.
     let token: string | null = null;
     try {
       const path = typeof window !== 'undefined' ? window.location?.pathname ?? '' : '';
       const isAdminApp = path.startsWith('/admin') && path !== '/admin/login';
       if (isAdminApp) {
-        token = localStorage.getItem('autohub_admin_token');
+        token = localStorage.getItem(ADMIN_TOKEN_KEY);
       } else {
-        token = localStorage.getItem('autohub_token');
+        token = localStorage.getItem(USER_TOKEN_KEY);
       }
     } catch {
-      token = localStorage.getItem('autohub_token');
+      token = localStorage.getItem(USER_TOKEN_KEY);
     }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -35,7 +49,6 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor – handle 401 globally
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -45,17 +58,29 @@ axiosInstance.interceptors.response.use(
       reqUrl.includes('/api/auth/register') ||
       reqUrl.includes('/api/auth/forgot-password') ||
       reqUrl.includes('/api/auth/reset-password');
+
     if (error.response?.status === 401 && !isAuthEndpoint) {
       const path = typeof window !== 'undefined' ? window.location?.pathname ?? '' : '';
       const isAdminApp = path.startsWith('/admin') && path !== '/admin/login';
-      if (isAdminApp) {
-        localStorage.removeItem('autohub_admin_token');
-        localStorage.removeItem('autohub_admin_user');
-        window.location.href = '/admin/login';
-      } else {
-        localStorage.removeItem('autohub_token');
-        localStorage.removeItem('autohub_user');
-        window.location.href = '/login';
+      try {
+        if (isAdminApp) {
+          localStorage.removeItem(ADMIN_TOKEN_KEY);
+          localStorage.removeItem(ADMIN_USER_KEY);
+        } else {
+          localStorage.removeItem(USER_TOKEN_KEY);
+          localStorage.removeItem(USER_DISPLAY_KEY);
+        }
+      } catch {
+        /* ignore storage errors */
+      }
+      // Phát sự kiện cho AuthSessionWatcher (router-aware) thay vì window.location.href.
+      try {
+        if (typeof window !== 'undefined') {
+          const detail: UnauthorizedEventDetail = { scope: isAdminApp ? 'admin' : 'user' };
+          window.dispatchEvent(new CustomEvent<UnauthorizedEventDetail>(AUTH_UNAUTHORIZED_EVENT, { detail }));
+        }
+      } catch {
+        /* ignore */
       }
     }
     return Promise.reject(error);

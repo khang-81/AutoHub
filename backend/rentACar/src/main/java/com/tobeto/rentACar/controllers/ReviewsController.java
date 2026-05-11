@@ -4,6 +4,7 @@ import com.tobeto.rentACar.core.exceptions.types.BusinessException;
 import com.tobeto.rentACar.core.services.JwtService;
 import com.tobeto.rentACar.core.utilities.results.Result;
 import com.tobeto.rentACar.services.abstracts.ReviewService;
+import com.tobeto.rentACar.services.dtos.review.request.AdminReplyRequest;
 import com.tobeto.rentACar.services.dtos.review.request.CreateReviewRequest;
 import com.tobeto.rentACar.services.dtos.review.response.ReviewResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,8 +25,9 @@ public class ReviewsController {
     private final JwtService jwtService;
 
     @GetMapping("/car/{carId}")
-    public List<ReviewResponse> getByCar(@PathVariable int carId) {
-        return reviewService.getByCarId(carId);
+    public List<ReviewResponse> getByCar(@PathVariable int carId,
+                                         @RequestParam(required = false) Integer minRating) {
+        return reviewService.getByCarId(carId, minRating);
     }
 
     @PostMapping("/add")
@@ -43,6 +45,12 @@ public class ReviewsController {
     @GetMapping("/admin/getAll")
     public List<ReviewResponse> getAllForAdmin() {
         return reviewService.getAll();
+    }
+
+    @PreAuthorize("hasRole('admin')")
+    @PutMapping("/admin/{id}/reply")
+    public Result adminReply(@PathVariable int id, @RequestBody @Valid AdminReplyRequest request) {
+        return reviewService.adminReply(id, request);
     }
 
     @PreAuthorize("hasRole('admin')")

@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Car, Mail } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import { forgotPasswordApi } from '../../api/auth';
 import { useToast } from '../../components/ui/Toast';
+import { getApiErrorMessage } from '../../utils/helpers';
+
+const RESEND_COOLDOWN_SECONDS = 60;
 
 const schema = z.object({
   email: z.string().email('Email không hợp lệ'),
@@ -15,8 +18,10 @@ type FormData = z.infer<typeof schema>;
 
 const ForgotPassword = () => {
   const [loading, setLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const intervalRef = useRef<number | null>(null);
 
   const {
     register,
@@ -24,7 +29,19 @@ const ForgotPassword = () => {
     formState: { errors },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
+  // Đếm ngược 60s sau khi gửi OTP — đồng bộ với cooldown phía backend (UC Quên mật khẩu).
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    intervalRef.current = window.setInterval(() => {
+      setCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => {
+      if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
+    };
+  }, [cooldown]);
+
   const onSubmit = async (data: FormData) => {
+    if (cooldown > 0) return;
     setLoading(true);
     try {
       const res = await forgotPasswordApi({ email: data.email.trim() });
@@ -34,36 +51,29 @@ const ForgotPassword = () => {
             'Nếu email đã đăng ký, kiểm tra hộp thư để lấy mã OTP 6 số.',
           'success'
         );
+        setCooldown(RESEND_COOLDOWN_SECONDS);
         navigate(`/reset-password?email=${encodeURIComponent(data.email.trim())}`);
       } else {
         showToast(res.message || 'Không thể gửi yêu cầu', 'error');
       }
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      showToast(error?.response?.data?.message || 'Đã có lỗi xảy ra', 'error');
+      showToast(
+        getApiErrorMessage(
+          err,
+          'Không gửi được email. Kiểm tra kết nối hoặc cấu hình MAIL trên máy chủ.'
+        ),
+        'error'
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-navy via-navy-400 to-navy flex items-center justify-center p-4">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl" />
-      </div>
-
+    <div className="bg-gradient-to-br from-navy via-navy-400 to-navy py-16 px-4 flex-1 flex items-center justify-center">
       <div className="relative w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2">
-            <div className="bg-primary rounded-xl p-3">
-              <Car className="w-7 h-7 text-white" />
-            </div>
-            <span className="font-heading font-bold text-2xl text-white">
-              Auto<span className="text-primary">Hub</span>
-            </span>
-          </Link>
-          <p className="text-gray-400 mt-2">Khôi phục quyền truy cập tài khoản</p>
+        <div className="text-center mb-6">
+          <p className="text-gray-300 text-lg font-medium">Khôi phục quyền truy cập tài khoản</p>
         </div>
 
         <div className="bg-white rounded-3xl shadow-2xl p-8">
@@ -93,13 +103,17 @@ const ForgotPassword = () => {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || cooldown > 0}
               className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : null}
-              {loading ? 'Đang gửi...' : 'Gửi mã OTP'}
+              {loading
+                ? 'Đang gửi...'
+                : cooldown > 0
+                ? `Gửi lại sau ${cooldown}s`
+                : 'Gửi mã OTP'}
             </button>
           </form>
 

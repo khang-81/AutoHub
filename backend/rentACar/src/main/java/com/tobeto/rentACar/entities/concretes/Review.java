@@ -32,4 +32,7 @@ public class Review extends BaseEntity {
 
     @Column(name = "comment", length = 2000)
     private String comment;
+
+    @Column(name = "admin_reply", length = 2000)
+    private String adminReply;
 }

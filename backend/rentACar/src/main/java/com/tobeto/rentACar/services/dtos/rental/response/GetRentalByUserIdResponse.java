@@ -16,6 +16,9 @@ public class GetRentalByUserIdResponse {
     private LocalDate startDate;
     private LocalDate endDate;
     private LocalDate returnDate;
+    /** Km đồng hồ lúc nhận xe (snapshot) — dùng khi khách trả xe */
+    private Long startKilometer;
+    private Long endKilometer;
     private double totalPrice;
     private String paymentMethod;
     private String paymentStatus;
@@ -30,6 +33,16 @@ public class GetRentalByUserIdResponse {
     private String cancellationReason;
     private Double refundDepositAmount;
     private Double cancellationFeeAmount;
+    private Double lateFeeAmount;
+    private Double returnAdditionalFees;
+    private Double balanceDueAtReturn;
+    private Long allowedKilometers;
+    private Integer expectedFuelLevel;
+    private Integer actualFuelLevel;
+    private Double overKmFee;
+    private Double missingFuelFee;
+    private String damageNotes;
+    private String damagePhotoUrls;
     private Boolean hasReview;
     private GetCarByIdResponse car;
 }

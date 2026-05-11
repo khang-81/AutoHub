@@ -7,6 +7,7 @@ import com.tobeto.rentACar.core.utilities.messages.MessageService;
 import com.tobeto.rentACar.core.utilities.mappers.ModelMapperService;
 import com.tobeto.rentACar.core.utilities.results.Result;
 import com.tobeto.rentACar.core.utilities.results.SuccessResult;
+import com.tobeto.rentACar.entities.concretes.Car;
 import com.tobeto.rentACar.entities.concretes.Rental;
 import com.tobeto.rentACar.repositories.CarRepository;
 import com.tobeto.rentACar.repositories.RentalRepository;
@@ -22,6 +23,7 @@ import com.tobeto.rentACar.services.dtos.rental.request.AddRentalRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.DeleteRentalRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.FindRentalIdRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.UpdateRentalRequest;
+import com.tobeto.rentACar.services.dtos.rental.request.UserReturnCarRequest;
 import com.tobeto.rentACar.services.dtos.rental.response.*;
 
 import com.tobeto.rentACar.services.policy.RentalPolicy;
@@ -49,6 +51,7 @@ public class RentalManager implements RentalService {
     private final InvoiceService invoiceService;
     private final List<RentalBusinessRule> rentalBusinessRules;
     private final BusinessMailNotificationSender businessMailNotificationSender;
+    private final com.tobeto.rentACar.services.abstracts.PromotionService promotionService;
     private MessageService messageService;
 
     @Override
@@ -90,9 +93,24 @@ public class RentalManager implements RentalService {
         }
         double insuranceTotal = insFeePerDay * rentalDays;
 
+        // Add-on multi-package (Sprint 2 — bảo hiểm chuyến đi multi-package).
+        double addonFeePerDay;
+        String addonsCsv;
+        try {
+            addonFeePerDay = RentalPolicy.addonsFeePerDay(request.getAddonCodes());
+            addonsCsv = RentalPolicy.normalizeAddonsCsv(request.getAddonCodes());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(e.getMessage());
+        }
+        double addonsTotal = addonFeePerDay * rentalDays;
+
         double extras = request.getExtraFeesAmount() != null ? Math.max(0, request.getExtraFeesAmount()) : 0;
 
-        double totalPrice = baseRental + insuranceTotal + extras;
+        double subtotal = baseRental + insuranceTotal + addonsTotal + extras;
+        // Áp mã khuyến mãi cho RENT (UC Mua/Thuê — discount).
+        var promoApply = promotionService.applyForUse(request.getPromotionCode(), "RENT", subtotal);
+        double discount = promoApply.discountAmount();
+        double totalPrice = Math.max(0, subtotal - discount);
         double depositAmount = RentalPolicy.computeDeposit(totalPrice);
 
         Rental rental = modelMapperService.forRequest().map(request, Rental.class);
@@ -102,10 +120,16 @@ public class RentalManager implements RentalService {
         rental.setTotalPrice(totalPrice);
         rental.setInsuranceCode(insCode);
         rental.setInsuranceFeeAmount(insuranceTotal);
+        rental.setAddonCodes(addonsCsv);
+        rental.setAddonFeeAmount(addonsTotal > 0 ? addonsTotal : null);
         rental.setExtraFeesAmount(extras);
+        rental.setAllowedKilometers(RentalPolicy.allowedKilometers(rentalDays));
+        rental.setExpectedFuelLevel(100);
         rental.setPickupDistrict(request.getPickupDistrict());
         rental.setDepositAmount(depositAmount);
         rental.setDepositStatus("PENDING");
+        rental.setPromotionCode(promoApply.code());
+        rental.setDiscountAmount(discount > 0 ? discount : null);
         if ("BANK_TRANSFER".equals(request.getPaymentMethod())) {
             rental.setPaymentStatus("PENDING_TRANSFER");
             rental.setRentalStatus("PENDING_PAYMENT");
@@ -115,15 +139,35 @@ public class RentalManager implements RentalService {
         }
         Rental savedRental = rentalRepository.save(rental);
 
-        // Auto-create invoice right after successful booking so user pages can show
-        // invoice data immediately.
         AddInvoiceRequest invoiceRequest = new AddInvoiceRequest();
         invoiceRequest.setInvoiceNo("INV-" + savedRental.getId() + "-" + System.currentTimeMillis());
         invoiceRequest.setTotalPrice((float) totalPrice);
-        invoiceRequest.setDiscountRate(0f);
+        invoiceRequest.setDiscountRate(subtotal > 0 ? (float) (discount / subtotal * 100d) : 0f);
         invoiceRequest.setTaxRate(10f);
         invoiceRequest.setRentalId(savedRental.getId());
         invoiceService.add(invoiceRequest);
+
+        if (promoApply.code() != null) {
+            promotionService.consume(promoApply.code());
+        }
+
+        // Email xác nhận đặt thuê (UC Thuê xe — Tóm tắt + Thông báo).
+        userRepository.findById(request.getUserId()).map(u -> u.getEmail())
+                .ifPresent(email -> businessMailNotificationSender.sendHtmlToUser(
+                        email,
+                        "[AutoHub] Đã ghi nhận đơn thuê xe #" + savedRental.getId(),
+                        BusinessMailNotificationSender.simpleHtmlEmail(
+                                "Đơn thuê #" + savedRental.getId(),
+                                "Cảm ơn bạn đã đặt xe trên AutoHub.\n"
+                                        + "Từ ngày: " + savedRental.getStartDate() + "\n"
+                                        + "Đến ngày: " + savedRental.getEndDate() + "\n"
+                                        + "Tổng tiền (sau giảm giá): " + String.format("%,.0f", totalPrice) + " VNĐ.\n"
+                                        + (discount > 0 ? "Giảm giá: -" + String.format("%,.0f", discount) + " VNĐ ("
+                                                + (promoApply.code() != null ? promoApply.code() : "") + ").\n" : "")
+                                        + "Tiền cọc: " + String.format("%,.0f", depositAmount) + " VNĐ.\n"
+                                        + "Phương thức thanh toán: " + request.getPaymentMethod() + "."
+                        )
+                ));
 
         Result result = new SuccessResult(messageService.getMessage(Messages.Rental.rentalAddSuccess));
 
@@ -188,6 +232,16 @@ public class RentalManager implements RentalService {
                         .map(rental, GetAllRentalsResponse.class))
                 .toList();
         return rentalsResponse;
+    }
+
+    @Override
+    public List<RentalBusyRangeResponse> getPublicBusyRangesForCar(int carId) {
+        if (!carRepository.existsById(carId)) {
+            throw new NotFoundException(messageService.getMessage(Messages.Car.getCarNotFoundMessage));
+        }
+        return rentalRepository.findBlockingRentalsForPublicCalendar(carId).stream()
+                .map(r -> new RentalBusyRangeResponse(r.getStartDate(), r.getEndDate()))
+                .toList();
     }
 
     @Override
@@ -345,7 +399,8 @@ public class RentalManager implements RentalService {
             if (!"PENDING_CONFIRM".equals(rental.getPaymentStatus())) {
                 throw new BusinessException("Khách hàng chưa gửi xác nhận chuyển khoản.");
             }
-            rental.setPaymentStatus("PAID");
+            // Đã nhận cọc (~30%) qua CK — phần còn lại quyết toán khi trả xe
+            rental.setPaymentStatus("DEPOSIT_PAID");
         } else if ("CASH".equals(rental.getPaymentMethod())) {
             rental.setPaymentStatus("UNPAID");
         }
@@ -364,6 +419,131 @@ public class RentalManager implements RentalService {
         ));
 
         return new SuccessResult("Admin đã xác nhận đơn thuê.");
+    }
+
+    @Override
+    @Transactional
+    public Result returnCarByUser(int rentalId, int userId, UserReturnCarRequest body) {
+        return performReturn(rentalId, body, /*isAdmin*/ false, userId);
+    }
+
+    /**
+     * Admin đối chiếu trả xe (Sprint 3 — UC #15). Khác user-flow ở chỗ:
+     *  - Không kiểm tra ownership.
+     *  - `markDispute=true` → đẩy đơn sang DISPUTE để khoá lịch xe tạm
+     *    (busy-range vẫn block) thay vì COMPLETED.
+     */
+    @Override
+    @Transactional
+    public Result adminReturn(int rentalId, UserReturnCarRequest body) {
+        return performReturn(rentalId, body, /*isAdmin*/ true, /*userId*/ 0);
+    }
+
+    private Result performReturn(int rentalId, UserReturnCarRequest body, boolean isAdmin, int userId) {
+        Rental rental = rentalRepository.findById(rentalId).orElseThrow(
+                () -> new NotFoundException(messageService.getMessage(Messages.Rental.getRentalNotFoundMessage)));
+
+        if (!isAdmin) {
+            if (rental.getUser() == null || rental.getUser().getId() != userId) {
+                throw new BusinessException("Bạn không có quyền xác nhận trả xe cho đơn này.");
+            }
+        }
+        if (rental.getReturnDate() != null) {
+            throw new BusinessException("Đơn đã được ghi nhận trả xe.");
+        }
+        String rs = normRentalToken(rental.getRentalStatus());
+        if ("CANCELLED".equals(rs)) {
+            throw new BusinessException("Đơn đã hủy, không thể trả xe.");
+        }
+        // Cho phép admin đối chiếu cả khi đơn đang DISPUTE (resolve tranh chấp).
+        if (!"CONFIRMED".equals(rs) && !(isAdmin && "DISPUTE".equals(rs))) {
+            throw new BusinessException(
+                    "Chỉ có thể trả xe khi đơn đã được admin xác nhận (đang thuê). Trạng thái hiện tại: "
+                            + (rs.isBlank() ? "—" : rs) + ".");
+        }
+        if (body.getEndKilometer() == null) {
+            throw new BusinessException("Vui lòng nhập số km đồng hồ khi trả xe.");
+        }
+        long endKm = body.getEndKilometer();
+        long startKm = rental.getStartKilometer() != null ? rental.getStartKilometer() : 0L;
+        if (endKm < startKm) {
+            throw new BusinessException("Số km trả xe phải lớn hơn hoặc bằng km lúc nhận xe (" + startKm + " km).");
+        }
+
+        LocalDate returnDate = body.getReturnDate() != null ? body.getReturnDate() : LocalDate.now();
+        if (returnDate.isBefore(rental.getStartDate())) {
+            throw new BusinessException("Ngày trả xe không được trước ngày bắt đầu thuê.");
+        }
+
+        Car carEntity = carRepository.findById(rental.getCar().getId()).orElseThrow(
+                () -> new NotFoundException(messageService.getMessage(Messages.Car.getCarNotFoundMessage)));
+        double dailyPrice = carEntity.getDailyPrice() != null ? carEntity.getDailyPrice() : 0d;
+
+        long lateDays = RentalPolicy.lateChargeDays(rental.getEndDate(), returnDate);
+        double lateFee = RentalPolicy.lateReturnFeeTotal(lateDays, dailyPrice);
+
+        long drivenKm = endKm - startKm;
+        double overKmFee = RentalPolicy.overKilometerFee(drivenKm, rental.getAllowedKilometers());
+        double missingFuelFee = RentalPolicy.missingFuelFee(rental.getExpectedFuelLevel(), body.getActualFuelLevel());
+
+        if (body.getAdditionalIncidentalFees() != null && body.getAdditionalIncidentalFees() < 0) {
+            throw new BusinessException("Phí phát sinh không được âm.");
+        }
+        double incidentals = body.getAdditionalIncidentalFees() != null ? body.getAdditionalIncidentalFees() : 0d;
+        double autoExtras = lateFee + overKmFee + missingFuelFee + incidentals;
+
+        double deposit = rental.getDepositAmount() != null ? rental.getDepositAmount() : 0d;
+        double contractTotal = rental.getTotalPrice();
+        String payStatus = normRentalToken(rental.getPaymentStatus());
+
+        double balanceDue;
+        if ("PAID".equals(payStatus)) {
+            balanceDue = autoExtras;
+        } else {
+            balanceDue = contractTotal - deposit + autoExtras;
+        }
+        if (balanceDue < 0) {
+            balanceDue = 0;
+        }
+
+        rental.setLateFeeAmount(lateFee);
+        rental.setOverKmFee(overKmFee > 0 ? overKmFee : null);
+        rental.setMissingFuelFee(missingFuelFee > 0 ? missingFuelFee : null);
+        rental.setActualFuelLevel(body.getActualFuelLevel());
+        rental.setDamageNotes(body.getDamageNotes());
+        rental.setDamagePhotoUrls(body.getDamagePhotoUrls());
+        rental.setReturnAdditionalFees(incidentals);
+        rental.setBalanceDueAtReturn(balanceDue);
+        rental.setEndKilometer(endKm);
+
+        boolean dispute = isAdmin && Boolean.TRUE.equals(body.getMarkDispute());
+        if (dispute) {
+            // Đánh dấu tranh chấp: chưa đóng đơn, không set returnDate để busy-range vẫn block lịch xe.
+            rental.setRentalStatus("DISPUTE");
+            // Giữ paymentStatus như cũ.
+        } else {
+            rental.setReturnDate(returnDate);
+            rental.setRentalStatus("COMPLETED");
+            rental.setPaymentStatus(balanceDue <= 0.01d ? "PAID" : "PENDING_FINAL_PAYMENT");
+            // Cập nhật công tơ mét trên — xe sẵn sàng cho đơn tiếp theo.
+            carEntity.setKilometer(endKm);
+            carRepository.save(carEntity);
+        }
+        rentalRepository.save(rental);
+
+        String msg;
+        if (dispute) {
+            msg = String.format(
+                    "Đã đánh dấu đơn #%d là tranh chấp. Phí trễ: %,.0f, vượt km: %,.0f, thiếu xăng: %,.0f, "
+                            + "phụ phí: %,.0f. Cần xử lý trước khi đóng đơn.",
+                    rentalId, lateFee, overKmFee, missingFuelFee, incidentals);
+        } else {
+            msg = String.format(
+                    "Đã xác nhận trả xe. Phí trễ: %,.0f, vượt km: %,.0f, thiếu xăng: %,.0f, phụ phí: %,.0f. "
+                            + "Số tiền còn cần thanh toán: %,.0f VNĐ (đã trừ cọc %,.0f VNĐ).",
+                    lateFee, overKmFee, missingFuelFee, incidentals, balanceDue, deposit);
+        }
+        return new SuccessResult(msg);
     }
 
 }

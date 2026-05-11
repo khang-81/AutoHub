@@ -10,13 +10,15 @@ import com.tobeto.rentACar.services.dtos.car.response.GetCarByIdResponse;
 import com.tobeto.rentACar.services.dtos.car.response.PagedCarsResponse;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
-@RequestMapping("api/cars")
+@RequestMapping("/api/cars")
 @AllArgsConstructor
 @CrossOrigin
 public class CarsController {
@@ -24,30 +26,36 @@ public class CarsController {
 
     @PreAuthorize("hasRole('admin')")
     @PostMapping("/add")
-    public Result add(@RequestBody @Valid AddCarRequest request){
+    public Result add(@RequestBody @Valid AddCarRequest request) {
         return carService.add(request);
     }
 
     @PreAuthorize("hasRole('admin')")
     @PutMapping("/update")
-    public Result update(@RequestBody @Valid UpdateCarRequest request){
-       return carService.update(request);
+    public Result update(@RequestBody @Valid UpdateCarRequest request) {
+        return carService.update(request);
     }
 
     @PreAuthorize("hasRole('admin')")
     @DeleteMapping("/delete")
-    public Result delete(@RequestBody @Valid DeleteCarRequest request){
+    public Result delete(@RequestBody @Valid DeleteCarRequest request) {
         return carService.delete(request);
     }
 
     @GetMapping("/getAll")
-    public List<GetAllCarsResponse> getAll(){
-       return carService.getAll();
+    public List<GetAllCarsResponse> getAll() {
+        return carService.getAll();
     }
 
     /**
-     * Lọc + tìm kiếm + phân trang (mức C — tối ưu tải danh sách lớn).
+     * Lọc + tìm kiếm + phân trang.
      * page bắt đầu từ 1; size tối đa 50.
+     *
+     * Tham số mới (UC Tìm kiếm xe thuê):
+     *  - seats: số chỗ ngồi (4/7/9...)
+     *  - transmission: AUTO | MANUAL
+     *  - fuelType: GASOLINE | DIESEL | HYBRID | ELECTRIC
+     *  - availableFrom / availableTo (yyyy-MM-dd): chỉ trả xe rảnh trong khoảng này.
      */
     @GetMapping("/search")
     public PagedCarsResponse search(
@@ -58,13 +66,19 @@ public class CarsController {
             @RequestParam(required = false) Integer minYear,
             @RequestParam(required = false) String listing,
             @RequestParam(required = false) String q,
+            @RequestParam(required = false) Integer seats,
+            @RequestParam(required = false) String transmission,
+            @RequestParam(required = false) String fuelType,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate availableFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate availableTo,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "9") int size) {
-        return carService.search(brandId, colorId, minPrice, maxPrice, minYear, listing, q, page, size);
+        return carService.search(brandId, colorId, minPrice, maxPrice, minYear, listing, q,
+                seats, transmission, fuelType, availableFrom, availableTo, page, size);
     }
 
     @GetMapping("/getById/{id}")
-    public GetCarByIdResponse getById(@PathVariable int id){
+    public GetCarByIdResponse getById(@PathVariable int id) {
         return carService.getById(id);
     }
 }

@@ -16,5 +16,5 @@ public interface BrandService {
     Result add(AddBrandRequest request);
     Result update(UpdateBrandRequest request);
     Result delete(DeleteBrandRequest request);
-
+    void updateLogo(int brandId, String logoPath);
 }

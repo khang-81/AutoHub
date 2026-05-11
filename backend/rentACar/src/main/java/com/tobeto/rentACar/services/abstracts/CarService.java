@@ -8,6 +8,7 @@ import com.tobeto.rentACar.services.dtos.car.response.GetAllCarsResponse;
 import com.tobeto.rentACar.services.dtos.car.response.GetCarByIdResponse;
 import com.tobeto.rentACar.services.dtos.car.response.PagedCarsResponse;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface CarService {
@@ -21,8 +22,14 @@ public interface CarService {
             Integer minYear,
             String listing,
             String q,
+            Integer seats,
+            String transmission,
+            String fuelType,
+            LocalDate availableFrom,
+            LocalDate availableTo,
             int page,
             int size);
+
     GetCarByIdResponse getById(int id);
     Result add(AddCarRequest request);
     Result update(UpdateCarRequest request);

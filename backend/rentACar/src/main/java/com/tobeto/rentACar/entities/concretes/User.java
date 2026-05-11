@@ -49,6 +49,26 @@ public class User extends BaseEntity implements UserDetails {
     @Column(name = "password_reset_expires")
     private Instant passwordResetExpires;
 
+    /**
+     * Throttle "Gửi lại mã" theo đặc tả UC Quên mật khẩu (cooldown 60s).
+     * Khi forgot-password gửi OTP, set bằng Instant.now(); request mới phải sau cooldown.
+     */
+    @Column(name = "password_reset_last_sent_at")
+    private Instant passwordResetLastSentAt;
+
+    /**
+     * Tăng giá trị mỗi khi reset password thành công (hoặc admin "đăng xuất tất cả thiết bị").
+     * JWT lưu claim "tv"; filter so sánh — token cũ → 401.
+     */
+    @Column(name = "token_version", nullable = false)
+    @Builder.Default
+    private int tokenVersion = 0;
+
+    /** false = bị admin khóa (UC Quản lý khách hàng — Khóa/Mở khóa). */
+    @Column(name = "enabled", nullable = false)
+    @Builder.Default
+    private boolean enabled = true;
+
     @Override
     public String getUsername() {
         return email;
@@ -61,7 +81,7 @@ public class User extends BaseEntity implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return enabled;
     }
 
     @Override
@@ -71,6 +91,6 @@ public class User extends BaseEntity implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return enabled;
     }
 }

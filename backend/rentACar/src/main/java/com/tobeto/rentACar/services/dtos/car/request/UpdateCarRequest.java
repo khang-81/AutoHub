@@ -25,8 +25,8 @@ public class UpdateCarRequest {
     private String plate;
 
     @NotNull
-    @Min(value = 2005, message = "Production year must be between 2005 to 2024!")
-    @Max(value = 2024, message = "Production year must be between 2005 to 2024!")
+    @Min(value = 2005, message = "Production year must be between 2005 and 2030!")
+    @Max(value = 2030, message = "Production year must be between 2005 and 2030!")
     private short modelYear;
 
     private Float dailyPrice;
@@ -48,5 +48,13 @@ public class UpdateCarRequest {
 
     @NotBlank
     private String imagePath;
+
+    @Min(value = 2, message = "Số chỗ tối thiểu là 2")
+    @Max(value = 16, message = "Số chỗ tối đa là 16")
+    private Integer seats;
+
+    private String transmission;
+
+    private String fuelType;
 
 }

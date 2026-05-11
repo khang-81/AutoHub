@@ -16,4 +16,13 @@ public interface SaleOrderRepository extends JpaRepository<SaleOrder, Integer> {
 
     @Query("select u.email from SaleOrder o join o.user u where o.id = :id")
     Optional<String> findUserEmailBySaleOrderId(@Param("id") int id);
+
+    @Query("select count(o)>0 from SaleOrder o where o.user.id = :userId and o.orderStatus not in ('COMPLETED','CANCELLED')")
+    boolean existsActiveByUserId(@Param("userId") int userId);
+
+    @Query("select count(o)>0 from SaleOrder o where o.car.id = :carId and o.orderStatus not in ('COMPLETED','CANCELLED')")
+    boolean existsActiveByCarId(@Param("carId") int carId);
+
+    @Query("select count(o)>0 from SaleOrder o where o.car.model.brand.id = :brandId and o.orderStatus not in ('COMPLETED','CANCELLED')")
+    boolean existsActiveByBrandId(@Param("brandId") int brandId);
 }

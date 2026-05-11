@@ -1,5 +1,16 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, User, FileText, LogOut, ShieldCheck, IdCard, ShoppingBag, CalendarClock } from 'lucide-react';
+import {
+  LayoutDashboard,
+  User,
+  FileText,
+  Receipt,
+  LogOut,
+  ShieldCheck,
+  IdCard,
+  ShoppingBag,
+  CalendarClock,
+  CircleUserRound,
+} from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import BrandLogo from '../ui/BrandLogo';
 
@@ -10,6 +21,7 @@ const navItems = [
   { label: 'Lịch sử thuê xe', to: '/dashboard/rentals', icon: FileText },
   { label: 'Đơn mua xe', to: '/dashboard/sale-orders', icon: ShoppingBag },
   { label: 'Lịch xem xe', to: '/dashboard/viewing-appointments', icon: CalendarClock },
+  { label: 'Hóa đơn', to: '/dashboard/invoices', icon: Receipt },
   { label: 'Đổi mật khẩu', to: '/dashboard/change-password', icon: ShieldCheck },
 ];
 
@@ -33,8 +45,17 @@ const UserLayout = () => {
       {/* Top bar — logo lớn, dễ nhận diện */}
       <div className="bg-navy text-white px-4 py-3 sm:py-4 flex items-center justify-between gap-4 border-b border-navy-400/80">
         <BrandLogo to="/" size="xl" variant="light" />
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-300 hidden sm:block">{email}</span>
+        <div className="flex items-center gap-3 sm:gap-4">
+          <Link
+            to="/dashboard/profile"
+            className="flex items-center justify-center rounded-full border-2 border-white/25 bg-white/10 p-0.5 shadow-sm transition hover:border-primary/70 hover:bg-white/15"
+            title={email || 'Hồ sơ tài khoản'}
+            aria-label={email ? `Mở hồ sơ — ${email}` : 'Mở hồ sơ tài khoản'}
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-amber-600 text-white">
+              <CircleUserRound className="h-[22px] w-[22px]" strokeWidth={1.75} aria-hidden />
+            </span>
+          </Link>
           <button onClick={handleLogout} className="flex items-center gap-1.5 text-sm text-gray-300 hover:text-primary transition-colors">
             <LogOut className="w-4 h-4" />
             Đăng xuất

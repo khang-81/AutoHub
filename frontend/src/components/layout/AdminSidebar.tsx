@@ -15,6 +15,7 @@ import {
   ShoppingBag,
   MessageSquare,
   CalendarClock,
+  Palette,
 } from 'lucide-react';
 import { useState } from 'react';
 import { getEmailFromToken } from '../../utils/helpers';
@@ -23,10 +24,11 @@ import BrandLogo from '../ui/BrandLogo';
 const navItems = [
   { label: 'Tổng quan', to: '/admin', icon: LayoutDashboard, exact: true },
   { label: 'Quản lý xe thuê', to: '/admin/cars/rent', icon: Car },
-  { label: 'Quản lý xe mua', to: '/admin/cars/sale', icon: ShoppingBag },
-  { label: 'Quản lý người dùng', to: '/admin/users', icon: Users },
+  { label: 'Quản lý xe bán', to: '/admin/cars/sale', icon: ShoppingBag },
+  { label: 'Quản lý khách hàng', to: '/admin/users', icon: Users },
   { label: 'Quản lý GPLX', to: '/admin/kyc', icon: ShieldCheck },
   { label: 'Quản lý thương hiệu & Model', to: '/admin/brands', icon: Tag },
+  { label: 'Quản lý màu sắc', to: '/admin/colors', icon: Palette },
   { label: 'Quản lý đơn thuê', to: '/admin/rentals', icon: FileText },
   { label: 'Quản lý đơn mua', to: '/admin/sale-orders', icon: ShoppingBag },
   { label: 'Quản lý lịch xem xe', to: '/admin/viewing-appointments', icon: CalendarClock },
@@ -73,23 +75,35 @@ const AdminSidebar = () => {
       className={`bg-navy min-h-screen flex flex-col transition-all duration-300 ${collapsed ? 'w-16' : 'w-64'
         }`}
     >
-      {/* Header — logo lớn; sidebar thu gọn: chỉ biểu tượng mark + nút mở */}
+      {/* Header — logo căn giữa; nút thu gọn absolute (mở rộng) hoặc dưới logo (thu gọn) */}
       <div
         className={`border-b border-navy-400 ${
-          collapsed
-            ? 'flex flex-col items-center gap-2 py-3 px-1'
-            : 'flex items-center justify-between gap-2 p-3 sm:p-4'
+          collapsed ? 'flex flex-col items-center gap-2 py-3 px-1' : 'relative px-3 py-4 sm:px-4'
         }`}
       >
-        <BrandLogo to="/admin" size={collapsed ? 'sm' : 'lg'} variant="light" />
-        <button
-          type="button"
-          onClick={() => setCollapsed(!collapsed)}
-          className={`text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-navy-400 transition-colors shrink-0 ${collapsed ? '' : 'ml-auto'}`}
-          aria-label={collapsed ? 'Mở menu' : 'Thu gọn menu'}
-        >
-          {collapsed ? <Menu className="w-5 h-5" /> : <X className="w-5 h-5" />}
-        </button>
+        {!collapsed && (
+          <button
+            type="button"
+            onClick={() => setCollapsed(!collapsed)}
+            className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-navy-400 hover:text-white"
+            aria-label="Thu gọn menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
+        <div className={`flex justify-center ${collapsed ? '' : 'w-full pr-10'}`}>
+          <BrandLogo to="/admin" size={collapsed ? 'sm' : 'lg'} variant="light" />
+        </div>
+        {collapsed && (
+          <button
+            type="button"
+            onClick={() => setCollapsed(!collapsed)}
+            className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-navy-400 hover:text-white"
+            aria-label="Mở menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       {/* Admin badge */}

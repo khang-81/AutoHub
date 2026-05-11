@@ -5,16 +5,19 @@ import com.tobeto.rentACar.core.exceptions.types.NotFoundException;
 import com.tobeto.rentACar.core.utilities.messages.MessageService;
 import com.tobeto.rentACar.core.utilities.results.Result;
 import com.tobeto.rentACar.core.utilities.results.SuccessResult;
+import com.tobeto.rentACar.entities.concretes.Car;
 import com.tobeto.rentACar.entities.concretes.Rental;
 import com.tobeto.rentACar.entities.concretes.Review;
 import com.tobeto.rentACar.entities.concretes.SaleOrder;
 import com.tobeto.rentACar.entities.concretes.User;
+import com.tobeto.rentACar.repositories.CarRepository;
 import com.tobeto.rentACar.repositories.RentalRepository;
 import com.tobeto.rentACar.repositories.ReviewRepository;
 import com.tobeto.rentACar.repositories.SaleOrderRepository;
 import com.tobeto.rentACar.repositories.UserRepository;
 import com.tobeto.rentACar.services.abstracts.ReviewService;
 import com.tobeto.rentACar.services.constants.Messages;
+import com.tobeto.rentACar.services.dtos.review.request.AdminReplyRequest;
 import com.tobeto.rentACar.services.dtos.review.request.CreateReviewRequest;
 import com.tobeto.rentACar.services.dtos.review.response.ReviewResponse;
 import lombok.AllArgsConstructor;
@@ -31,6 +34,7 @@ public class ReviewManager implements ReviewService {
     private final RentalRepository rentalRepository;
     private final SaleOrderRepository saleOrderRepository;
     private final UserRepository userRepository;
+    private final CarRepository carRepository;
     private MessageService messageService;
 
     @Override
@@ -77,16 +81,21 @@ public class ReviewManager implements ReviewService {
             builder.saleOrder(saleOrder);
         }
 
-        reviewRepository.save(builder.build());
+        Review saved = reviewRepository.save(builder.build());
+        recalcCarRating(saved);
 
         return new SuccessResult("Cảm ơn bạn đã đánh giá!");
     }
 
     @Override
-    public List<ReviewResponse> getByCarId(int carId) {
-        return reviewRepository.findByCarIdOrderByCreatedDateDesc(carId).stream()
-                .map(this::toResponse)
-                .toList();
+    public List<ReviewResponse> getByCarId(int carId, Integer minRating) {
+        List<Review> reviews;
+        if (minRating != null && minRating > 1) {
+            reviews = reviewRepository.findByCarIdAndMinRating(carId, minRating);
+        } else {
+            reviews = reviewRepository.findByCarIdOrderByCreatedDateDesc(carId);
+        }
+        return reviews.stream().map(this::toResponse).toList();
     }
 
     @Override
@@ -97,11 +106,43 @@ public class ReviewManager implements ReviewService {
     }
 
     @Override
+    @Transactional
+    public Result adminReply(int reviewId, AdminReplyRequest request) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy đánh giá."));
+        review.setAdminReply(request.getReply().trim());
+        reviewRepository.save(review);
+        return new SuccessResult("Đã phản hồi đánh giá.");
+    }
+
+    @Override
+    @Transactional
     public Result delete(int reviewId) {
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy đánh giá."));
         reviewRepository.delete(review);
+        recalcCarRating(review);
         return new SuccessResult("Đã xóa đánh giá.");
+    }
+
+    private void recalcCarRating(Review review) {
+        Car car = null;
+        if (review.getRental() != null && review.getRental().getCar() != null) {
+            car = review.getRental().getCar();
+        } else if (review.getSaleOrder() != null && review.getSaleOrder().getCar() != null) {
+            car = review.getSaleOrder().getCar();
+        }
+        if (car == null) return;
+        List<Review> carReviews = reviewRepository.findByCarIdOrderByCreatedDateDesc(car.getId());
+        if (carReviews.isEmpty()) {
+            car.setAverageRating(null);
+            car.setReviewCount(0);
+        } else {
+            double avg = carReviews.stream().mapToInt(Review::getRating).average().orElse(0);
+            car.setAverageRating(Math.round(avg * 10.0) / 10.0);
+            car.setReviewCount(carReviews.size());
+        }
+        carRepository.save(car);
     }
 
     private ReviewResponse toResponse(Review r) {
@@ -147,6 +188,7 @@ public class ReviewManager implements ReviewService {
         }
         dto.setRating(r.getRating());
         dto.setComment(r.getComment());
+        dto.setAdminReply(r.getAdminReply());
         dto.setCreatedDate(r.getCreatedDate());
         dto.setAuthorLabel(maskEmail(r.getUser() != null ? r.getUser().getEmail() : null));
         return dto;

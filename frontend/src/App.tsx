@@ -7,6 +7,7 @@ import AdminLayout from './components/layout/AdminLayout';
 import UserLayout from './components/layout/UserLayout';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import AdminProtectedRoute from './components/layout/AdminProtectedRoute';
+import AuthSessionWatcher from './components/layout/AuthSessionWatcher';
 
 // Toast
 import { ToastProvider } from './components/ui/Toast';
@@ -49,7 +50,9 @@ import ManageKyc from './pages/admin/ManageKyc';
 import ManageSaleOrders from './pages/admin/ManageSaleOrders';
 import ManageReviews from './pages/admin/ManageReviews';
 import ManageViewingAppointments from './pages/admin/ManageViewingAppointments';
+import ManageColors from './pages/admin/ManageColors';
 import MyViewingAppointments from './pages/user/MyViewingAppointments';
+import MyInvoices from './pages/user/MyInvoices';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -80,11 +83,13 @@ function RoutesWithChatbot() {
           <Route path="/about" element={<About />} />
         </Route>
 
-        {/* Auth routes (user) */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+        {/* Auth routes — dùng chung PublicLayout để có Navbar + Footer */}
+        <Route element={<PublicLayout />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+        </Route>
 
         {/* Admin login - standalone, no layout */}
         <Route path="/admin/login" element={<AdminLogin />} />
@@ -107,6 +112,7 @@ function RoutesWithChatbot() {
           <Route path="change-password" element={<ChangePassword />} />
           <Route path="kyc" element={<KycVerification />} />
           <Route path="viewing-appointments" element={<MyViewingAppointments />} />
+          <Route path="invoices" element={<MyInvoices />} />
         </Route>
 
         {/* Admin routes — splat `/admin/*` khớp React Router 7 + mọi đường dẫn con */}
@@ -123,6 +129,7 @@ function RoutesWithChatbot() {
           <Route path="cars/rent" element={<ManageCars />} />
           <Route path="cars/sale" element={<ManageCars />} />
           <Route path="brands" element={<ManageBrands />} />
+          <Route path="colors" element={<ManageColors />} />
           <Route path="rentals" element={<ManageRentals />} />
           <Route path="users" element={<ManageUsers />} />
           <Route path="reports" element={<ManageReports />} />
@@ -147,6 +154,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <BrowserRouter>
+          <AuthSessionWatcher />
           <RoutesWithChatbot />
         </BrowserRouter>
       </ToastProvider>

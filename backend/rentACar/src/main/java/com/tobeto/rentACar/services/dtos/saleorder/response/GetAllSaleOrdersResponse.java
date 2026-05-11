@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -14,6 +15,9 @@ import java.time.LocalDateTime;
 public class GetAllSaleOrdersResponse {
 
     private Integer id;
+
+    /** Ngày tạo đơn (BaseEntity) — dùng cho báo cáo theo tháng */
+    private LocalDate createdDate;
     private double totalPrice;
     private String paymentMethod;
     private String paymentStatus;

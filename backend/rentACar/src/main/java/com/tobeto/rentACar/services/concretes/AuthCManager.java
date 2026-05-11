@@ -47,7 +47,9 @@ public class AuthCManager implements AuthCService {
     private static final String FORGOT_PASSWORD_SUCCESS =
             "Nếu email đã đăng ký, bạn sẽ nhận mã OTP 6 số qua email.";
 
-    private static final int OTP_EXPIRE_MINUTES = 15;
+    private static final int OTP_EXPIRE_MINUTES = 5;
+    /** Cooldown giữa 2 lần "Gửi lại mã" theo đặc tả UC Quên mật khẩu. */
+    private static final int OTP_RESEND_COOLDOWN_SECONDS = 60;
     private final SecureRandom secureRandom = new SecureRandom();
 
     private final AuthenticationManager authenticationManager;
@@ -88,6 +90,13 @@ public class AuthCManager implements AuthCService {
     public Result login(LoginUserRequest loginUserRequest) {
         String email = loginUserRequest.getEmail() != null ? loginUserRequest.getEmail().trim() : "";
         String password = loginUserRequest.getPassword() != null ? loginUserRequest.getPassword() : "";
+
+        // Chặn tài khoản bị khóa SỚM trước khi authenticate (UC Đăng nhập — điều kiện tiên quyết).
+        var preCheck = userRepository.findByEmail(email);
+        if (preCheck.isPresent() && !preCheck.get().isEnabled()) {
+            return new ErrorResult("Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.");
+        }
+
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(email, password)
@@ -100,7 +109,7 @@ public class AuthCManager implements AuthCService {
             GetUserByNameResponse userResponse = userService.getByName(email);
 
             if (userResponse != null) {
-                String token = jwtService.generateToken(email, userResponse);
+                String token = jwtService.generateToken(email, userResponse, userResponse.getTokenVersion());
                 LoginResponse loginResponse = new LoginResponse();
                 loginResponse.setToken(token);
                 return new AuthCResult(true, messageService.getMessage(Messages.User.userLoginSuccess), loginResponse);
@@ -116,12 +125,25 @@ public class AuthCManager implements AuthCService {
         String email = request.getEmail() != null ? request.getEmail().trim() : "";
         var userOpt = userRepository.findByEmail(email);
         if (userOpt.isEmpty()) {
+            // Trả message trung tính để không lộ user-enumeration.
             return new SuccessResult(FORGOT_PASSWORD_SUCCESS);
         }
         User user = userOpt.get();
+
+        // Cooldown chống spam "Gửi lại mã" (đặc tả UC Quên mật khẩu).
+        Instant lastSent = user.getPasswordResetLastSentAt();
+        if (lastSent != null) {
+            long secondsSince = ChronoUnit.SECONDS.between(lastSent, Instant.now());
+            if (secondsSince < OTP_RESEND_COOLDOWN_SECONDS) {
+                long wait = OTP_RESEND_COOLDOWN_SECONDS - secondsSince;
+                throw new BusinessException("Vui lòng đợi " + wait + " giây trước khi gửi lại mã OTP.");
+            }
+        }
+
         String otp = String.format("%06d", secureRandom.nextInt(1_000_000));
         user.setPasswordResetToken(otp);
         user.setPasswordResetExpires(Instant.now().plus(OTP_EXPIRE_MINUTES, ChronoUnit.MINUTES));
+        user.setPasswordResetLastSentAt(Instant.now());
         userRepository.save(user);
 
         String base = frontendBaseUrl != null ? frontendBaseUrl.replaceAll("/+$", "") : "http://localhost:5173";
@@ -159,6 +181,9 @@ public class AuthCManager implements AuthCService {
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         user.setPasswordResetToken(null);
         user.setPasswordResetExpires(null);
+        user.setPasswordResetLastSentAt(null);
+        // Tăng tokenVersion → mọi JWT cũ trên thiết bị khác sẽ bị reject ở JwtAuthFilter.
+        user.setTokenVersion(user.getTokenVersion() + 1);
         userRepository.save(user);
         return new SuccessResult("Đặt lại mật khẩu thành công. Bạn có thể đăng nhập.");
     }

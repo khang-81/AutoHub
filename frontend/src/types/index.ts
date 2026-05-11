@@ -49,6 +49,9 @@ export interface Color {
 // ─── Car ────────────────────────────────────────────────────────────────────
 export type ListingType = 'RENT_ONLY' | 'SALE_ONLY';
 
+export type Transmission = 'AUTO' | 'MANUAL';
+export type FuelType = 'GASOLINE' | 'DIESEL' | 'HYBRID' | 'ELECTRIC';
+
 export interface Car {
   id: number;
   modelYear: number;
@@ -63,6 +66,9 @@ export interface Car {
   salePrice?: number | null;
   saleStatus?: string | null;
   imagePath: string;
+  seats?: number | null;
+  transmission?: Transmission | string | null;
+  fuelType?: FuelType | string | null;
   model: CarModel;
   color: Color;
 }
@@ -86,6 +92,9 @@ export interface AddCarRequest {
   colorId: number;
   minFindeksRate: number;
   imagePath: string;
+  seats?: number | null;
+  transmission?: Transmission | string | null;
+  fuelType?: FuelType | string | null;
 }
 
 export interface UpdateCarRequest extends AddCarRequest {
@@ -133,14 +142,32 @@ export interface Rental {
   startKilometer: number;
   totalPrice: number;
   paymentMethod?: 'CASH' | 'BANK_TRANSFER';
-  paymentStatus?: 'PENDING_TRANSFER' | 'PENDING_CONFIRM' | 'PAID' | 'UNPAID' | 'FAILED' | 'CANCELLED';
-  rentalStatus?: 'PENDING_PAYMENT' | 'PENDING_ADMIN_CONFIRM' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+  paymentStatus?:
+    | 'PENDING_TRANSFER'
+    | 'PENDING_CONFIRM'
+    | 'DEPOSIT_PAID'
+    | 'PENDING_FINAL_PAYMENT'
+    | 'PAID'
+    | 'UNPAID'
+    | 'FAILED'
+    | 'CANCELLED';
+  rentalStatus?: 'PENDING_PAYMENT' | 'PENDING_ADMIN_CONFIRM' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'DISPUTE';
   depositAmount?: number;
   depositStatus?: string;
   insuranceCode?: string;
   insuranceFeeAmount?: number;
   extraFeesAmount?: number;
   pickupDistrict?: string;
+  lateFeeAmount?: number | null;
+  returnAdditionalFees?: number | null;
+  balanceDueAtReturn?: number | null;
+  allowedKilometers?: number | null;
+  expectedFuelLevel?: number | null;
+  actualFuelLevel?: number | null;
+  overKmFee?: number | null;
+  missingFuelFee?: number | null;
+  damageNotes?: string | null;
+  damagePhotoUrls?: string | null;
   car: Car;
   user: User;
 }
@@ -154,6 +181,10 @@ export interface AddRentalRequest {
   insuranceCode?: string;
   extraFeesAmount?: number;
   pickupDistrict?: string;
+  /** Mã khuyến mãi (tuỳ chọn). Backend re-validate và snapshot vào đơn. */
+  promotionCode?: string;
+  /** Add-on stack được (Sprint 2 — bảo hiểm chuyến đi multi-package). */
+  addonCodes?: string[];
 }
 
 export interface AddRentalResponse {
@@ -170,10 +201,21 @@ export interface RentalByUser {
   startDate: string;
   endDate: string;
   returnDate: string | null;
+  /** Km lúc nhận xe — để nhập km trả hợp lệ */
+  startKilometer?: number | null;
+  endKilometer?: number | null;
   totalPrice: number;
   paymentMethod?: 'CASH' | 'BANK_TRANSFER';
-  paymentStatus?: 'PENDING_TRANSFER' | 'PENDING_CONFIRM' | 'PAID' | 'UNPAID' | 'FAILED' | 'CANCELLED';
-  rentalStatus?: 'PENDING_PAYMENT' | 'PENDING_ADMIN_CONFIRM' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+  paymentStatus?:
+    | 'PENDING_TRANSFER'
+    | 'PENDING_CONFIRM'
+    | 'DEPOSIT_PAID'
+    | 'PENDING_FINAL_PAYMENT'
+    | 'PAID'
+    | 'UNPAID'
+    | 'FAILED'
+    | 'CANCELLED';
+  rentalStatus?: 'PENDING_PAYMENT' | 'PENDING_ADMIN_CONFIRM' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'DISPUTE';
   car: Car;
   depositAmount?: number;
   depositStatus?: string;
@@ -185,6 +227,16 @@ export interface RentalByUser {
   cancellationReason?: string | null;
   refundDepositAmount?: number;
   cancellationFeeAmount?: number;
+  lateFeeAmount?: number | null;
+  returnAdditionalFees?: number | null;
+  balanceDueAtReturn?: number | null;
+  allowedKilometers?: number | null;
+  expectedFuelLevel?: number | null;
+  actualFuelLevel?: number | null;
+  overKmFee?: number | null;
+  missingFuelFee?: number | null;
+  damageNotes?: string | null;
+  damagePhotoUrls?: string | null;
   hasReview?: boolean;
 }
 
@@ -214,6 +266,8 @@ export interface Invoice {
 
 export interface SaleOrder {
   id: number;
+  /** ISO date — ngày tạo đơn (báo cáo) */
+  createdDate?: string;
   totalPrice: number;
   paymentMethod?: string;
   paymentStatus?: string;
@@ -229,6 +283,23 @@ export interface SaleOrder {
 export interface AddSaleOrderRequest {
   carId: number;
   paymentMethod: 'CASH' | 'BANK_TRANSFER';
+  /** Mã khuyến mãi (tuỳ chọn). Backend re-validate và snapshot vào đơn. */
+  promotionCode?: string;
+}
+
+export interface ApplyPromotionRequest {
+  code: string;
+  scope: 'RENT' | 'SALE';
+  amount: number;
+}
+
+export interface ApplyPromotionResponse {
+  code: string;
+  description?: string;
+  orderAmount: number;
+  discountAmount: number;
+  finalAmount: number;
+  message?: string;
 }
 
 export interface AddSaleOrderResponse {
@@ -319,4 +390,11 @@ export interface CarFilter {
   minYear?: number;
   maxYear?: number;
   search?: string;
+  seats?: number;
+  transmission?: Transmission;
+  fuelType?: FuelType;
+  /** YYYY-MM-DD */
+  availableFrom?: string;
+  /** YYYY-MM-DD */
+  availableTo?: string;
 }

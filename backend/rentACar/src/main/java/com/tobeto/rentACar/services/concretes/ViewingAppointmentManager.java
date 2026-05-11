@@ -1,9 +1,11 @@
 package com.tobeto.rentACar.services.concretes;
 
 import com.tobeto.rentACar.core.exceptions.types.BusinessException;
+import com.tobeto.rentACar.core.services.MailService;
 import com.tobeto.rentACar.core.utilities.results.Result;
 import com.tobeto.rentACar.core.utilities.results.SuccessResult;
 import com.tobeto.rentACar.entities.concretes.Car;
+import com.tobeto.rentACar.entities.concretes.User;
 import com.tobeto.rentACar.entities.concretes.ViewingAppointment;
 import com.tobeto.rentACar.repositories.CarRepository;
 import com.tobeto.rentACar.repositories.UserRepository;
@@ -15,25 +17,38 @@ import com.tobeto.rentACar.services.constants.ViewingAppointmentConstants;
 import com.tobeto.rentACar.services.dtos.car.response.GetCarByIdResponse;
 import com.tobeto.rentACar.services.dtos.user.response.GetUserByIdResponse;
 import com.tobeto.rentACar.services.dtos.viewing.request.CreateViewingAppointmentRequest;
+import com.tobeto.rentACar.services.dtos.viewing.request.RescheduleViewingRequest;
 import com.tobeto.rentACar.services.dtos.viewing.request.UpdateViewingStatusRequest;
+import com.tobeto.rentACar.services.dtos.viewing.response.SlotAvailabilityResponse;
 import com.tobeto.rentACar.services.dtos.viewing.response.ViewingAppointmentResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ViewingAppointmentManager implements ViewingAppointmentService {
+
+    private static final int MAX_PER_SLOT = 3;
+    private static final DateTimeFormatter VN_DT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     private final ViewingAppointmentRepository viewingAppointmentRepository;
     private final CarRepository carRepository;
     private final UserRepository userRepository;
     private final CarService carService;
+    private final MailService mailService;
 
     @Override
     @Transactional
@@ -51,6 +66,8 @@ public class ViewingAppointmentManager implements ViewingAppointmentService {
             throw new BusinessException("Bạn đã có lịch chờ duyệt cho xe này. Vui lòng hủy hoặc chờ xử lý.");
         }
 
+        assertSlotNotFull(request.getScheduledAt());
+
         ViewingAppointment entity = ViewingAppointment.builder()
                 .car(carRepository.getReferenceById(car.getId()))
                 .user(userRepository.getReferenceById(userId))
@@ -62,6 +79,9 @@ public class ViewingAppointmentManager implements ViewingAppointmentService {
         ViewingAppointment saved = viewingAppointmentRepository.save(entity);
         ViewingAppointment full = viewingAppointmentRepository.findByIdWithRelations(saved.getId())
                 .orElseThrow(() -> new BusinessException("Không tải được lịch hẹn vừa tạo."));
+
+        sendAppointmentEmail(full.getUser(), full, "Xác nhận đặt lịch xem xe",
+                "Bạn đã đặt lịch xem xe thành công. Vui lòng chờ nhân viên xác nhận.");
         return mapEntity(full);
     }
 
@@ -180,7 +200,87 @@ public class ViewingAppointmentManager implements ViewingAppointmentService {
         }
         v.setAdminNote(trimToNull(request.getAdminNote()));
         viewingAppointmentRepository.save(v);
+
+        String emailSubject = switch (next) {
+            case "CONFIRMED" -> "Lịch xem xe đã được xác nhận";
+            case "CANCELLED" -> "Lịch xem xe đã bị huỷ";
+            case "COMPLETED" -> "Lịch xem xe hoàn tất";
+            default -> "Cập nhật lịch xem xe";
+        };
+        sendAppointmentEmail(v.getUser(), v, emailSubject,
+                "Trạng thái lịch hẹn #" + v.getId() + " đã chuyển sang: " + next + ".");
         return new SuccessResult("Đã cập nhật trạng thái lịch hẹn.");
+    }
+
+    @Override
+    @Transactional
+    public Result rescheduleMine(int id, int userId, RescheduleViewingRequest request) {
+        ViewingAppointment v = viewingAppointmentRepository.findByIdWithRelations(id).orElseThrow(
+                () -> new BusinessException("Không tìm thấy lịch hẹn."));
+        if (v.getUser().getId() != userId) {
+            throw new BusinessException("Không có quyền đổi lịch này.");
+        }
+        String cur = v.getStatus();
+        if (!ViewingAppointmentConstants.STATUS_PENDING.equals(cur)
+                && !ViewingAppointmentConstants.STATUS_CONFIRMED.equals(cur)) {
+            throw new BusinessException("Chỉ đổi lịch được khi đang chờ hoặc đã xác nhận.");
+        }
+        if (v.getScheduledAt().isBefore(LocalDateTime.now().plusHours(24))) {
+            throw new BusinessException("Chỉ dời lịch khi còn cách ít nhất 24 giờ trước hẹn.");
+        }
+        validateSchedule(request.getScheduledAt());
+        assertSlotNotFull(request.getScheduledAt());
+
+        v.setScheduledAt(request.getScheduledAt());
+        v.setStatus(ViewingAppointmentConstants.STATUS_PENDING);
+        viewingAppointmentRepository.save(v);
+
+        sendAppointmentEmail(v.getUser(), v, "Bạn đã dời lịch xem xe",
+                "Lịch hẹn #" + v.getId() + " đã được dời sang " + request.getScheduledAt().format(VN_DT) + ". Chờ nhân viên xác nhận lại.");
+        return new SuccessResult("Đã dời lịch hẹn thành công.");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SlotAvailabilityResponse> getAvailability(LocalDate date) {
+        if (date.getDayOfWeek() == DayOfWeek.SUNDAY) {
+            return List.of();
+        }
+        List<ViewingAppointment> active = viewingAppointmentRepository.findActiveByDate(date);
+        Map<Integer, Long> countByHour = active.stream()
+                .collect(Collectors.groupingBy(v -> v.getScheduledAt().getHour(), Collectors.counting()));
+
+        List<SlotAvailabilityResponse> slots = new ArrayList<>();
+        for (int h = 8; h <= 17; h++) {
+            int booked = countByHour.getOrDefault(h, 0L).intValue();
+            slots.add(new SlotAvailabilityResponse(
+                    LocalTime.of(h, 0), booked, MAX_PER_SLOT, booked < MAX_PER_SLOT));
+        }
+        return slots;
+    }
+
+    private void assertSlotNotFull(LocalDateTime scheduledAt) {
+        LocalDateTime slotStart = scheduledAt.withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime slotEnd = slotStart.plusHours(1);
+        long count = viewingAppointmentRepository.countActiveInSlot(slotStart, slotEnd);
+        if (count >= MAX_PER_SLOT) {
+            throw new BusinessException("Khung giờ " + slotStart.toLocalTime() + "–" + slotEnd.toLocalTime()
+                    + " đã kín (" + MAX_PER_SLOT + " lịch). Vui lòng chọn giờ khác.");
+        }
+    }
+
+    private void sendAppointmentEmail(User user, ViewingAppointment v, String subject, String bodyText) {
+        try {
+            String carName = v.getCar().getModel().getBrand().getName() + " " + v.getCar().getModel().getName();
+            String html = "<h3>" + subject + "</h3>"
+                    + "<p>" + bodyText + "</p>"
+                    + "<p><strong>Xe:</strong> " + carName + "</p>"
+                    + "<p><strong>Thời gian:</strong> " + v.getScheduledAt().format(VN_DT) + "</p>"
+                    + "<p>Trân trọng,<br>AutoHub Team</p>";
+            mailService.sendHtmlTo(user.getEmail(), subject, html);
+        } catch (Exception e) {
+            log.warn("Không gửi được email lịch hẹn cho {}: {}", user.getEmail(), e.getMessage());
+        }
     }
 
     private ViewingAppointmentResponse mapEntity(ViewingAppointment v) {

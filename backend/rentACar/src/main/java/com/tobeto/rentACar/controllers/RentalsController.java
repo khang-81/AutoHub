@@ -9,6 +9,7 @@ import com.tobeto.rentACar.services.dtos.rental.request.CancelRentalRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.DeleteRentalRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.FindRentalIdRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.UpdateRentalRequest;
+import com.tobeto.rentACar.services.dtos.rental.request.UserReturnCarRequest;
 import com.tobeto.rentACar.services.dtos.rental.response.*;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -50,19 +51,28 @@ public class RentalsController {
         return rentalService.add(request);
     }
 
+    @PreAuthorize("hasRole('admin')")
     @PutMapping("/update")
     public Result update(@RequestBody @Valid UpdateRentalRequest request){
         return rentalService.update(request);
     }
 
+    @PreAuthorize("hasRole('admin')")
     @DeleteMapping("/delete")
     public  Result delete(@RequestBody @Valid DeleteRentalRequest request){
         return rentalService.delete(request);
     }
 
+    @PreAuthorize("hasRole('admin')")
     @GetMapping("/getAll")
     public List<GetAllRentalsResponse> getAll(){
         return rentalService.getAll();
+    }
+
+    /** Dữ liệu tối thiểu cho lịch đặt xe (trang công khai). */
+    @GetMapping("/public/busy-ranges/{carId}")
+    public List<RentalBusyRangeResponse> getPublicBusyRanges(@PathVariable int carId) {
+        return rentalService.getPublicBusyRangesForCar(carId);
     }
 
     @GetMapping("/getById/{id}")
@@ -85,11 +95,24 @@ public class RentalsController {
             @RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) String startDate,
             @RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) String endDate,
             @RequestParam("carId") int carId,
-            @RequestParam("userId") int userId) {
+            @RequestParam("userId") int userId,
+            HttpServletRequest httpRequest) {
 
-        // Parse the date portion of the date-time strings
-        LocalDate parsedStartDate = LocalDate.parse(startDate.substring(0, 10)); // Extract the date part
-        LocalDate parsedEndDate = LocalDate.parse(endDate.substring(0, 10)); // Extract the date part
+        String tokenWithPrefix = httpRequest.getHeader("Authorization");
+        if (tokenWithPrefix == null || !tokenWithPrefix.startsWith("Bearer ")) {
+            throw new BusinessException("Yêu cầu đăng nhập.");
+        }
+        String token = tokenWithPrefix.replace("Bearer ", "");
+        int tokenUserId = jwtService.extractUserId(token);
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAdmin = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_admin".equals(a.getAuthority()) || "admin".equals(a.getAuthority()));
+        if (!isAdmin && tokenUserId != userId) {
+            throw new BusinessException("Bạn không có quyền tra cứu đơn thuê này.");
+        }
+
+        LocalDate parsedStartDate = LocalDate.parse(startDate.substring(0, 10));
+        LocalDate parsedEndDate = LocalDate.parse(endDate.substring(0, 10));
 
         FindRentalIdRequest request = new FindRentalIdRequest(parsedStartDate, parsedEndDate, carId, userId);
 
@@ -110,6 +133,21 @@ public class RentalsController {
         return rentalService.getByUserId(userID);
     }
 
+    /** Khách xác nhận đã trả xe (đơn đã CONFIRMED). */
+    @PutMapping("/{id}/return")
+    public Result returnCarByUser(
+            @PathVariable int id,
+            @RequestBody @Valid UserReturnCarRequest body,
+            HttpServletRequest httpRequest) {
+        String tokenWithPrefix = httpRequest.getHeader("Authorization");
+        if (tokenWithPrefix == null || !tokenWithPrefix.startsWith("Bearer ")) {
+            throw new BusinessException("Yêu cầu đăng nhập.");
+        }
+        String token = tokenWithPrefix.replace("Bearer ", "");
+        int userId = jwtService.extractUserId(token);
+        return rentalService.returnCarByUser(id, userId, body);
+    }
+
     @PutMapping("/submitTransfer/{id}")
     public Result submitTransfer(@PathVariable int id, HttpServletRequest request) {
         String tokenWithPrefix = request.getHeader("Authorization");
@@ -127,6 +165,17 @@ public class RentalsController {
         return rentalService.confirmByAdmin(id);
     }
 
+    /**
+     * Admin đối chiếu trả xe — Sprint 3 / UC #15.
+     * Body dùng chung {@link UserReturnCarRequest} nhưng admin có thể bật `markDispute=true`
+     * để đẩy đơn sang DISPUTE thay vì COMPLETED (chưa giải phóng lịch xe).
+     */
+    @PreAuthorize("hasRole('admin')")
+    @PutMapping("/admin/{id}/return")
+    public Result adminReturn(@PathVariable int id, @RequestBody @Valid UserReturnCarRequest body) {
+        return rentalService.adminReturn(id, body);
+    }
+
     @GetMapping("/insurance-options")
     public List<InsuranceOptionResponse> insuranceOptions() {
         return List.of(
@@ -134,6 +183,19 @@ public class RentalsController {
                 new InsuranceOptionResponse("BASIC", "Gói cơ bản", 80_000),
                 new InsuranceOptionResponse("STANDARD", "Gói tiêu chuẩn", 120_000),
                 new InsuranceOptionResponse("PREMIUM", "Gói cao cấp", 180_000)
+        );
+    }
+
+    /**
+     * Add-on stack được — multi-checkbox ở UI. Khác với insurance-options (single).
+     * Sprint 2 — bảo hiểm chuyến đi multi-package.
+     */
+    @GetMapping("/addon-options")
+    public List<InsuranceOptionResponse> addonOptions() {
+        return List.of(
+                new InsuranceOptionResponse("EXTRA_DRIVER", "Tài xế phụ", 50_000),
+                new InsuranceOptionResponse("ROADSIDE",     "Cứu hộ 24/7", 30_000),
+                new InsuranceOptionResponse("INTERIOR",     "Bảo vệ nội thất", 40_000)
         );
     }
 

@@ -52,12 +52,17 @@ const PaymentPage = () => {
     },
   });
 
-  const qrUrl = useMemo(() => {
-    if (!rental?.id || !rental?.totalPrice) return '';
-    return `https://img.vietqr.io/image/${BANK_INFO.bankCode}-${BANK_INFO.accountNumber}-compact2.png?amount=${Math.round(
-      rental.totalPrice
-    )}&addInfo=THUEXE-${rental.id}&accountName=${encodeURIComponent(BANK_INFO.accountName)}`;
+  const depositToTransfer = useMemo(() => {
+    if (!rental?.totalPrice) return 0;
+    const d = rental.depositAmount;
+    if (d != null && d > 0) return Math.round(d);
+    return Math.round(rental.totalPrice * 0.3);
   }, [rental]);
+
+  const qrUrl = useMemo(() => {
+    if (!rental?.id || !depositToTransfer) return '';
+    return `https://img.vietqr.io/image/${BANK_INFO.bankCode}-${BANK_INFO.accountNumber}-compact2.png?amount=${depositToTransfer}&addInfo=THUEXE-${rental.id}&accountName=${encodeURIComponent(BANK_INFO.accountName)}`;
+  }, [rental, depositToTransfer]);
 
   if (isLoading) return <LoadingSpinner />;
   if (!rental) return <div className="text-center text-gray-500">Không tìm thấy đơn thuê.</div>;
@@ -99,19 +104,19 @@ const PaymentPage = () => {
           )}
           {rental.depositAmount != null && rental.depositAmount > 0 && (
             <div className="flex justify-between text-amber-800 text-xs pt-2 border-t border-amber-100">
-              <span>Tiền cọc (tham khảo — xử lý theo chính sách khi nhận xe)</span>
+              <span>Tiền cọc đặt xe (~30% tổng chuyến)</span>
               <span className="font-medium">{formatCurrency(rental.depositAmount)}</span>
             </div>
           )}
         </div>
 
         <p className="text-primary font-bold text-lg mt-4">
-          Số tiền cần chuyển khoản (toàn bộ chuyến):{' '}
-          <span className="text-navy">{formatCurrency(rental.totalPrice)}</span>
+          Số tiền cần chuyển khoản (cọc đặt xe):{' '}
+          <span className="text-navy">{formatCurrency(depositToTransfer)}</span>
         </p>
         <p className="text-xs text-gray-500 mt-2">
-          QR VietQR bên dưới quét đúng số tiền <strong>{formatCurrency(rental.totalPrice)}</strong> với nội dung{' '}
-          <strong>THUEXE-{rental.id}</strong>.
+          Phần còn lại + phí phát sinh (nếu có) sẽ quyết toán khi trả xe. QR VietQR: số tiền{' '}
+          <strong>{formatCurrency(depositToTransfer)}</strong>, nội dung <strong>THUEXE-{rental.id}</strong>.
         </p>
       </div>
 

@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Trash2, Search, FileText, CheckCircle, Download } from 'lucide-react';
-import { getAllRentalsApi, deleteRentalApi, returnCarApi, confirmRentalApi } from '../../api/rentals';
+import { Trash2, Search, FileText, CheckCircle, Download, AlertTriangle } from 'lucide-react';
+import {
+  getAllRentalsApi,
+  deleteRentalApi,
+  confirmRentalApi,
+  adminReturnRentalApi,
+  type ReturnRentalFormBody,
+} from '../../api/rentals';
 import { useToast } from '../../components/ui/Toast';
 import Modal from '../../components/ui/Modal';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -17,11 +23,28 @@ const ManageRentals = () => {
     queryClient.invalidateQueries({ queryKey: ['myRentals'] });
     queryClient.invalidateQueries({ queryKey: ['reviews'] });
     queryClient.invalidateQueries({ queryKey: ['car'] });
+    queryClient.invalidateQueries({ queryKey: ['rental-busy-ranges'] });
   };
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'confirmed' | 'returned'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'confirmed' | 'returned' | 'dispute'>('all');
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [returnRental, setReturnRental] = useState<Rental | null>(null);
+  // Form state cho dialog "Đối chiếu trả xe" (Sprint 3 — UC #15).
+  const [returnForm, setReturnForm] = useState<{
+    endKilometer: string;
+    actualFuelLevel: string;
+    additionalIncidentalFees: string;
+    damageNotes: string;
+    damagePhotoUrls: string;
+    returnDate: string;
+  }>({
+    endKilometer: '',
+    actualFuelLevel: '100',
+    additionalIncidentalFees: '0',
+    damageNotes: '',
+    damagePhotoUrls: '',
+    returnDate: '',
+  });
 
   const { data: rentals = [], isLoading } = useQuery<Rental[]>({
     queryKey: ['rentals'],
@@ -39,13 +62,18 @@ const ManageRentals = () => {
   });
 
   const returnMutation = useMutation({
-    mutationFn: returnCarApi,
-    onSuccess: () => {
-      showToast('Xác nhận trả xe thành công!', 'success');
+    mutationFn: ({ id, body }: { id: number; body: ReturnRentalFormBody }) =>
+      adminReturnRentalApi(id, body),
+    onSuccess: (res, vars) => {
+      const msg = (res as { message?: string })?.message ?? 'Đã ghi nhận trả xe';
+      showToast(vars.body.markDispute ? `Đã đánh dấu tranh chấp: ${msg}` : msg, 'success');
       invalidateRentalRelated();
       setReturnRental(null);
     },
-    onError: () => showToast('Lỗi khi xác nhận trả xe', 'error'),
+    onError: (err: unknown) => {
+      const apiError = err as { response?: { data?: { message?: string } } };
+      showToast(apiError?.response?.data?.message ?? 'Lỗi khi xác nhận trả xe', 'error');
+    },
   });
 
   const confirmMutation = useMutation({
@@ -59,18 +87,46 @@ const ManageRentals = () => {
     onError: () => showToast('Lỗi khi xác nhận đơn', 'error'),
   });
 
-  const handleReturnCar = () => {
-    if (!returnRental) return;
+  const openReturnModal = (rental: Rental) => {
+    setReturnRental(rental);
+    const startKm = rental.startKilometer ?? rental.car?.kilometer ?? 0;
     const today = new Date().toISOString().slice(0, 10);
+    setReturnForm({
+      endKilometer: String(startKm),
+      actualFuelLevel: '100',
+      additionalIncidentalFees: '0',
+      damageNotes: '',
+      damagePhotoUrls: '',
+      returnDate: today,
+    });
+  };
+
+  const submitReturn = (markDispute: boolean) => {
+    if (!returnRental) return;
+    const startKm = returnRental.startKilometer ?? returnRental.car?.kilometer ?? 0;
+    const endKilometer = Number(returnForm.endKilometer);
+    if (!Number.isFinite(endKilometer) || endKilometer < startKm) {
+      showToast(`Km trả phải ≥ km lúc nhận (${startKm} km)`, 'error');
+      return;
+    }
+    const actualFuelLevel = Number(returnForm.actualFuelLevel);
+    if (!Number.isFinite(actualFuelLevel) || actualFuelLevel < 0 || actualFuelLevel > 100) {
+      showToast('Mức xăng thực tế phải trong 0–100%', 'error');
+      return;
+    }
+    const additional = Number(returnForm.additionalIncidentalFees);
+    const rd = returnForm.returnDate.trim() || new Date().toISOString().slice(0, 10);
     returnMutation.mutate({
       id: returnRental.id,
-      startDate: returnRental.startDate,
-      endDate: returnRental.endDate,
-      returnDate: today,
-      endKilometer: (returnRental.car?.kilometer || 0) + 500,
-      totalPrice: returnRental.totalPrice,
-      carId: returnRental.car?.id,
-      userId: returnRental.user?.id,
+      body: {
+        endKilometer,
+        returnDate: rd,
+        actualFuelLevel,
+        additionalIncidentalFees: Number.isFinite(additional) && additional > 0 ? additional : 0,
+        damageNotes: returnForm.damageNotes.trim() || undefined,
+        damagePhotoUrls: returnForm.damagePhotoUrls.trim() || undefined,
+        markDispute,
+      },
     });
   };
 
@@ -109,7 +165,8 @@ const ManageRentals = () => {
         (!r.returnDate && !r.rentalStatus)
       )) ||
       (filterStatus === 'confirmed' && r.rentalStatus === 'CONFIRMED') ||
-      (filterStatus === 'returned' && (r.rentalStatus === 'COMPLETED' || !!r.returnDate));
+      (filterStatus === 'returned' && (r.rentalStatus === 'COMPLETED' || !!r.returnDate)) ||
+      (filterStatus === 'dispute' && r.rentalStatus === 'DISPUTE');
     return matchSearch && matchStatus;
   });
   const sortedFiltered = [...filtered].sort((a, b) => b.id - a.id);
@@ -147,7 +204,7 @@ const ManageRentals = () => {
           />
         </div>
         <div className="flex items-center gap-2">
-          {(['all', 'pending', 'confirmed', 'returned'] as const).map((s) => (
+          {(['all', 'pending', 'confirmed', 'returned', 'dispute'] as const).map((s) => (
             <button
               key={s}
               onClick={() => setFilterStatus(s)}
@@ -156,7 +213,15 @@ const ManageRentals = () => {
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
             >
-              {s === 'all' ? 'Tất cả' : s === 'pending' ? '🟡 Chờ duyệt' : s === 'confirmed' ? '🟢 Đã duyệt' : '⚫ Đã trả'}
+              {s === 'all'
+                ? 'Tất cả'
+                : s === 'pending'
+                  ? 'Chờ duyệt'
+                  : s === 'confirmed'
+                    ? 'Đã duyệt'
+                    : s === 'returned'
+                      ? 'Đã trả'
+                      : 'Tranh chấp'}
             </button>
           ))}
         </div>
@@ -219,6 +284,8 @@ const ManageRentals = () => {
                         <span className="badge text-xs bg-gray-100 text-gray-500">
                           Đã trả {rental.returnDate ? formatDate(rental.returnDate) : ''}
                         </span>
+                      ) : rental.rentalStatus === 'DISPUTE' ? (
+                        <span className="badge text-xs bg-red-100 text-red-700">Tranh chấp</span>
                       ) : rental.rentalStatus === 'PENDING_PAYMENT' ? (
                         <span className="badge text-xs bg-blue-100 text-blue-700">Chờ khách chuyển khoản</span>
                       ) : rental.rentalStatus === 'PENDING_ADMIN_CONFIRM' ? (
@@ -242,11 +309,11 @@ const ManageRentals = () => {
                             <CheckCircle className="w-4 h-4" />
                           </button>
                         )}
-                        {!rental.returnDate && (
+                        {!rental.returnDate && (rental.rentalStatus === 'CONFIRMED' || rental.rentalStatus === 'DISPUTE') && (
                           <button
-                            onClick={() => setReturnRental(rental)}
+                            onClick={() => openReturnModal(rental)}
                             className="p-2 rounded-lg text-green-600 hover:bg-green-50 transition-colors"
-                            title="Xác nhận trả xe"
+                            title="Đối chiếu trả xe"
                           >
                             <CheckCircle className="w-4 h-4" />
                           </button>
@@ -278,45 +345,136 @@ const ManageRentals = () => {
       <Modal
         isOpen={!!returnRental}
         onClose={() => setReturnRental(null)}
-        title="Xác nhận trả xe"
-        size="sm"
+        title="Đối chiếu trả xe"
+        size="lg"
       >
         {returnRental && (
-          <div>
-            <div className="flex items-center gap-4 p-4 bg-green-50 rounded-xl mb-5">
+          <div className="space-y-4">
+            <div className="flex items-center gap-4 p-4 bg-green-50 rounded-xl">
               <img
                 src={returnRental.car?.imagePath || CAR_PLACEHOLDER}
                 alt=""
-                className="w-16 h-12 object-cover rounded-lg"
+                className="w-16 h-12 object-cover rounded-lg shrink-0"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = CAR_PLACEHOLDER;
                 }}
               />
-              <div>
+              <div className="min-w-0">
                 <p className="font-semibold text-navy">
                   {returnRental.car?.model?.brand?.name} {returnRental.car?.model?.name}
                 </p>
-                <p className="text-sm text-gray-500">Khách: {returnRental.user?.email}</p>
+                <p className="text-sm text-gray-500 truncate">Khách: {returnRental.user?.email}</p>
                 <p className="text-sm text-primary font-bold">{formatCurrency(returnRental.totalPrice)}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Km lúc nhận:{' '}
+                  <strong>{returnRental.startKilometer ?? returnRental.car?.kilometer ?? '—'}</strong>
+                  {returnRental.allowedKilometers != null && (
+                    <> • Hạn mức: <strong>{returnRental.allowedKilometers}</strong> km</>
+                  )}
+                  {returnRental.expectedFuelLevel != null && (
+                    <> • Xăng kỳ vọng trả: <strong>{returnRental.expectedFuelLevel}%</strong></>
+                  )}
+                </p>
               </div>
             </div>
-            <p className="text-gray-600 text-sm mb-5">
-              Xác nhận khách đã trả xe hôm nay ({new Date().toLocaleDateString('vi-VN')})?
+
+            <p className="text-xs text-gray-500">
+              Hệ thống tự tính phí trễ (theo ngày), vượt km và thiếu xăng khi bạn bấm xác nhận. Có thể bổ sung phụ phí
+              thủ công và biên bản trầy xước.
             </p>
-            <div className="flex gap-3">
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ngày trả thực tế</label>
+                <input
+                  type="date"
+                  value={returnForm.returnDate}
+                  onChange={(e) => setReturnForm((f) => ({ ...f, returnDate: e.target.value }))}
+                  className="input-field w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Km đồng hồ khi trả</label>
+                <input
+                  type="number"
+                  min={returnRental.startKilometer ?? returnRental.car?.kilometer ?? 0}
+                  value={returnForm.endKilometer}
+                  onChange={(e) => setReturnForm((f) => ({ ...f, endKilometer: e.target.value }))}
+                  className="input-field w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mức xăng thực tế (%)</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={returnForm.actualFuelLevel}
+                  onChange={(e) => setReturnForm((f) => ({ ...f, actualFuelLevel: e.target.value }))}
+                  className="input-field w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phụ phí khác (VNĐ)</label>
+                <input
+                  type="number"
+                  min={0}
+                  step={1000}
+                  value={returnForm.additionalIncidentalFees}
+                  onChange={(e) => setReturnForm((f) => ({ ...f, additionalIncidentalFees: e.target.value }))}
+                  className="input-field w-full"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả trầy xước / hư hại</label>
+              <textarea
+                rows={3}
+                value={returnForm.damageNotes}
+                onChange={(e) => setReturnForm((f) => ({ ...f, damageNotes: e.target.value }))}
+                className="input-field w-full resize-y"
+                placeholder="Ví dụ: trầy cản sau, móp cửa trái..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Ảnh minh chứng (URL, phân tách bằng dấu phẩy)
+              </label>
+              <input
+                type="text"
+                value={returnForm.damagePhotoUrls}
+                onChange={(e) => setReturnForm((f) => ({ ...f, damagePhotoUrls: e.target.value }))}
+                className="input-field w-full"
+                placeholder="https://...,https://..."
+              />
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <button
-                onClick={handleReturnCar}
+                type="button"
+                onClick={() => submitReturn(false)}
                 disabled={returnMutation.isPending}
-                className="bg-green-500 hover:bg-green-600 text-white font-semibold px-5 py-2.5 rounded-xl flex-1 flex items-center justify-center gap-2 disabled:opacity-60"
+                className="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 rounded-xl flex-1 flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 {returnMutation.isPending ? (
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <CheckCircle className="w-4 h-4" />
                 )}
-                Xác nhận trả xe
+                Hoàn tất trả xe
               </button>
-              <button onClick={() => setReturnRental(null)} className="btn-outline">
+              <button
+                type="button"
+                onClick={() => submitReturn(true)}
+                disabled={returnMutation.isPending}
+                className="bg-amber-600 hover:bg-amber-700 text-white font-semibold px-5 py-2.5 rounded-xl flex-1 flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                <AlertTriangle className="w-4 h-4" />
+                Tranh chấp (giữ lịch xe)
+              </button>
+              <button type="button" onClick={() => setReturnRental(null)} className="btn-outline px-5 py-2.5">
                 Hủy
               </button>
             </div>

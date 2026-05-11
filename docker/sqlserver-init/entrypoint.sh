@@ -41,18 +41,27 @@ for i in $(seq 1 60); do
   sleep 2
 done
 
-# Kiểm tra schema từ [master] — không login -d autohub (tránh 18456 / Msg 904 khi recovery).
-set +e
-SCHEMA_LINE=$(run_master -h -1 -W -Q "SET NOCOUNT ON; SELECT CASE WHEN EXISTS (SELECT 1 FROM autohub.INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = N'dbo' AND TABLE_NAME = N'roles') THEN 1 ELSE 0 END;" 2>/dev/null | tail -n 1 | tr -d '[:space:]')
-set -e
-SCHEMA_LINE=${SCHEMA_LINE:-0}
+# Kiểm tra schema từ [master] — dùng OBJECT_ID (ổn định hơn INFORMATION_SCHEMA khi DB tồn tại).
+schema_exists() {
+  set +e
+  local line
+  line=$(run_master -h -1 -W -Q "SET NOCOUNT ON; SELECT CASE WHEN OBJECT_ID(N'autohub.dbo.roles', N'U') IS NOT NULL THEN 1 ELSE 0 END;" 2>/dev/null | tail -n 1 | tr -d '[:space:]')
+  set -e
+  [ "${line:-0}" = "1" ]
+}
 
-if [ "$SCHEMA_LINE" != "1" ]; then
+if ! schema_exists; then
   echo "Applying /autohub-full-schema.sql (schema + seed)..."
   # Chạy script qua kết nối [master] + retry ngắn để tránh lỗi tạm thời Msg 904 lúc DB vừa ONLINE.
   ok=0
   for i in $(seq 1 8); do
     if run_master -b -i /autohub-full-schema.sql; then
+      ok=1
+      break
+    fi
+    # Nếu đã seed một phần ở lần trước, schema đã tồn tại thì coi như thành công để tiếp tục migration an toàn.
+    if schema_exists; then
+      echo "Schema already exists after seed attempt $i; treating as initialized."
       ok=1
       break
     fi
@@ -125,6 +134,19 @@ else
     IF COL_LENGTH('dbo.users', 'password_reset_token') IS NULL
     BEGIN
       ALTER TABLE dbo.users ADD password_reset_token NVARCHAR(64) NULL;
+    END;
+
+    IF COL_LENGTH('dbo.rentals', 'late_fee_amount') IS NULL
+    BEGIN
+      ALTER TABLE dbo.rentals ADD late_fee_amount FLOAT NULL;
+    END;
+    IF COL_LENGTH('dbo.rentals', 'return_additional_fees') IS NULL
+    BEGIN
+      ALTER TABLE dbo.rentals ADD return_additional_fees FLOAT NULL;
+    END;
+    IF COL_LENGTH('dbo.rentals', 'balance_due_at_return') IS NULL
+    BEGIN
+      ALTER TABLE dbo.rentals ADD balance_due_at_return FLOAT NULL;
     END;
 
     IF COL_LENGTH('dbo.users', 'password_reset_expires') IS NULL

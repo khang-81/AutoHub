@@ -12,6 +12,21 @@ export const getInsuranceOptionsApi = async (): Promise<InsuranceOptionDto[]> =>
   return res.data;
 };
 
+/** Add-on multi-package options (Sprint 2). */
+export const getAddonOptionsApi = async (): Promise<InsuranceOptionDto[]> => {
+  const res = await axiosInstance.get('/api/rentals/addon-options');
+  return res.data;
+};
+
+/** Khoảng ngày đã có đơn (công khai, không token) — dùng cho lịch trên trang chi tiết xe. */
+export const getPublicBusyRangesForCarApi = async (
+  carId: number
+): Promise<{ startDate: string; endDate: string }[]> => {
+  const res = await axiosInstance.get(`/api/rentals/public/busy-ranges/${carId}`);
+  const data = res.data;
+  return Array.isArray(data) ? data : [];
+};
+
 export const getAllRentalsApi = async () => {
   const res = await axiosInstance.get('/api/rentals/getAll');
   return res.data;
@@ -52,6 +67,41 @@ export const getRentalIdApi = async (
   const res = await axiosInstance.get('/api/rentals/getRentalId', {
     params: { startDate, endDate, carId, userId },
   });
+  return res.data;
+};
+
+/**
+ * Form đối chiếu trả xe (Sprint 3 — UC #15). Dùng chung cho khách & admin.
+ * Backend tự tính lateFee/overKmFee/missingFuelFee dựa trên snapshot lúc tạo đơn.
+ */
+export interface ReturnRentalFormBody {
+  endKilometer: number;
+  returnDate?: string;
+  /** % xăng thực tế khi trả (0..100). */
+  actualFuelLevel?: number;
+  damageNotes?: string;
+  /** CSV URL ảnh hư hại (giữ đơn giản — chưa upload binary). */
+  damagePhotoUrls?: string;
+  additionalIncidentalFees?: number;
+  /** Admin-only: đẩy đơn sang DISPUTE thay vì COMPLETED. */
+  markDispute?: boolean;
+}
+
+/** Khách xác nhận trả xe (đơn CONFIRMED). */
+export const returnRentalByUserApi = async (
+  rentalId: number,
+  body: ReturnRentalFormBody
+) => {
+  const res = await axiosInstance.put(`/api/rentals/${rentalId}/return`, body);
+  return res.data;
+};
+
+/** Admin đối chiếu trả xe (Sprint 3) — kèm cờ markDispute để mở DISPUTE. */
+export const adminReturnRentalApi = async (
+  rentalId: number,
+  body: ReturnRentalFormBody
+) => {
+  const res = await axiosInstance.put(`/api/rentals/admin/${rentalId}/return`, body);
   return res.data;
 };
 

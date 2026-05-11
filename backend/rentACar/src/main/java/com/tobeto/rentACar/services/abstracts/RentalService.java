@@ -5,6 +5,7 @@ import com.tobeto.rentACar.services.dtos.rental.request.AddRentalRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.DeleteRentalRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.FindRentalIdRequest;
 import com.tobeto.rentACar.services.dtos.rental.request.UpdateRentalRequest;
+import com.tobeto.rentACar.services.dtos.rental.request.UserReturnCarRequest;
 import com.tobeto.rentACar.services.dtos.rental.response.*;
 
 
@@ -16,6 +17,10 @@ public interface RentalService {
     Result update(UpdateRentalRequest request);
     Result delete(DeleteRentalRequest request);
     List<GetAllRentalsResponse> getAll();
+
+    /** Chỉ khoảng ngày — dùng cho SPA công khai, không lộ danh sách đơn đầy đủ. */
+    List<RentalBusyRangeResponse> getPublicBusyRangesForCar(int carId);
+
     GetRentalByIdResponse getById(int id, int actorUserId, boolean isAdmin);
 
     GetRentalIdResponse getRentalId(FindRentalIdRequest request);
@@ -27,5 +32,14 @@ public interface RentalService {
 
     /** user hoặc admin hủy đơn; actorUserId từ JWT */
     Result cancel(int rentalId, int actorUserId, boolean isAdmin, String reason);
+
+    /** Khách xác nhận đã trả xe (đơn CONFIRMED, chưa có returnDate). */
+    Result returnCarByUser(int rentalId, int userId, UserReturnCarRequest body);
+
+    /**
+     * Admin đối chiếu trả xe (UC #15). Cho phép cờ `markDispute` để đẩy đơn
+     * sang DISPUTE thay vì COMPLETED, giữ lịch xe bị khoá.
+     */
+    Result adminReturn(int rentalId, UserReturnCarRequest body);
 
 }

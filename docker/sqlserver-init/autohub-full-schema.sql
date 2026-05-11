@@ -166,6 +166,9 @@ CREATE TABLE [dbo].[rentals] (
     [cancellation_reason]     NVARCHAR (500) NULL,
     [cancellation_fee_amount] FLOAT (53)     NULL,
     [refund_deposit_amount]   FLOAT (53)     NULL,
+    [late_fee_amount]         FLOAT (53)     NULL,
+    [return_additional_fees]  FLOAT (53)     NULL,
+    [balance_due_at_return]  FLOAT (53)     NULL,
     [car_id]                  INT            NOT NULL,
     [user_id]                 INT            NOT NULL,
     CONSTRAINT [PK_rentals] PRIMARY KEY CLUSTERED ([id] ASC),
@@ -528,6 +531,39 @@ BEGIN
         VALUES (CAST(GETDATE() AS DATE), N'INV-SALE-DEMO-001', 920000000, 0, 10, NULL, @saleId);
     END
 END
+GO
+
+/* Lịch xem xe mẫu — thêm ngay sau khi xe được reset (bảng luôn trống tại đây) */
+DECLARE @vCar1 INT = (SELECT TOP 1 [id] FROM [dbo].[cars] WHERE [plate] = N'51K88888');   -- VinFast VF e34, AVAILABLE
+DECLARE @vCar2 INT = (SELECT TOP 1 [id] FROM [dbo].[cars] WHERE [plate] = N'30A20001');   -- Toyota Camry, AVAILABLE
+DECLARE @vCar3 INT = (SELECT TOP 1 [id] FROM [dbo].[cars] WHERE [plate] = N'30A20002');   -- Honda City, AVAILABLE
+DECLARE @vCar4 INT = (SELECT TOP 1 [id] FROM [dbo].[cars] WHERE [plate] = N'30A20004');   -- Mazda CX-5, AVAILABLE
+DECLARE @vUser INT = (SELECT [id] FROM [dbo].[users] WHERE [email] = N'user@autohub.local');
+DECLARE @vCorp INT = (SELECT [id] FROM [dbo].[users] WHERE [email] = N'corp@autohub.local');
+
+IF @vCar1 IS NOT NULL AND @vUser IS NOT NULL
+    INSERT INTO [dbo].[viewing_appointments] ([created_date], [scheduled_at], [status], [note], [contact_phone], [admin_note], [car_id], [user_id])
+    VALUES (CAST(GETDATE() AS DATE),
+            DATEADD(DAY, 5, DATEADD(HOUR, 9, CAST(CAST(GETDATE() AS DATE) AS DATETIME2))),
+            N'PENDING', N'Muốn xem kỹ nội thất và khoang máy.', N'0901234567', NULL, @vCar1, @vUser);
+
+IF @vCar2 IS NOT NULL AND @vCorp IS NOT NULL
+    INSERT INTO [dbo].[viewing_appointments] ([created_date], [scheduled_at], [status], [note], [contact_phone], [admin_note], [car_id], [user_id])
+    VALUES (CAST(GETDATE() AS DATE),
+            DATEADD(DAY, 8, DATEADD(HOUR, 14, CAST(CAST(GETDATE() AS DATE) AS DATETIME2))),
+            N'CONFIRMED', N'Xem xe cho nhu cầu công ty.', N'0987654321', N'Gặp tại showroom Long Biên lúc 14:00.', @vCar2, @vCorp);
+
+IF @vCar3 IS NOT NULL AND @vUser IS NOT NULL
+    INSERT INTO [dbo].[viewing_appointments] ([created_date], [scheduled_at], [status], [note], [contact_phone], [admin_note], [car_id], [user_id])
+    VALUES (CAST(GETDATE() AS DATE),
+            DATEADD(DAY, 12, DATEADD(HOUR, 10, CAST(CAST(GETDATE() AS DATE) AS DATETIME2))),
+            N'PENDING', NULL, N'0912345678', NULL, @vCar3, @vUser);
+
+IF @vCar4 IS NOT NULL AND @vCorp IS NOT NULL
+    INSERT INTO [dbo].[viewing_appointments] ([created_date], [scheduled_at], [status], [note], [contact_phone], [admin_note], [car_id], [user_id])
+    VALUES (CAST(GETDATE() AS DATE),
+            DATEADD(DAY, -7, DATEADD(HOUR, 9, CAST(CAST(GETDATE() AS DATE) AS DATETIME2))),
+            N'COMPLETED', N'Xe đẹp, sẽ cân nhắc mua thêm.', N'0977888999', N'Khách đã xem tại showroom, hài lòng với tình trạng xe.', @vCar4, @vCorp);
 GO
 
 SET NOCOUNT OFF;

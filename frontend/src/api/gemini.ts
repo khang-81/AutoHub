@@ -3,31 +3,26 @@ import type { Car } from '../types';
 
 import axiosInstance from './axiosInstance';
 
-const SYSTEM_PROMPT = `Bạn là AutoBot - trợ lý AI thông minh của AutoHub, nền tảng thuê xe ô tô hàng đầu Việt Nam.
+const SYSTEM_PROMPT = `Bạn là AutoBot - trợ lý AI của AutoHub, nền tảng **cho thuê và bán ô tô** tại Việt Nam.
 
-THÔNG TIN VỀ AUTOHUB:
-- Dịch vụ: Cho thuê ô tô tự lái với đội xe đa dạng (sedan, SUV, MPV, hatchback)
-- Giá thuê: từ 500.000 VNĐ/ngày đến 3.000.000 VNĐ/ngày tùy xe
-- Yêu cầu: CCCD/Hộ chiếu, Giấy phép lái xe, đặt cọc xe
-- Quy trình: Chọn xe → Chọn ngày → Đặt cọc → Nhận xe → Trả xe → Thanh toán
-- Hotline: 1800-AUTO (miễn phí)
-- Email: support@autohub.vn
+THÔNG TIN AUTOHUB:
+- **Thuê xe tự lái:** sedan, SUV, MPV, hatchback — giá theo ngày (VNĐ/ngày), tùy xe.
+- **Mua xe:** xe niêm yết bán (giá bán một lần), có thể đặt cọc / thanh toán theo quy trình trên web.
+- **Chung:** CCCD/Hộ chiếu, GPLX hợp lệ; KYC duyệt trước khi đặt thuê; xem xe / liên hệ qua trang web.
+- **Thuê — quy trình gợi ý:** Chọn xe → Chọn ngày → Đặt xe → Cọc / thanh toán → Nhận xe → Trả xe → Tất toán.
+- **Mua — quy trình gợi ý:** Chọn xe bán → Đặt mua / cọc theo hướng dẫn → Thanh toán → Hoàn tất thủ tục (chi tiết theo từng xe và chính sách hiện hành).
+- Hotline: 1800-AUTO • Email: support@autohub.vn
 
 NHIỆM VỤ:
-1. Tư vấn khách hàng chọn xe phù hợp (số người, ngân sách, mục đích)
-2. Giải thích quy trình thuê xe
-3. Trả lời câu hỏi về giá cả, chính sách
-4. Hướng dẫn sử dụng website
-5. Giải quyết thắc mắc về đơn thuê
+1. Tư vấn chọn xe (thuê hoặc mua) theo ngân sách, số người, mục đích.
+2. Giải thích quy trình **thuê** và **mua** khi khách hỏi.
+3. Giá cả, điều kiện, hướng dẫn dùng website (/cars, /cars/mua, chi tiết xe).
+4. Nếu thiếu dữ liệu cụ thể, khuyên xem trang danh sách xe hoặc liên hệ hotline.
 
 PHONG CÁCH:
-- Thân thiện, chuyên nghiệp, nhiệt tình
-- Trả lời bằng tiếng Việt
-- Câu trả lời ngắn gọn, súc tích (tối đa 200 từ)
-- Dùng emoji phù hợp để tăng thân thiện
-- Nếu không biết, hướng dẫn liên hệ hotline
-
-Hãy luôn giới thiệu mình là AutoBot khi được hỏi.`;
+- Tiếng Việt, thân thiện, tối đa ~200 từ mỗi lần trả lời.
+- Emoji vừa phải. Nếu không chắc, nói rõ và hướng dẫn liên hệ.
+- Luôn có thể giới thiệu mình là AutoBot khi được hỏi.`;
 
 export interface ChatMessage {
     role: 'user' | 'model';
@@ -50,52 +45,211 @@ async function getCarsLive(): Promise<Car[]> {
     }
 }
 
+function listingTypeUpper(c: Car): string {
+    return String(c.listingType ?? 'RENT_ONLY').toUpperCase();
+}
+
+function isRentCar(c: Car): boolean {
+    return listingTypeUpper(c) !== 'SALE_ONLY';
+}
+
+function isSaleCar(c: Car): boolean {
+    return listingTypeUpper(c) === 'SALE_ONLY' && (c.salePrice ?? 0) > 0;
+}
+
+function carLabel(c: Car): string {
+    return `${c.model?.brand?.name || ''} ${c.model?.name || ''}`.trim();
+}
+
 function formatVnd(value: number) {
     return new Intl.NumberFormat('vi-VN').format(value);
 }
 
-function pickTopCars(cars: Car[], count = 5) {
-    return [...cars]
-        .sort((a, b) => a.dailyPrice - b.dailyPrice)
-        .slice(0, count)
-        .map((c) => `${c.model?.brand?.name || ''} ${c.model?.name || ''}`.trim());
+function pickTopRentCars(cars: Car[], count = 5): Car[] {
+    const rent = cars.filter((c) => isRentCar(c) && (c.dailyPrice ?? 0) > 0);
+    return [...rent].sort((a, b) => (a.dailyPrice ?? 0) - (b.dailyPrice ?? 0)).slice(0, count);
+}
+
+function pickTopSaleCars(cars: Car[], count = 5): Car[] {
+    const sale = cars.filter(isSaleCar);
+    return [...sale].sort((a, b) => (a.salePrice ?? 0) - (b.salePrice ?? 0)).slice(0, count);
+}
+
+function wantsSale(msg: string): boolean {
+    return (
+        msg.includes('mua xe') ||
+        msg.includes('mua ') ||
+        msg.includes('bán xe') ||
+        msg.includes('ban xe') ||
+        msg.includes('giá bán') ||
+        msg.includes('gia ban') ||
+        msg.includes('niêm yết') ||
+        msg.includes('sang tên') ||
+        msg.includes('đặt mua') ||
+        msg.includes('dat mua') ||
+        msg.includes('cọc mua') ||
+        msg.includes('coc mua') ||
+        (msg.includes('xe mới') && msg.includes('mua'))
+    );
+}
+
+function wantsRent(msg: string): boolean {
+    return (
+        msg.includes('thuê') ||
+        msg.includes('thue') ||
+        msg.includes('/ngày') ||
+        (msg.includes('ngay') && (msg.includes('thuê') || msg.includes('thue')))
+    );
+}
+
+function buildLiveContextBlock(cars: Car[]): string {
+    if (!cars.length) return 'Du lieu realtime tam thoi chua tai duoc.';
+
+    const rentCars = cars.filter((c) => isRentCar(c) && (c.dailyPrice ?? 0) > 0);
+    const saleCars = cars.filter(isSaleCar);
+
+    const parts: string[] = [`Tong ${cars.length} xe trong he thong.`];
+
+    if (rentCars.length) {
+        const dMin = Math.min(...rentCars.map((c) => c.dailyPrice ?? 0));
+        const dMax = Math.max(...rentCars.map((c) => c.dailyPrice ?? 0));
+        parts.push(
+            `Cho thue: ${rentCars.length} xe, gia ngay tu ${formatVnd(dMin)} den ${formatVnd(dMax)} VND/ngay.`
+        );
+    } else {
+        parts.push('Cho thue: khong co xe hop le trong du lieu (gia ngay).');
+    }
+
+    if (saleCars.length) {
+        const sMin = Math.min(...saleCars.map((c) => c.salePrice ?? 0));
+        const sMax = Math.max(...saleCars.map((c) => c.salePrice ?? 0));
+        parts.push(
+            `Ban xe: ${saleCars.length} xe, gia ban tu ${formatVnd(sMin)} den ${formatVnd(sMax)} VND (mot lan).`
+        );
+    } else {
+        parts.push('Ban xe: khong co xe SALE_ONLY hop le trong du lieu.');
+    }
+
+    return parts.join(' ');
 }
 
 async function tryBusinessReply(message: string): Promise<string | null> {
     const msg = message.toLowerCase();
     const cars = await getCarsLive();
     const totalCars = cars.length;
-    const minPrice = totalCars ? Math.min(...cars.map((c) => c.dailyPrice || 0)) : 0;
-    const maxPrice = totalCars ? Math.max(...cars.map((c) => c.dailyPrice || 0)) : 0;
+    const rentCars = cars.filter((c) => isRentCar(c) && (c.dailyPrice ?? 0) > 0);
+    const saleCars = cars.filter(isSaleCar);
 
-    if (msg.includes('giá') || msg.includes('bao nhiêu') || msg.includes('phí')) {
-        if (!totalCars) {
-            return '💰 Hiện mình chưa đọc được dữ liệu giá xe realtime. Bạn thử lại sau vài giây hoặc xem trực tiếp trang danh sách xe nhé.';
+    if (msg.includes('liên hệ') || msg.includes('lien he') || msg.includes('hotline') || msg.includes('hỗ trợ') || msg.includes('ho tro')) {
+        return '📞 Liên hệ AutoHub:\n- Hotline: **1800-AUTO**\n- Email: **support@autohub.vn**\n- Trang **Liên hệ** trên web để gửi tin nhắn / đặt lịch xem xe.';
+    }
+
+    if (wantsSale(msg) && (msg.includes('điều kiện') || msg.includes('dieu kien') || msg.includes('cần gì'))) {
+        return '📋 **Mua xe (gợi ý):** Xác minh danh tính / KYC theo yêu cầu; đặt mua & thanh toán trên trang chi tiết xe; có thể đặt **lịch xem xe** trước. Chi tiết cọc & thủ tục hiển thị theo từng xe trên AutoHub.';
+    }
+
+    if (wantsRent(msg) && (msg.includes('điều kiện') || msg.includes('dieu kien') || (msg.includes('thuê') && msg.includes('cần')))) {
+        return '📋 **Thuê xe:** CCCD/Hộ chiếu còn hiệu lực, GPLX hợp lệ, KYC **được duyệt** trước khi đặt thuê; đặt cọc theo từng đơn.';
+    }
+
+    if (msg.includes('điều kiện') || msg.includes('dieu kien')) {
+        return '📋 **Thuê:** KYC duyệt + GPLX + CCCD/Hộ chiếu + cọc theo đơn.\n**Mua:** kiểm tra trạng thái xe (còn bán), đặt mua / thanh toán trên web; có thể hẹn **xem xe** trước.';
+    }
+
+    if (wantsSale(msg) && (msg.includes('quy trình') || msg.includes('quy trinh') || msg.includes('các bước') || msg.includes('cac buoc'))) {
+        return '🛒 **Quy trình mua (tóm tắt):**\n1) Vào **Xe bán** (/cars/mua) hoặc tab Mua trên chi tiết xe\n2) Đặt mua / đặt cọc theo hướng dẫn\n3) Thanh toán\n4) Hoàn tất thủ tục — chi tiết theo từng xe trên hệ thống.';
+    }
+
+    if (wantsRent(msg) && (msg.includes('quy trình') || msg.includes('quy trinh') || msg.includes('các bước') || msg.includes('cac buoc') || msg.includes('như thế nào'))) {
+        return '🛞 **Quy trình thuê:** Chọn xe → Chọn ngày nhận/trả → Đặt xe → Thanh toán/cọc → Nhận xe → Trả xe & tất toán.';
+    }
+
+    if (msg.includes('quy trình') || msg.includes('quy trinh') || msg.includes('các bước') || msg.includes('cac buoc')) {
+        return '🛞 **Thuê:** chọn xe → ngày → đặt thuê → cọc/thanh toán → nhận/trả xe.\n🛒 **Mua:** chọn xe bán → đặt mua/cọc → thanh toán → thủ tục. Xem chi tiết từng bước trên trang xe.';
+    }
+
+    if (msg.includes('xem xe') || msg.includes('lich xem') || msg.includes('lịch xem') || msg.includes('đặt lịch')) {
+        return '📅 Bạn có thể **đặt lịch xem xe** từ trang chi tiết xe (tab Xem / Đặt lịch). Với xe bán, nên xem trực tiếp trước khi quyết định.';
+    }
+
+    if (
+        (msg.includes('giá') || msg.includes('gia') || msg.includes('bao nhiêu') || msg.includes('bao nhieu') || msg.includes('phí') || msg.includes('phi')) &&
+        wantsSale(msg) &&
+        !wantsRent(msg)
+    ) {
+        if (!saleCars.length) {
+            return '💰 Hiện chưa có dữ liệu **xe bán** (giá một lần) trong hệ thống, hoặc đang tải. Bạn mở trang **Xe bán** (/cars/mua) nhé.';
         }
-        const topCars = pickTopCars(cars, 4).join(', ');
-        return `💰 Dữ liệu realtime hiện có **${totalCars} xe**.\n- Giá thấp nhất: **${formatVnd(minPrice)} VNĐ/ngày**\n- Giá cao nhất: **${formatVnd(maxPrice)} VNĐ/ngày**\n- Gợi ý xe giá tốt: ${topCars}`;
+        const sMin = Math.min(...saleCars.map((c) => c.salePrice ?? 0));
+        const sMax = Math.max(...saleCars.map((c) => c.salePrice ?? 0));
+        const top = pickTopSaleCars(cars, 4)
+            .map((c) => `${carLabel(c)} — **${formatVnd(c.salePrice ?? 0)}** VNĐ`)
+            .join('\n');
+        return `💰 **Giá bán (realtime):** ${saleCars.length} xe, từ **${formatVnd(sMin)}** đến **${formatVnd(sMax)}** VNĐ.\nGợi ý:\n${top}`;
     }
 
-    if (msg.includes('xe') && (msg.includes('rẻ') || msg.includes('gợi ý') || msg.includes('nào'))) {
-        if (!totalCars) return '🚗 Hiện mình chưa tải được danh sách xe realtime. Bạn mở trang Xe để xem ngay nhé.';
-        const cheapCars = [...cars]
-            .sort((a, b) => a.dailyPrice - b.dailyPrice)
-            .slice(0, 5)
-            .map((c, idx) => `${idx + 1}. ${c.model?.brand?.name || ''} ${c.model?.name || ''} - ${formatVnd(c.dailyPrice)} VNĐ/ngày`);
-        return `🚗 Top xe giá tốt hiện tại:\n${cheapCars.join('\n')}`;
+    if (msg.includes('giá') || msg.includes('gia') || msg.includes('bao nhiêu') || msg.includes('bao nhieu') || msg.includes('phí') || msg.includes('phi')) {
+        if (!totalCars) {
+            return '💰 Mình chưa đọc được dữ liệu xe realtime. Thử lại sau hoặc xem **/cars** (thuê) và **/cars/mua** (bán).';
+        }
+        const lines: string[] = [`💰 Tổng **${totalCars}** xe trong hệ thống.`];
+        if (rentCars.length) {
+            const dMin = Math.min(...rentCars.map((c) => c.dailyPrice ?? 0));
+            const dMax = Math.max(...rentCars.map((c) => c.dailyPrice ?? 0));
+            lines.push(`**Thuê:** ${rentCars.length} xe — **${formatVnd(dMin)}**–**${formatVnd(dMax)}** VNĐ/ngày.`);
+            lines.push(`Gợi ý thuê rẻ: ${pickTopRentCars(cars, 3).map(carLabel).join(', ')}`);
+        }
+        if (saleCars.length) {
+            const sMin = Math.min(...saleCars.map((c) => c.salePrice ?? 0));
+            const sMax = Math.max(...saleCars.map((c) => c.salePrice ?? 0));
+            lines.push(`**Mua:** ${saleCars.length} xe — **${formatVnd(sMin)}**–**${formatVnd(sMax)}** VNĐ.`);
+        }
+        return lines.join('\n');
     }
 
-    if (msg.includes('tư vấn xe') || msg.includes('tu van xe') || msg.includes('chon xe')) {
-        if (!totalCars) return '🚗 Mình chưa tải được dữ liệu xe realtime lúc này. Bạn thử lại sau vài giây nhé.';
-        const suggestions = [...cars]
-            .sort((a, b) => a.dailyPrice - b.dailyPrice)
-            .slice(0, 4)
-            .map((c) => `- ${c.model?.brand?.name || ''} ${c.model?.name || ''}: ${formatVnd(c.dailyPrice)} VNĐ/ngày`);
-        return `🚗 Mình gợi ý nhanh 4 xe dễ thuê từ dữ liệu hiện tại:\n${suggestions.join('\n')}\n\nBạn cho mình thêm ngân sách/ngày và số người, mình lọc chuẩn hơn nhé.`;
+    if (msg.includes('xe') && (msg.includes('rẻ') || msg.includes('re') || msg.includes('gợi ý') || msg.includes('goi y') || msg.includes('nào') || msg.includes('nao'))) {
+        if (!totalCars) return '🚗 Chưa tải được danh sách xe. Mở **/cars** hoặc **/cars/mua** nhé.';
+        if (wantsSale(msg) && !wantsRent(msg) && saleCars.length) {
+            const lines = pickTopSaleCars(cars, 5).map(
+                (c, i) => `${i + 1}. ${carLabel(c)} — ${formatVnd(c.salePrice ?? 0)} VNĐ`
+            );
+            return `🚗 **Xe bán giá tốt:**\n${lines.join('\n')}`;
+        }
+        if (rentCars.length) {
+            const lines = pickTopRentCars(cars, 5).map(
+                (c, i) => `${i + 1}. ${carLabel(c)} — ${formatVnd(c.dailyPrice ?? 0)} VNĐ/ngày`
+            );
+            return `🚗 **Thuê giá tốt:**\n${lines.join('\n')}`;
+        }
+        if (saleCars.length) {
+            const lines = pickTopSaleCars(cars, 5).map(
+                (c, i) => `${i + 1}. ${carLabel(c)} — ${formatVnd(c.salePrice ?? 0)} VNĐ`
+            );
+            return `🚗 **Xe bán:**\n${lines.join('\n')}`;
+        }
+        return '🚗 Chưa có xe phù hợp để gợi ý giá. Xem danh sách trên web.';
     }
 
-    if (msg.includes('suv') || msg.includes('7 chỗ') || msg.includes('gia đình')) {
-        const suvCars = cars.filter((c) => {
+    if (msg.includes('tư vấn xe') || msg.includes('tu van xe') || msg.includes('chọn xe') || msg.includes('chon xe')) {
+        if (!totalCars) return '🚗 Chưa có dữ liệu xe realtime. Thử lại sau.';
+        const chunks: string[] = [];
+        if (rentCars.length) {
+            const lines = pickTopRentCars(cars, 3)
+                .map((c) => `- ${carLabel(c)} (thuê): **${formatVnd(c.dailyPrice ?? 0)}** VNĐ/ngày`)
+                .join('\n');
+            chunks.push(`**Thuê:**\n${lines}`);
+        }
+        if (saleCars.length) {
+            const lines = pickTopSaleCars(cars, 3)
+                .map((c) => `- ${carLabel(c)} (mua): **${formatVnd(c.salePrice ?? 0)}** VNĐ`)
+                .join('\n');
+            chunks.push(`**Mua:**\n${lines}`);
+        }
+        return `🚗 Gợi ý nhanh:\n${chunks.join('\n\n')}\n\nCho mình biết bạn ưu tiên **thuê** hay **mua** và ngân sách nhé.`;
+    }
+
+    if (msg.includes('suv') || msg.includes('7 chỗ') || msg.includes('7 cho') || msg.includes('gia đình') || msg.includes('gia dinh')) {
+        const matchSuvName = (c: Car) => {
             const modelName = (c.model?.name || '').toLowerCase();
             return (
                 modelName.includes('fortuner') ||
@@ -103,26 +257,28 @@ async function tryBusinessReply(message: string): Promise<string | null> {
                 modelName.includes('everest') ||
                 modelName.includes('cxeight')
             );
-        });
-        if (!suvCars.length) {
-            return '🚙 Mình gợi ý nhóm SUV/7 chỗ cho gia đình. Bạn có thể lọc theo thương hiệu Toyota/Hyundai/Ford để chọn nhanh hơn nhé.';
+        };
+        const rentSuv = rentCars.filter(matchSuvName);
+        const saleSuv = saleCars.filter(matchSuvName);
+        const lines: string[] = [];
+        if (rentSuv.length) {
+            lines.push(
+                `**Thuê:**\n${rentSuv
+                    .slice(0, 4)
+                    .map((c) => `- ${carLabel(c)}: ${formatVnd(c.dailyPrice ?? 0)} VNĐ/ngày`)
+                    .join('\n')}`
+            );
         }
-        return `🚙 Gợi ý xe gia đình từ dữ liệu hiện tại:\n${suvCars
-            .slice(0, 4)
-            .map((c) => `- ${c.model?.brand?.name} ${c.model?.name}: ${formatVnd(c.dailyPrice)} VNĐ/ngày`)
-            .join('\n')}`;
-    }
-
-    if (msg.includes('điều kiện') || (msg.includes('thuê') && msg.includes('cần'))) {
-        return '📋 Điều kiện thuê xe AutoHub:\n1. CCCD/Hộ chiếu còn hiệu lực\n2. GPLX hợp lệ\n3. Hồ sơ tài khoản đầy đủ\n4. Đặt cọc theo chính sách từng xe';
-    }
-
-    if (msg.includes('quy trình') || msg.includes('các bước') || msg.includes('như thế nào')) {
-        return '🛞 Quy trình thuê xe:\n1) Chọn xe\n2) Chọn ngày nhận/trả\n3) Đặt xe\n4) Xác nhận và đặt cọc\n5) Nhận xe\n6) Trả xe và tất toán';
-    }
-
-    if (msg.includes('liên hệ') || msg.includes('hotline') || msg.includes('hỗ trợ')) {
-        return '📞 Liên hệ AutoHub:\n- Hotline: **1800-AUTO**\n- Email: **support@autohub.vn**\n- Giờ hỗ trợ: 07:00 - 22:00';
+        if (saleSuv.length) {
+            lines.push(
+                `**Mua:**\n${saleSuv
+                    .slice(0, 4)
+                    .map((c) => `- ${carLabel(c)}: ${formatVnd(c.salePrice ?? 0)} VNĐ`)
+                    .join('\n')}`
+            );
+        }
+        if (lines.length) return `🚙 Gợi ý SUV / gia đình:\n${lines.join('\n\n')}`;
+        return '🚙 Bạn có thể lọc SUV trên **/cars** (thuê) hoặc **/cars/mua** (bán) theo hãng Toyota / Hyundai / Ford.';
     }
 
     return null;
@@ -144,10 +300,10 @@ function toErrorMessage(error: unknown): string {
 
 function getBusinessFallback(message: string): string {
     const msg = message.toLowerCase();
-    if (msg.includes('xe') || msg.includes('tư vấn') || msg.includes('gia') || msg.includes('thuê')) {
-        return '🚗 Mình đang dùng chế độ dự phòng nghiệp vụ. Bạn có thể hỏi cụ thể như: "xe dưới 1 triệu/ngày", "xe gia đình 7 chỗ", "điều kiện thuê xe".';
+    if (msg.includes('xe') || msg.includes('tư vấn') || msg.includes('tu van') || msg.includes('gia') || msg.includes('thuê') || msg.includes('thue') || msg.includes('mua')) {
+        return '🚗 Chế độ dự phòng: hỏi **"giá thuê"**, **"giá bán xe"**, **"quy trình thuê/mua"**, **"điều kiện thuê"**, hoặc **"đặt lịch xem xe"**.';
     }
-    return '🤖 Mình đang ở chế độ dự phòng nghiệp vụ. Bạn thử hỏi về giá xe, quy trình thuê, điều kiện thuê hoặc liên hệ để mình hỗ trợ nhanh nhé.';
+    return '🤖 Mình đang ở chế độ dự phòng. Thử hỏi về thuê/mua xe, giá, quy trình — hoặc liên hệ hotline.';
 }
 
 export const sendChatMessage = async (message: string, history: ChatMessage[]): Promise<string> => {
@@ -156,16 +312,12 @@ export const sendChatMessage = async (message: string, history: ChatMessage[]): 
 
     try {
         const cars = await getCarsLive();
-        const liveContext = cars.length
-            ? `Du lieu realtime: tong ${cars.length} xe, gia tu ${formatVnd(
-                Math.min(...cars.map((c) => c.dailyPrice || 0))
-            )} den ${formatVnd(Math.max(...cars.map((c) => c.dailyPrice || 0)))} VND/ngay.`
-            : 'Du lieu realtime tam thoi chua tai duoc.';
+        const liveContext = buildLiveContextBlock(cars);
 
         const res = await axiosInstance.post('/api/ai/chat', {
             message,
             history,
-            systemPrompt: `${SYSTEM_PROMPT}\n\n${liveContext}`,
+            systemPrompt: `${SYSTEM_PROMPT}\n\nDu lieu realtime (API): ${liveContext}`,
         });
         if (res?.data?.success && res?.data?.message) {
             return res.data.message as string;

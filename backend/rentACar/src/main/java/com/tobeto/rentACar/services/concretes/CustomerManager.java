@@ -101,4 +101,11 @@ public class CustomerManager implements CustomerService {
 
     }
 
+    @Override
+    public GetCustomerByIdResponse getMine(int userId) {
+        return customerRepository.findFirstByUserIdOrderByIdDesc(userId)
+                .map(c -> this.modelMapperService.forResponse().map(c, GetCustomerByIdResponse.class))
+                .orElse(null);
+    }
+
 }

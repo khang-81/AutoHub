@@ -17,4 +17,7 @@ public class AddSaleOrderRequest {
     @NotNull
     @Pattern(regexp = "CASH|BANK_TRANSFER", message = "Invalid payment method")
     private String paymentMethod;
+
+    /** Mã khuyến mãi (tuỳ chọn). Backend sẽ validate, snapshot và decrement usage count. */
+    private String promotionCode;
 }
