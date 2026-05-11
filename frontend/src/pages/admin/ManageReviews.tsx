@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { MessageSquare, Search, Star, Trash2 } from 'lucide-react';
-import { deleteReviewAdminApi, getAllReviewsAdminApi, type ReviewDto } from '../../api/reviews';
+import { MessageSquare, Reply, Search, Star, Trash2 } from 'lucide-react';
+import { adminReplyReviewApi, deleteReviewAdminApi, getAllReviewsAdminApi, type ReviewDto } from '../../api/reviews';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
@@ -14,6 +14,8 @@ const ManageReviews = () => {
   const [sourceFilter, setSourceFilter] = useState<'ALL' | 'RENTAL' | 'SALE_ORDER'>('ALL');
   const [ratingFilter, setRatingFilter] = useState<number | 0>(0);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [replyId, setReplyId] = useState<number | null>(null);
+  const [replyText, setReplyText] = useState('');
 
   const { data: reviews = [], isLoading } = useQuery<ReviewDto[]>({
     queryKey: ['adminReviews'],
@@ -35,6 +37,20 @@ const ManageReviews = () => {
     onError: (err: unknown) => {
       const e = err as { response?: { data?: { message?: string } } };
       showToast(e?.response?.data?.message || 'Không thể xóa đánh giá', 'error');
+    },
+  });
+
+  const replyMutation = useMutation({
+    mutationFn: ({ id, reply }: { id: number; reply: string }) => adminReplyReviewApi(id, reply),
+    onSuccess: (res: { message?: string }) => {
+      showToast(res?.message || 'Đã phản hồi', 'success');
+      queryClient.invalidateQueries({ queryKey: ['adminReviews'] });
+      setReplyId(null);
+      setReplyText('');
+    },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { message?: string } } };
+      showToast(e?.response?.data?.message || 'Không thể phản hồi', 'error');
     },
   });
 
@@ -134,7 +150,15 @@ const ManageReviews = () => {
                       <p className="line-clamp-2">{r.comment || <span className="text-gray-400 italic">Không có nhận xét</span>}</p>
                     </td>
                     <td className="px-5 py-4 text-right text-gray-500">{formatDate(r.createdDate)}</td>
-                    <td className="px-5 py-4 text-right">
+                    <td className="px-5 py-4 text-right flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => { setReplyId(r.id); setReplyText(r.adminReply || ''); }}
+                        className="p-2 rounded-lg text-primary hover:bg-primary/10 transition-colors"
+                        title="Phản hồi"
+                      >
+                        <Reply className="w-4 h-4" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => setDeleteId(r.id)}
@@ -170,6 +194,29 @@ const ManageReviews = () => {
             {deleteMutation.isPending ? 'Đang xóa...' : 'Xóa'}
           </button>
           <button type="button" onClick={() => setDeleteId(null)} className="btn-outline">
+            Hủy
+          </button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={!!replyId} onClose={() => setReplyId(null)} title="Phản hồi đánh giá" size="sm">
+        <textarea
+          value={replyText}
+          onChange={(e) => setReplyText(e.target.value)}
+          rows={4}
+          className="input-field w-full mb-4"
+          placeholder="Nhập phản hồi từ quản trị viên..."
+        />
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => replyId && replyText.trim() && replyMutation.mutate({ id: replyId, reply: replyText.trim() })}
+            disabled={replyMutation.isPending || !replyText.trim()}
+            className="btn-primary disabled:opacity-60"
+          >
+            {replyMutation.isPending ? 'Đang gửi...' : 'Gửi phản hồi'}
+          </button>
+          <button type="button" onClick={() => setReplyId(null)} className="btn-outline">
             Hủy
           </button>
         </div>

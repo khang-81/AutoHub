@@ -69,6 +69,12 @@ public class Car extends BaseEntity {
     @Column(name = "fuel_type", length = 16)
     private String fuelType;
 
+    @Column(name = "average_rating")
+    private Double averageRating;
+
+    @Column(name = "review_count", nullable = false)
+    private int reviewCount;
+
     @ManyToOne()
     @JoinColumn(name="model_id")
     private Model model;
