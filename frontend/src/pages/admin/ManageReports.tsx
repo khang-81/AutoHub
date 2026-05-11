@@ -30,6 +30,7 @@ import { getAllCarsApi } from '../../api/cars';
 import { getAllUsersApi } from '../../api/users';
 import { getAllBrandsApi } from '../../api/brands';
 import { getAllSaleOrdersApi } from '../../api/saleOrders';
+import axiosInstance from '../../api/axiosInstance';
 import { formatCurrency } from '../../utils/helpers';
 import type { Rental, Car as CarType, SaleOrder } from '../../types';
 import { format, parseISO, startOfMonth } from 'date-fns';
@@ -278,6 +279,26 @@ const ManageReports = () => {
     downloadCsv('don-mua-xe-chi-tiet.csv', header, rows);
   };
 
+  const handleExportExcel = async () => {
+    const res = await axiosInstance.get('/api/reports/rentals/excel', { responseType: 'blob' });
+    const url = URL.createObjectURL(res.data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'bao-cao-thue-xe.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportPdf = async () => {
+    const res = await axiosInstance.get('/api/reports/rentals/pdf', { responseType: 'blob' });
+    const url = URL.createObjectURL(res.data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'bao-cao-thue-xe.pdf';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const formatYAxis = (value: number) => {
     if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(0)}M`;
     if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K`;
@@ -329,6 +350,22 @@ const ManageReports = () => {
           >
             <Download className="w-4 h-4" />
             CSV đơn mua
+          </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            className="flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-colors text-sm"
+          >
+            <FileText className="w-4 h-4" />
+            Excel
+          </button>
+          <button
+            type="button"
+            onClick={handleExportPdf}
+            className="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-colors text-sm"
+          >
+            <FileText className="w-4 h-4" />
+            PDF
           </button>
         </div>
       </div>
