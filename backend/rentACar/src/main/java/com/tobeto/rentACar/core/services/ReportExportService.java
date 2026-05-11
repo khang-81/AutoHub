@@ -1,13 +1,16 @@
 package com.tobeto.rentACar.core.services;
 
-import com.lowagie.text.*;
+import com.lowagie.text.Document;
 import com.lowagie.text.Font;
+import com.lowagie.text.PageSize;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.Phrase;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import com.tobeto.rentACar.entities.concretes.Rental;
-import com.tobeto.rentACar.entities.concretes.SaleOrder;
-import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 
@@ -31,23 +34,23 @@ public class ReportExportService {
             headerStyle.setFont(font);
 
             String[] headers = {"ID", "Khách", "Xe", "Ngày bắt đầu", "Ngày kết thúc", "Trạng thái", "Tổng tiền"};
-            Row headerRow = sheet.createRow(0);
+            org.apache.poi.ss.usermodel.Row headerRow = sheet.createRow(0);
             for (int i = 0; i < headers.length; i++) {
-                Cell cell = headerRow.createCell(i);
+                org.apache.poi.ss.usermodel.Cell cell = headerRow.createCell(i);
                 cell.setCellValue(headers[i]);
                 cell.setCellStyle(headerStyle);
             }
 
             int rowIdx = 1;
             for (Rental r : rentals) {
-                Row row = sheet.createRow(rowIdx++);
+                org.apache.poi.ss.usermodel.Row row = sheet.createRow(rowIdx++);
                 row.createCell(0).setCellValue(r.getId());
                 row.createCell(1).setCellValue(r.getUser() != null ? r.getUser().getEmail() : "");
                 row.createCell(2).setCellValue(carLabel(r));
                 row.createCell(3).setCellValue(r.getStartDate() != null ? r.getStartDate().format(DATE_FMT) : "");
                 row.createCell(4).setCellValue(r.getEndDate() != null ? r.getEndDate().format(DATE_FMT) : "");
                 row.createCell(5).setCellValue(r.getRentalStatus() != null ? r.getRentalStatus() : "");
-                row.createCell(6).setCellValue(r.getTotalPrice() != null ? r.getTotalPrice().doubleValue() : 0);
+                row.createCell(6).setCellValue(r.getTotalPrice());
             }
 
             for (int i = 0; i < headers.length; i++) sheet.autoSizeColumn(i);
@@ -85,7 +88,7 @@ public class ReportExportService {
             table.addCell(r.getStartDate() != null ? r.getStartDate().format(DATE_FMT) : "");
             table.addCell(r.getEndDate() != null ? r.getEndDate().format(DATE_FMT) : "");
             table.addCell(r.getRentalStatus() != null ? r.getRentalStatus() : "");
-            table.addCell(r.getTotalPrice() != null ? String.format("%,.0f", r.getTotalPrice().doubleValue()) : "0");
+            table.addCell(String.format("%,.0f", r.getTotalPrice()));
         }
 
         doc.add(table);
