@@ -1,6 +1,7 @@
 package com.tobeto.rentACar.core.configurations;
 
 import com.tobeto.rentACar.core.filters.JwtAuthFilter;
+import com.tobeto.rentACar.core.filters.RateLimitFilter;
 import lombok.AllArgsConstructor;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
@@ -38,6 +39,7 @@ public class SecurityConfiguration {
 
     private final PasswordEncoder passwordEncoder;
     private final JwtAuthFilter jwtAuthFilter;
+    private final RateLimitFilter rateLimitFilter;
     private final UserDetailsService userDetailsService;
 
     /**
@@ -59,8 +61,6 @@ public class SecurityConfiguration {
         return source;
     }
 
-    /** Công khai: tài liệu API, vai trò (đọc), thương hiệu, xe, màu, liên hệ, AI proxy, file KYC tĩnh.
-     *  Không mở /api/users/** — xem UsersController + JWT. */
     private static final String[] PUBLIC_PREFIXES = {
             "/swagger-ui/**",
             "/v2/api-docs",
@@ -71,8 +71,6 @@ public class SecurityConfiguration {
             "/api/cars/**",
             "/api/colors/**",
             "/api/contact/**",
-            "/api/ai/**",
-            "/files/**",
             "/actuator/**"
     };
 
@@ -96,6 +94,7 @@ public class SecurityConfiguration {
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(x -> x.anyRequest().permitAll())
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         return http.build();
     }
