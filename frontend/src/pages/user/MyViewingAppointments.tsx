@@ -1,9 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarClock, Car, Eye, X } from 'lucide-react';
+import { CalendarClock, Car, Eye, RefreshCw, X } from 'lucide-react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   cancelMyViewingAppointmentApi,
   getMyViewingAppointmentsApi,
+  rescheduleViewingAppointmentApi,
+  getSlotAvailabilityApi,
+  type SlotAvailability,
 } from '../../api/viewingAppointments';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { useToast } from '../../components/ui/Toast';
@@ -30,6 +34,10 @@ const statusLabel = (s: string) => {
 const MyViewingAppointments = () => {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const [rescheduleId, setRescheduleId] = useState<number | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('');
+  const [slots, setSlots] = useState<SlotAvailability[]>([]);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['myViewingAppointments'],
@@ -47,6 +55,41 @@ const MyViewingAppointments = () => {
       showToast(e?.response?.data?.message || 'Không thể hủy lịch', 'error');
     },
   });
+
+  const rescheduleMutation = useMutation({
+    mutationFn: ({ id, scheduledAt }: { id: number; scheduledAt: string }) =>
+      rescheduleViewingAppointmentApi(id, scheduledAt),
+    onSuccess: (data) => {
+      showToast(data?.message || 'Đã dời lịch', 'success');
+      setRescheduleId(null);
+      queryClient.invalidateQueries({ queryKey: ['myViewingAppointments'] });
+    },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { message?: string } } };
+      showToast(e?.response?.data?.message || 'Không thể dời lịch', 'error');
+    },
+  });
+
+  const handleDateChange = async (date: string) => {
+    setRescheduleDate(date);
+    setRescheduleTime('');
+    if (date) {
+      try {
+        const result = await getSlotAvailabilityApi(date);
+        setSlots(result);
+      } catch {
+        setSlots([]);
+      }
+    } else {
+      setSlots([]);
+    }
+  };
+
+  const submitReschedule = () => {
+    if (!rescheduleId || !rescheduleDate || !rescheduleTime) return;
+    const scheduledAt = `${rescheduleDate}T${rescheduleTime}:00`;
+    rescheduleMutation.mutate({ id: rescheduleId, scheduledAt });
+  };
 
   return (
     <div className="space-y-6">
@@ -74,6 +117,68 @@ const MyViewingAppointments = () => {
         </div>
       ) : (
         <div className="space-y-4">
+          {/* Reschedule modal */}
+          {rescheduleId && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+              <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
+                <h3 className="font-heading font-semibold text-navy text-lg mb-4">Dời lịch hẹn</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm text-gray-600 mb-1 block">Ngày mới</label>
+                    <input
+                      type="date"
+                      value={rescheduleDate}
+                      onChange={(e) => handleDateChange(e.target.value)}
+                      min={new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]}
+                      className="w-full border rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
+                  {slots.length > 0 && (
+                    <div>
+                      <label className="text-sm text-gray-600 mb-1 block">Chọn khung giờ</label>
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {slots.map((s) => (
+                          <button
+                            key={s.startTime}
+                            type="button"
+                            disabled={!s.available}
+                            onClick={() => setRescheduleTime(s.startTime.substring(0, 5))}
+                            className={`text-xs py-1.5 rounded-lg border transition-colors ${
+                              !s.available
+                                ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                                : rescheduleTime === s.startTime.substring(0, 5)
+                                ? 'bg-primary text-white border-primary'
+                                : 'hover:bg-primary/10 border-gray-200'
+                            }`}
+                          >
+                            {s.startTime.substring(0, 5)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2 mt-5">
+                  <button
+                    type="button"
+                    onClick={() => setRescheduleId(null)}
+                    className="flex-1 py-2 rounded-lg border text-sm hover:bg-gray-50"
+                  >
+                    Đóng
+                  </button>
+                  <button
+                    type="button"
+                    onClick={submitReschedule}
+                    disabled={!rescheduleDate || !rescheduleTime || rescheduleMutation.isPending}
+                    className="flex-1 py-2 rounded-lg bg-primary text-white text-sm disabled:opacity-50"
+                  >
+                    Xác nhận
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {items.map((row: ViewingAppointment) => (
             <div
               key={row.id}
@@ -120,6 +225,16 @@ const MyViewingAppointments = () => {
                     </p>
                   )}
                   <div className="flex flex-wrap gap-2">
+                    {(row.status === 'PENDING' || row.status === 'CONFIRMED') && (
+                      <button
+                        type="button"
+                        onClick={() => { setRescheduleId(row.id); setRescheduleDate(''); setRescheduleTime(''); setSlots([]); }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-medium"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        Dời lịch
+                      </button>
+                    )}
                     {row.status === 'PENDING' && (
                       <button
                         type="button"

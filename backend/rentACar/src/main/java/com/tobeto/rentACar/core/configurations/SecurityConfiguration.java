@@ -116,9 +116,7 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/api/rentals/public/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/models/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll()
-                        // customers/invoices: yêu cầu authenticated; admin endpoints vẫn cần @PreAuthorize.
-                        // /api/customers/me dùng @AuthenticationPrincipal — cần JWT để biết user.
-                        // (PII leak fix — xem AutoHub Sprint 0.)
+                        .requestMatchers(HttpMethod.GET, "/api/viewing-appointments/availability").permitAll()
                         .anyRequest().authenticated())
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

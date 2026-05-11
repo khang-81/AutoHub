@@ -5,10 +5,20 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 public interface ViewingAppointmentRepository extends JpaRepository<ViewingAppointment, Integer> {
+
+    /** Đếm lịch hẹn trong khung giờ [from, to) chưa bị huỷ — dùng để kiểm tra slot kín. */
+    @Query("SELECT COUNT(v) FROM ViewingAppointment v WHERE v.scheduledAt >= :from AND v.scheduledAt < :to AND v.status NOT IN ('CANCELLED','NO_SHOW')")
+    long countActiveInSlot(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /** Lấy tất cả lịch hẹn active trong 1 ngày — dùng cho endpoint availability. */
+    @Query("SELECT v FROM ViewingAppointment v WHERE CAST(v.scheduledAt AS date) = :date AND v.status NOT IN ('CANCELLED','NO_SHOW')")
+    List<ViewingAppointment> findActiveByDate(@Param("date") LocalDate date);
 
     @Query("""
             SELECT v FROM ViewingAppointment v

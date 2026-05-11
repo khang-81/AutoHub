@@ -5,6 +5,13 @@ import type {
   ViewingAppointment,
 } from '../types';
 
+export interface SlotAvailability {
+  startTime: string;
+  booked: number;
+  maxPerSlot: number;
+  available: boolean;
+}
+
 export async function createViewingAppointmentApi(
   body: CreateViewingAppointmentRequest
 ): Promise<ViewingAppointment> {
@@ -19,6 +26,21 @@ export async function getMyViewingAppointmentsApi(): Promise<ViewingAppointment[
 
 export async function cancelMyViewingAppointmentApi(id: number): Promise<{ success: boolean; message: string }> {
   const { data } = await axiosInstance.put(`/api/viewing-appointments/${id}/cancel`);
+  return data;
+}
+
+export async function rescheduleViewingAppointmentApi(
+  id: number,
+  scheduledAt: string
+): Promise<{ success: boolean; message: string }> {
+  const { data } = await axiosInstance.put(`/api/viewing-appointments/${id}/reschedule`, { scheduledAt });
+  return data;
+}
+
+export async function getSlotAvailabilityApi(date: string): Promise<SlotAvailability[]> {
+  const { data } = await axiosInstance.get<SlotAvailability[]>('/api/viewing-appointments/availability', {
+    params: { date },
+  });
   return data;
 }
 
