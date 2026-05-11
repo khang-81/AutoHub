@@ -31,6 +31,15 @@ public interface RentalRepository extends JpaRepository<Rental, Integer> {
     @Query("select u.email from Rental r join r.user u where r.id = :id")
     Optional<String> findUserEmailByRentalId(@Param("id") int id);
 
+    @Query("select count(r)>0 from Rental r where r.user.id = :userId and (r.rentalStatus is null or r.rentalStatus not in ('COMPLETED','CANCELLED'))")
+    boolean existsActiveByUserId(@Param("userId") int userId);
+
+    @Query("select count(r)>0 from Rental r where r.car.id = :carId and (r.rentalStatus is null or r.rentalStatus not in ('COMPLETED','CANCELLED'))")
+    boolean existsActiveByCarId(@Param("carId") int carId);
+
+    @Query("select count(r)>0 from Rental r where r.car.model.brand.id = :brandId and (r.rentalStatus is null or r.rentalStatus not in ('COMPLETED','CANCELLED'))")
+    boolean existsActiveByBrandId(@Param("brandId") int brandId);
+
     /**
      * Khớp logic hiển thị lịch bận trên CarDetail: đơn chưa trả xe, không hoàn tất/hủy.
      */

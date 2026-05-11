@@ -9,7 +9,9 @@ import com.tobeto.rentACar.core.utilities.results.SuccessResult;
 import com.tobeto.rentACar.entities.concretes.Car;
 import com.tobeto.rentACar.repositories.CarRepository;
 import com.tobeto.rentACar.repositories.CarSpecifications;
+import com.tobeto.rentACar.repositories.RentalRepository;
 import com.tobeto.rentACar.repositories.ReviewRepository;
+import com.tobeto.rentACar.repositories.SaleOrderRepository;
 import com.tobeto.rentACar.services.abstracts.CarService;
 import com.tobeto.rentACar.services.constants.Messages;
 import com.tobeto.rentACar.services.dtos.car.request.AddCarRequest;
@@ -42,6 +44,8 @@ import java.util.Set;
 @AllArgsConstructor
 public class CarManager implements CarService {
     private final CarRepository carRepository;
+    private final RentalRepository rentalRepository;
+    private final SaleOrderRepository saleOrderRepository;
     private final ReviewRepository reviewRepository;
     private final ModelMapperService modelMapperService;
     private final CarBusinessRule carBusinessRule;
@@ -313,6 +317,13 @@ public class CarManager implements CarService {
     public Result delete(DeleteCarRequest request) {
 
         carBusinessRule.existsCarById(request.getId());
+
+        if (rentalRepository.existsActiveByCarId(request.getId())) {
+            throw new BusinessException("Không thể xóa xe — còn đơn thuê đang hoạt động.");
+        }
+        if (saleOrderRepository.existsActiveByCarId(request.getId())) {
+            throw new BusinessException("Không thể xóa xe — còn đơn mua đang hoạt động.");
+        }
 
         carRepository.deleteById(request.getId());
 

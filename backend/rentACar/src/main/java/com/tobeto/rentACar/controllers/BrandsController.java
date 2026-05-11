@@ -1,7 +1,10 @@
 package com.tobeto.rentACar.controllers;
 
 
+import com.tobeto.rentACar.core.exceptions.types.BusinessException;
+import com.tobeto.rentACar.core.services.FileStorageService;
 import com.tobeto.rentACar.core.utilities.results.Result;
+import com.tobeto.rentACar.core.utilities.results.SuccessResult;
 import com.tobeto.rentACar.services.abstracts.BrandService;
 import com.tobeto.rentACar.services.dtos.brand.request.AddBrandRequest;
 import com.tobeto.rentACar.services.dtos.brand.request.DeleteBrandRequest;
@@ -13,7 +16,9 @@ import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -23,6 +28,7 @@ import java.util.List;
 public class BrandsController {
 
     private final BrandService brandService;
+    private final FileStorageService fileStorageService;
 
     @GetMapping("/getAllName")
     public List<String> getAllName() {
@@ -58,4 +64,18 @@ public class BrandsController {
        return brandService.update(request);
     }
 
+    @PreAuthorize("hasRole('admin')")
+    @PostMapping("/{id}/logo")
+    public Result uploadLogo(@PathVariable int id, @RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new BusinessException("File logo không được trống.");
+        }
+        try {
+            String logoPath = fileStorageService.storeBrandLogo(id, file);
+            brandService.updateLogo(id, logoPath);
+            return new SuccessResult("Đã cập nhật logo thương hiệu.");
+        } catch (IOException e) {
+            throw new BusinessException("Lỗi lưu file logo: " + e.getMessage());
+        }
+    }
 }

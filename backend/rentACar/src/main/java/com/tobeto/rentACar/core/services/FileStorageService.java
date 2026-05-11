@@ -26,6 +26,15 @@ public class FileStorageService {
         return relative;
     }
 
+    public String storeBrandLogo(int brandId, MultipartFile file) throws IOException {
+        String ext = extension(file.getOriginalFilename());
+        String relative = Paths.get("brands", "brand_" + brandId + ext).toString().replace('\\', '/');
+        Path dest = Paths.get(uploadRoot).resolve(relative).normalize();
+        Files.createDirectories(dest.getParent());
+        file.transferTo(dest.toFile());
+        return "/files/" + relative;
+    }
+
     private static String extension(String name) {
         if (name == null || !name.contains(".")) {
             return ".jpg";

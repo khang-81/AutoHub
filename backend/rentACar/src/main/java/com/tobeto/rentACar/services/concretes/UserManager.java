@@ -9,6 +9,8 @@ import com.tobeto.rentACar.core.utilities.results.SuccessDataResult;
 import com.tobeto.rentACar.core.utilities.results.SuccessResult;
 import com.tobeto.rentACar.entities.concretes.Role;
 import com.tobeto.rentACar.entities.concretes.User;
+import com.tobeto.rentACar.repositories.RentalRepository;
+import com.tobeto.rentACar.repositories.SaleOrderRepository;
 import com.tobeto.rentACar.repositories.UserRepository;
 import com.tobeto.rentACar.services.abstracts.RoleService;
 import com.tobeto.rentACar.services.abstracts.UserService;
@@ -38,6 +40,8 @@ import java.util.stream.Collectors;
 public class UserManager implements UserService {
 
     private final UserRepository userRepository;
+    private final RentalRepository rentalRepository;
+    private final SaleOrderRepository saleOrderRepository;
     private final ModelMapperService modelMapperService;
     private final UserBusinessRule userBusinessRule;
     private final PasswordEncoder passwordEncoder;
@@ -119,6 +123,13 @@ public class UserManager implements UserService {
     public Result delete(DeleteUserRequest request) {
 
         userBusinessRule.existsUserById(request.getId());
+
+        if (rentalRepository.existsActiveByUserId(request.getId())) {
+            throw new BusinessException("Không thể xóa/khóa tài khoản — người dùng còn đơn thuê đang hoạt động.");
+        }
+        if (saleOrderRepository.existsActiveByUserId(request.getId())) {
+            throw new BusinessException("Không thể xóa/khóa tài khoản — người dùng còn đơn mua đang hoạt động.");
+        }
 
         userRepository.deleteById(request.getId());
 

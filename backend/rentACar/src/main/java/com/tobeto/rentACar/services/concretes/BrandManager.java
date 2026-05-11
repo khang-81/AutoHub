@@ -1,5 +1,6 @@
 package com.tobeto.rentACar.services.concretes;
 
+import com.tobeto.rentACar.core.exceptions.types.BusinessException;
 import com.tobeto.rentACar.core.exceptions.types.NotFoundException;
 import com.tobeto.rentACar.core.utilities.messages.MessageService;
 import com.tobeto.rentACar.core.utilities.mappers.ModelMapperService;
@@ -7,6 +8,8 @@ import com.tobeto.rentACar.core.utilities.results.Result;
 import com.tobeto.rentACar.core.utilities.results.SuccessResult;
 import com.tobeto.rentACar.entities.concretes.Brand;
 import com.tobeto.rentACar.repositories.BrandRepository;
+import com.tobeto.rentACar.repositories.RentalRepository;
+import com.tobeto.rentACar.repositories.SaleOrderRepository;
 import com.tobeto.rentACar.services.abstracts.BrandService;
 import com.tobeto.rentACar.services.constants.Messages;
 import com.tobeto.rentACar.services.dtos.brand.request.AddBrandRequest;
@@ -29,6 +32,8 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 public class BrandManager implements BrandService {
     private final BrandRepository brandRepository;
+    private final RentalRepository rentalRepository;
+    private final SaleOrderRepository saleOrderRepository;
     private final ModelMapperService modelMapperService;
     private final BrandBusinessRule brandBusinessRule;
     private MessageService messageService;
@@ -104,8 +109,24 @@ public class BrandManager implements BrandService {
 
         brandBusinessRule.existsBrandById(request.getId());
 
+        if (rentalRepository.existsActiveByBrandId(request.getId())) {
+            throw new BusinessException("Không thể xóa thương hiệu — còn đơn thuê đang hoạt động.");
+        }
+        if (saleOrderRepository.existsActiveByBrandId(request.getId())) {
+            throw new BusinessException("Không thể xóa thương hiệu — còn đơn mua đang hoạt động.");
+        }
+
         brandRepository.deleteById(request.getId());
 
         return new SuccessResult(messageService.getMessage(Messages.Brand.brandDeleteSuccess));
+    }
+
+    @Override
+    @CacheEvict(cacheNames = CacheConfig.BRANDS, allEntries = true)
+    public void updateLogo(int brandId, String logoPath) {
+        Brand brand = brandRepository.findById(brandId).orElseThrow(
+                () -> new NotFoundException(messageService.getMessage(Messages.Brand.getBrandNotFoundMessage)));
+        brand.setLogoPath(logoPath);
+        brandRepository.save(brand);
     }
 }
