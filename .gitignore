@@ -20,3 +20,16 @@ Desktop.ini
 # Test / coverage (if generated locally)
 **/coverage/
 **/test-output/
+
+# Playwright
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
+e2e/blob-report/
+
+# OS metadata
+.DS_Store
+
+# Merge conflict debris
+*.orig
+*.rej
