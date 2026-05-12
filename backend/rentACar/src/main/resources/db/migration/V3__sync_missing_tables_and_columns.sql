@@ -94,13 +94,23 @@ BEGIN
     ALTER TABLE [dbo].[users] ADD [created_at] DATETIME2(7) NULL;
 END;
 
-UPDATE [dbo].[users]
-SET [password_hash] = [password]
-WHERE [password_hash] IS NULL AND [password] IS NOT NULL;
+IF COL_LENGTH('dbo.users', 'password_hash') IS NOT NULL
+BEGIN
+    EXEC(N'
+        UPDATE [dbo].[users]
+        SET [password_hash] = [password]
+        WHERE [password_hash] IS NULL AND [password] IS NOT NULL;
+    ');
+END;
 
-UPDATE [dbo].[users]
-SET [created_at] = CAST([created_date] AS DATETIME2(7))
-WHERE [created_at] IS NULL AND [created_date] IS NOT NULL;
+IF COL_LENGTH('dbo.users', 'created_at') IS NOT NULL
+BEGIN
+    EXEC(N'
+        UPDATE [dbo].[users]
+        SET [created_at] = CAST([created_date] AS DATETIME2(7))
+        WHERE [created_at] IS NULL AND [created_date] IS NOT NULL;
+    ');
+END;
 
 IF NOT EXISTS (
     SELECT 1
@@ -109,9 +119,11 @@ IF NOT EXISTS (
       AND object_id = OBJECT_ID(N'dbo.users')
 )
 BEGIN
-    CREATE UNIQUE INDEX [UX_users_email_not_null]
-    ON [dbo].[users]([email])
-    WHERE [email] IS NOT NULL;
+    EXEC(N'
+        CREATE UNIQUE INDEX [UX_users_email_not_null]
+        ON [dbo].[users]([email])
+        WHERE [email] IS NOT NULL;
+    ');
 END;
 
 IF NOT EXISTS (
@@ -121,9 +133,11 @@ IF NOT EXISTS (
       AND object_id = OBJECT_ID(N'dbo.users')
 )
 BEGIN
-    CREATE UNIQUE INDEX [UX_users_phone_not_null]
-    ON [dbo].[users]([phone])
-    WHERE [phone] IS NOT NULL;
+    EXEC(N'
+        CREATE UNIQUE INDEX [UX_users_phone_not_null]
+        ON [dbo].[users]([phone])
+        WHERE [phone] IS NOT NULL;
+    ');
 END;
 
 /* ---------------------------------------------------------------------------
@@ -232,25 +246,27 @@ BEGIN
     ALTER TABLE [dbo].[sale_orders] ADD [created_at] DATETIME2(7) NULL;
 END;
 
-UPDATE [dbo].[sale_orders]
-SET [sale_car_id] = [car_id]
-WHERE [sale_car_id] IS NULL AND [car_id] IS NOT NULL;
+EXEC(N'
+    UPDATE [dbo].[sale_orders]
+    SET [sale_car_id] = [car_id]
+    WHERE [sale_car_id] IS NULL AND [car_id] IS NOT NULL;
 
-UPDATE [dbo].[sale_orders]
-SET [total_amount] = CAST([total_price] AS DECIMAL(15,2))
-WHERE [total_amount] IS NULL;
+    UPDATE [dbo].[sale_orders]
+    SET [total_amount] = CAST([total_price] AS DECIMAL(15,2))
+    WHERE [total_amount] IS NULL;
 
-UPDATE [dbo].[sale_orders]
-SET [status] = [order_status]
-WHERE [status] IS NULL AND [order_status] IS NOT NULL;
+    UPDATE [dbo].[sale_orders]
+    SET [status] = [order_status]
+    WHERE [status] IS NULL AND [order_status] IS NOT NULL;
 
-UPDATE [dbo].[sale_orders]
-SET [order_date] = CAST([created_date] AS DATETIME2(7))
-WHERE [order_date] IS NULL AND [created_date] IS NOT NULL;
+    UPDATE [dbo].[sale_orders]
+    SET [order_date] = CAST([created_date] AS DATETIME2(7))
+    WHERE [order_date] IS NULL AND [created_date] IS NOT NULL;
 
-UPDATE [dbo].[sale_orders]
-SET [created_at] = CAST([created_date] AS DATETIME2(7))
-WHERE [created_at] IS NULL AND [created_date] IS NOT NULL;
+    UPDATE [dbo].[sale_orders]
+    SET [created_at] = CAST([created_date] AS DATETIME2(7))
+    WHERE [created_at] IS NULL AND [created_date] IS NOT NULL;
+');
 
 IF COL_LENGTH('dbo.rentals', 'rental_car_id') IS NULL
 BEGIN
@@ -287,29 +303,31 @@ BEGIN
     ALTER TABLE [dbo].[rentals] ADD [created_at] DATETIME2(7) NULL;
 END;
 
-UPDATE [dbo].[rentals]
-SET [rental_car_id] = [car_id]
-WHERE [rental_car_id] IS NULL AND [car_id] IS NOT NULL;
+EXEC(N'
+    UPDATE [dbo].[rentals]
+    SET [rental_car_id] = [car_id]
+    WHERE [rental_car_id] IS NULL AND [car_id] IS NOT NULL;
 
-UPDATE [dbo].[rentals]
-SET [actual_return_date] = CAST([return_date] AS DATETIME2(7))
-WHERE [actual_return_date] IS NULL AND [return_date] IS NOT NULL;
+    UPDATE [dbo].[rentals]
+    SET [actual_return_date] = CAST([return_date] AS DATETIME2(7))
+    WHERE [actual_return_date] IS NULL AND [return_date] IS NOT NULL;
 
-UPDATE [dbo].[rentals]
-SET [total_amount] = CAST([total_price] AS DECIMAL(15,2))
-WHERE [total_amount] IS NULL;
+    UPDATE [dbo].[rentals]
+    SET [total_amount] = CAST([total_price] AS DECIMAL(15,2))
+    WHERE [total_amount] IS NULL;
 
-UPDATE [dbo].[rentals]
-SET [late_fee] = CAST([late_fee_amount] AS DECIMAL(15,2))
-WHERE [late_fee] IS NULL AND [late_fee_amount] IS NOT NULL;
+    UPDATE [dbo].[rentals]
+    SET [late_fee] = CAST([late_fee_amount] AS DECIMAL(15,2))
+    WHERE [late_fee] IS NULL AND [late_fee_amount] IS NOT NULL;
 
-UPDATE [dbo].[rentals]
-SET [status] = [rental_status]
-WHERE [status] IS NULL AND [rental_status] IS NOT NULL;
+    UPDATE [dbo].[rentals]
+    SET [status] = [rental_status]
+    WHERE [status] IS NULL AND [rental_status] IS NOT NULL;
 
-UPDATE [dbo].[rentals]
-SET [created_at] = CAST([created_date] AS DATETIME2(7))
-WHERE [created_at] IS NULL AND [created_date] IS NOT NULL;
+    UPDATE [dbo].[rentals]
+    SET [created_at] = CAST([created_date] AS DATETIME2(7))
+    WHERE [created_at] IS NULL AND [created_date] IS NOT NULL;
+');
 
 IF COL_LENGTH('dbo.viewing_appointments', 'appointment_date') IS NULL
 BEGIN
@@ -336,27 +354,29 @@ BEGIN
     ALTER TABLE [dbo].[viewing_appointments] ADD [created_at] DATETIME2(7) NULL;
 END;
 
-UPDATE va
-SET [appointment_date] = [scheduled_at]
-FROM [dbo].[viewing_appointments] va
-WHERE va.[appointment_date] IS NULL AND va.[scheduled_at] IS NOT NULL;
+EXEC(N'
+    UPDATE va
+    SET [appointment_date] = [scheduled_at]
+    FROM [dbo].[viewing_appointments] va
+    WHERE va.[appointment_date] IS NULL AND va.[scheduled_at] IS NOT NULL;
 
-UPDATE va
-SET [created_at] = CAST([created_date] AS DATETIME2(7))
-FROM [dbo].[viewing_appointments] va
-WHERE va.[created_at] IS NULL AND va.[created_date] IS NOT NULL;
+    UPDATE va
+    SET [created_at] = CAST([created_date] AS DATETIME2(7))
+    FROM [dbo].[viewing_appointments] va
+    WHERE va.[created_at] IS NULL AND va.[created_date] IS NOT NULL;
 
-UPDATE va
-SET [sale_car_id] = va.[car_id]
-FROM [dbo].[viewing_appointments] va
-INNER JOIN [dbo].[cars] c ON c.[id] = va.[car_id]
-WHERE va.[sale_car_id] IS NULL AND c.[listing_type] = N'SALE_ONLY';
+    UPDATE va
+    SET [sale_car_id] = va.[car_id]
+    FROM [dbo].[viewing_appointments] va
+    INNER JOIN [dbo].[cars] c ON c.[id] = va.[car_id]
+    WHERE va.[sale_car_id] IS NULL AND c.[listing_type] = N''SALE_ONLY'';
 
-UPDATE va
-SET [rental_car_id] = va.[car_id]
-FROM [dbo].[viewing_appointments] va
-INNER JOIN [dbo].[cars] c ON c.[id] = va.[car_id]
-WHERE va.[rental_car_id] IS NULL AND c.[listing_type] = N'RENT_ONLY';
+    UPDATE va
+    SET [rental_car_id] = va.[car_id]
+    FROM [dbo].[viewing_appointments] va
+    INNER JOIN [dbo].[cars] c ON c.[id] = va.[car_id]
+    WHERE va.[rental_car_id] IS NULL AND c.[listing_type] = N''RENT_ONLY'';
+');
 
 IF COL_LENGTH('dbo.reviews', 'sale_car_id') IS NULL
 BEGIN
@@ -378,21 +398,23 @@ BEGIN
     ALTER TABLE [dbo].[reviews] ADD [created_at] DATETIME2(7) NULL;
 END;
 
-UPDATE rv
-SET [rental_car_id] = r.[car_id]
-FROM [dbo].[reviews] rv
-INNER JOIN [dbo].[rentals] r ON r.[id] = rv.[rental_id]
-WHERE rv.[rental_car_id] IS NULL;
+EXEC(N'
+    UPDATE rv
+    SET [rental_car_id] = r.[car_id]
+    FROM [dbo].[reviews] rv
+    INNER JOIN [dbo].[rentals] r ON r.[id] = rv.[rental_id]
+    WHERE rv.[rental_car_id] IS NULL;
 
-UPDATE rv
-SET [sale_car_id] = s.[car_id]
-FROM [dbo].[reviews] rv
-INNER JOIN [dbo].[sale_orders] s ON s.[id] = rv.[sale_order_id]
-WHERE rv.[sale_car_id] IS NULL;
+    UPDATE rv
+    SET [sale_car_id] = s.[car_id]
+    FROM [dbo].[reviews] rv
+    INNER JOIN [dbo].[sale_orders] s ON s.[id] = rv.[sale_order_id]
+    WHERE rv.[sale_car_id] IS NULL;
 
-UPDATE [dbo].[reviews]
-SET [created_at] = CAST([created_date] AS DATETIME2(7))
-WHERE [created_at] IS NULL AND [created_date] IS NOT NULL;
+    UPDATE [dbo].[reviews]
+    SET [created_at] = CAST([created_date] AS DATETIME2(7))
+    WHERE [created_at] IS NULL AND [created_date] IS NOT NULL;
+');
 
 /* ---------------------------------------------------------------------------
    5) Chat sessions table from spec

@@ -1,16 +1,14 @@
-# Rent-A-Car / AutoHub: SQL Server + API (profile prod). Sao chép docker-compose.env.example -> .env
-# Chạy: docker compose up --build
-# Lần đầu build db-init có thể mất vài phút (cài mssql-tools18).
-#
-# MSSQL_SA_PASSWORD trong .env phải đủ mạnh (Microsoft): ≥8 ký tự và gồm ít nhất 3 trong 4 nhóm
-# chữ hoa, chữ thường, số, ký tự đặc biệt. Mật khẩu kiểu 12345678 → container db exit 255.
+# Rent-A-Car / AutoHub: SQL Server + API (profile prod).
+# Copy .env.example -> .env and fill in secrets.
+# Run: docker compose up --build
 
 name: rentacar
 
 services:
-  db:
+  sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     platform: linux/amd64
+    hostname: sqlserver
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
@@ -18,22 +16,22 @@ services:
       - "${MSSQL_PORT:-1433}:1433"
     volumes:
       - mssql_data:/var/opt/mssql
-    # pgrep sqlservr báo healthy quá sớm (trước khi recovery xong) → db-init dùng retry trong entrypoint.sh.
     healthcheck:
-      test: ["CMD-SHELL", "pgrep sqlservr || exit 1"]
-      interval: 10s
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' -b -o /dev/null || exit 1"]
+      interval: 15s
       retries: 30
       start_period: 60s
+    restart: unless-stopped
 
   db-init:
     build:
       context: ./docker/sqlserver-init
     platform: linux/amd64
     depends_on:
-      db:
+      sqlserver:
         condition: service_started
     environment:
-      DB_HOST: db
+      DB_HOST: sqlserver
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
     restart: "no"
 
@@ -42,55 +40,49 @@ services:
       context: ./backend/rentACar
     platform: linux/amd64
     ports:
-      - "${API_PORT:-8081}:8081"
+      - "${API_PORT:-8080}:8080"
     healthcheck:
-      # Liveness: JVM đã sẵn sàng (không gộp DB — tránh 503 khi probe sớm). Security phải cho phép actuator.
-      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8081/actuator/health/liveness -o /dev/null"]
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8080/actuator/health/liveness -o /dev/null"]
       interval: 15s
       timeout: 10s
       retries: 30
       start_period: 150s
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      PORT: 8081
-      SPRING_DATASOURCE_URL: jdbc:sqlserver://db:1433;databaseName=autohub;encrypt=false;trustServerCertificate=true
+      PORT: "8080"
+      SPRING_DATASOURCE_URL: jdbc:sqlserver://sqlserver:1433;databaseName=autohub;encrypt=false;trustServerCertificate=true
       SPRING_DATASOURCE_USERNAME: sa
       SPRING_DATASOURCE_PASSWORD: ${MSSQL_SA_PASSWORD}
       JWT_KEY: ${JWT_KEY}
-      # Mỗi lần khởi động API: đặt lại mật khẩu admin demo (đặt rỗng trong .env nếu không muốn)
       APP_ADMIN_SEED_EMAIL: ${APP_ADMIN_SEED_EMAIL:-admin@autohub.local}
-      APP_ADMIN_SEED_PASSWORD: ${APP_ADMIN_SEED_PASSWORD:-12345678}
-      # Mặc định khớp WEB_PORT 3000 + Vite; ghi đè trong .env nếu deploy domain thật
-      # Gồm cổng web Docker (WEB_PORT mặc định 3001) + Vite — khớp docker-compose.override (VITE_API_URL → :8081)
-      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001,http://localhost:3002,http://127.0.0.1:3002,http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080}
-      JPA_DDL_AUTO: ${JPA_DDL_AUTO:-validate}
+      APP_ADMIN_SEED_PASSWORD: ${APP_ADMIN_SEED_PASSWORD:-}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080}
+      JPA_DDL_AUTO: ${JPA_DDL_AUTO:-update}
       APP_UPLOAD_ROOT: /app/uploads
-      # Gmail: MAIL_USERNAME = địa chỉ Gmail, MAIL_PASSWORD = mật khẩu ứng dụng (App Password), không phải mật khẩu đăng nhập
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
-      # Link trong email OTP — mặc định khớp WEB_PORT 3000 (SPA Docker)
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     volumes:
       - uploads_data:/app/uploads
     depends_on:
       db-init:
         condition: service_completed_successfully
+    restart: unless-stopped
 
   web:
-    # Luôn tách tên image app khỏi `node:*` / `nginx:*` — tránh Compose tag build đè lên base FROM.
     image: rentacar-web
     build:
       context: ./frontend
       args:
-        # Luôn rỗng: SPA gọi /api/* qua Nginx → api:8081 (tránh ERR_CONNECTION_REFUSED tới localhost:8081 khi API không publish port)
         VITE_API_URL: ""
     platform: linux/amd64
-    # Mặc định 3000 để truy cập trực tiếp tại http://localhost:3000.
     ports:
       - "${WEB_PORT:-3000}:80"
     depends_on:
       api:
         condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   mssql_data:
