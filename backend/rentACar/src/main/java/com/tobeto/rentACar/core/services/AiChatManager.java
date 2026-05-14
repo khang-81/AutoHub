@@ -86,12 +86,13 @@ public class AiChatManager implements AiChatService {
         payload.put("contents", toContents(request));
 
         String body = objectMapper.writeValueAsString(payload);
-        String url = String.format("%s/v1beta/models/%s:generateContent?key=%s", baseUrl, model, apiKey);
+        String url = String.format("%s/v1beta/models/%s:generateContent", baseUrl, model);
 
         HttpRequest httpRequest = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(25))
                 .header("Content-Type", "application/json")
+                .header("x-goog-api-key", apiKey)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
 

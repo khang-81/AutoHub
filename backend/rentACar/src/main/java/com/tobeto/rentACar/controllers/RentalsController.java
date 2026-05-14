@@ -82,7 +82,7 @@ public class RentalsController {
             throw new BusinessException("Yêu cầu đăng nhập.");
         }
         String token = tokenWithPrefix.replace("Bearer ", "");
-        int userId = jwtService.extractUserId(token);
+        int userId = jwtService.requireUserId(token);
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         boolean isAdmin = auth != null && auth.getAuthorities().stream()
                 .anyMatch(a -> "ROLE_admin".equals(a.getAuthority()) || "admin".equals(a.getAuthority()));
@@ -103,7 +103,7 @@ public class RentalsController {
             throw new BusinessException("Yêu cầu đăng nhập.");
         }
         String token = tokenWithPrefix.replace("Bearer ", "");
-        int tokenUserId = jwtService.extractUserId(token);
+        int tokenUserId = jwtService.requireUserId(token);
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         boolean isAdmin = auth != null && auth.getAuthorities().stream()
                 .anyMatch(a -> "ROLE_admin".equals(a.getAuthority()) || "admin".equals(a.getAuthority()));
@@ -128,7 +128,7 @@ public class RentalsController {
             throw new BusinessException("Yêu cầu đăng nhập.");
         }
         String token = tokenWithPrefix.replace("Bearer ", "");
-        int userID = jwtService.extractUserId(token);
+        int userID = jwtService.requireUserId(token);
 
         return rentalService.getByUserId(userID);
     }
@@ -144,7 +144,7 @@ public class RentalsController {
             throw new BusinessException("Yêu cầu đăng nhập.");
         }
         String token = tokenWithPrefix.replace("Bearer ", "");
-        int userId = jwtService.extractUserId(token);
+        int userId = jwtService.requireUserId(token);
         return rentalService.returnCarByUser(id, userId, body);
     }
 
@@ -155,7 +155,7 @@ public class RentalsController {
             throw new BusinessException("Yêu cầu đăng nhập.");
         }
         String token = tokenWithPrefix.replace("Bearer ", "");
-        int userID = jwtService.extractUserId(token);
+        int userID = jwtService.requireUserId(token);
         return rentalService.submitTransfer(id, userID);
     }
 
@@ -209,7 +209,7 @@ public class RentalsController {
             throw new BusinessException("Yêu cầu đăng nhập.");
         }
         String token = tokenWithPrefix.replace("Bearer ", "");
-        int userId = jwtService.extractUserId(token);
+        int userId = jwtService.requireUserId(token);
         boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
                 .anyMatch(a -> "ROLE_admin".equals(a.getAuthority()) || "admin".equals(a.getAuthority()));
         String reason = body != null ? body.getReason() : null;

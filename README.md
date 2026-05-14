@@ -1,83 +1,72 @@
 # AutoHub
 
-AutoHub is a full-stack car rental and sales platform with KYC, booking, payments, reviews, and admin operations.
+Modern full-stack car rental and vehicle marketplace platform.
+
+## Features
+
+- Car rental & vehicle listings
+- JWT authentication & role-based access
+- Booking & invoice management
+- Bank transfer payment flow
+- Reviews & admin dashboard
 
 ## Tech Stack
 
-- **Backend:** Spring Boot 3, Spring Security 6 (JWT), JPA/Hibernate, Flyway
-- **Frontend:** React 19, Vite, TanStack Query, Tailwind CSS, Zustand
-- **Database:** SQL Server (Docker local)
-- **E2E Testing:** Playwright
-- **Deployment:** Docker Compose (recommended), Render + Vercel (cloud)
+- **Backend:** Spring Boot 3, Spring Security, JWT, JPA/Hibernate, Flyway
+- **Frontend:** React 19, Vite, Tailwind CSS, Zustand
+- **Database:** SQL Server 2022
+- **Deployment:** Docker Compose + Nginx + Let's Encrypt SSL
 
+## Production
+
+Deployed on VPS with custom domain:
+
+🌐 [autohub.id.vn](https://autohub.id.vn)
+
+## Infrastructure
+
+- Dockerized full-stack application
+- Host Nginx reverse proxy
+- HTTPS with Let's Encrypt
+- SQL Server running in Docker
+- CI-friendly deployment scripts
+
+## Quick Start
+
+### Run locally
+
+```bash
+cp docker-compose.env.example .env
+docker compose up --build -d
+```
+
+- **Frontend:** http://localhost:3000
+- **Backend:** http://localhost:8080
 
 ## Project Structure
 
 ```
-├── backend/rentACar/          # Spring Boot API
-│   ├── src/main/java/com/tobeto/rentACar/
-│   │   ├── controllers/       # REST endpoints
-│   │   ├── entities/          # JPA entities
-│   │   ├── repositories/      # Spring Data repos
-│   │   ├── services/          # Business logic (abstracts + concretes)
-│   │   └── core/              # Security, filters, config, utilities
-│   └── src/main/resources/
-│       ├── application.properties
-│       └── db/migration/      # Flyway SQL migrations
-├── frontend/                  # React SPA
-│   ├── src/
-│   │   ├── api/               # Axios API clients
-│   │   ├── components/        # Reusable UI components
-│   │   ├── pages/             # Route pages (admin/, user/, public/)
-│   │   ├── store/             # Zustand stores
-│   │   └── types/             # TypeScript interfaces
-│   └── vite.config.ts
-├── e2e/                       # Playwright E2E tests
-│   ├── tests/
-│   └── playwright.config.ts
-└── docker-compose.yml
+backend/           # Spring Boot API
+frontend/          # React frontend
+deploy/            # VPS deployment scripts & Nginx config
+docker-compose.yml
 ```
 
-## Quick Start (Docker)
-
-1. Copy environment template:
+## VPS Deployment
 
 ```bash
-cp docker-compose.env.example .env
+bash deploy/scripts/01-bootstrap-vps.sh
+bash deploy/scripts/02-deploy.sh
 ```
 
-2. Update required values in `.env` (at least `MSSQL_SA_PASSWORD`, `JWT_KEY`).
-
-3. Build and start:
+## Update Production
 
 ```bash
-docker compose up --build
+bash deploy/scripts/update.sh
 ```
 
-4. Open:
-
-- Web: `http://localhost:3000`
-- API: `http://localhost:8081`
-
-## Default Accounts (Seed Data)
-
-- Admin: `admin@autohub.local` / `12345678`
-- User: `user@autohub.local` / `12345678`
-
-## Local Development (Without Docker)
-
-**Backend:**
+## Database Backup
 
 ```bash
-cd backend/rentACar
-mvn spring-boot:run
+bash deploy/scripts/backup-db.sh
 ```
-
-**Frontend:**
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-

@@ -10,6 +10,7 @@ import com.tobeto.rentACar.services.dtos.invoice.response.GetAllInvoicesResponse
 import com.tobeto.rentACar.services.dtos.invoice.response.GetInvoiceByIdResponse;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,21 +23,25 @@ public class InvoicesController {
     private final InvoiceService invoiceService;
     private final JwtService jwtService;
 
+    @PreAuthorize("hasRole('admin')")
     @PostMapping("/add")
     public Result add(@RequestBody @Valid AddInvoiceRequest request){
         return invoiceService.add(request);
     }
 
+    @PreAuthorize("hasRole('admin')")
     @PutMapping("/update")
     public Result update(@RequestBody @Valid UpdateInvoiceRequest request){
         return invoiceService.update(request);
     }
 
+    @PreAuthorize("hasRole('admin')")
     @DeleteMapping("/delete")
     public Result delete(@RequestBody @Valid DeleteInvoiceRequest request){
         return invoiceService.delete(request);
     }
 
+    @PreAuthorize("hasRole('admin')")
     @GetMapping("/getAll")
     public List<GetAllInvoicesResponse> getAll(){
         return invoiceService.getAll();
@@ -45,11 +50,16 @@ public class InvoicesController {
     @GetMapping("/getMyInvoices")
     public List<GetAllInvoicesResponse> getMyInvoices(jakarta.servlet.http.HttpServletRequest request){
         String tokenWithPrefix = request.getHeader("Authorization");
-        String token = tokenWithPrefix.replace("Bearer ", "");
+        if (tokenWithPrefix == null || !tokenWithPrefix.startsWith("Bearer ")) {
+            return List.of();
+        }
+        String token = tokenWithPrefix.substring(7);
         Integer userId = jwtService.extractUserId(token);
+        if (userId == null) return List.of();
         return invoiceService.getByUserId(userId);
     }
 
+    @PreAuthorize("hasRole('admin')")
     @GetMapping("/getById/{id}")
     public GetInvoiceByIdResponse getById(@PathVariable int id){
         return invoiceService.getById(id);

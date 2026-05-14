@@ -66,7 +66,6 @@ public class SecurityConfiguration {
             "/v2/api-docs",
             "/v3/api-docs",
             "/v3/api-docs/**",
-            "/api/roles/**",
             "/api/brands/**",
             "/api/cars/**",
             "/api/colors/**",
@@ -113,6 +112,7 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/api/rentals/insurance-options").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/rentals/addon-options").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/rentals/public/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/roles/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/models/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/viewing-appointments/availability").permitAll()
