@@ -9,6 +9,7 @@ import com.tobeto.rentACar.services.dtos.corporateCustomer.response.GetAllCorpor
 import com.tobeto.rentACar.services.dtos.corporateCustomer.response.GetCorporateCustomerByIdResponse;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,8 +18,10 @@ import java.util.List;
 @RequestMapping("api/corporateCustomer")
 @AllArgsConstructor
 @CrossOrigin
+@PreAuthorize("hasRole('admin')")
 public class CorporateCustomersController {
 	private final CorporateCustomerService corporateCustomerService;
+
 	@PostMapping("/add")
 	public Result add(@RequestBody @Valid AddCorporateCustomerRequest request){
 		return corporateCustomerService.add(request);
