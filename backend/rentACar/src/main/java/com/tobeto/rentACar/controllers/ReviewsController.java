@@ -37,7 +37,7 @@ public class ReviewsController {
             throw new BusinessException("Yêu cầu đăng nhập.");
         }
         String token = tokenWithPrefix.replace("Bearer ", "");
-        int userId = jwtService.extractUserId(token);
+        int userId = jwtService.requireUserId(token);
         return reviewService.add(request, userId);
     }
 

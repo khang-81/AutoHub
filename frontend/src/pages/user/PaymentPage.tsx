@@ -3,24 +3,23 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CreditCard, QrCode, Landmark, ArrowLeft } from 'lucide-react';
 import { getRentalByIdApi, submitTransferApi } from '../../api/rentals';
+import { getBankInfoApi } from '../../api/payment';
 import { useToast } from '../../components/ui/Toast';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { formatCurrency } from '../../utils/helpers';
 import type { Rental } from '../../types';
-
-const BANK_INFO = {
-  bankCode: 'TCB',
-  bankName: 'Techcombank',
-  accountName: 'TA DUC KHANG',
-  accountNumber: '19073286543012',
-  accountNumberDisplay: '1907 3286 5430 12',
-};
 
 const PaymentPage = () => {
   const { rentalId } = useParams<{ rentalId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+
+  const { data: bankInfo } = useQuery({
+    queryKey: ['bankInfo'],
+    queryFn: getBankInfoApi,
+    staleTime: Infinity,
+  });
 
   const { data: rental, isLoading } = useQuery<Rental>({
     queryKey: ['rental', rentalId],
@@ -60,9 +59,9 @@ const PaymentPage = () => {
   }, [rental]);
 
   const qrUrl = useMemo(() => {
-    if (!rental?.id || !depositToTransfer) return '';
-    return `https://img.vietqr.io/image/${BANK_INFO.bankCode}-${BANK_INFO.accountNumber}-compact2.png?amount=${depositToTransfer}&addInfo=THUEXE-${rental.id}&accountName=${encodeURIComponent(BANK_INFO.accountName)}`;
-  }, [rental, depositToTransfer]);
+    if (!rental?.id || !depositToTransfer || !bankInfo?.accountNumber) return '';
+    return `https://img.vietqr.io/image/${bankInfo.bankCode}-${bankInfo.accountNumber}-compact2.png?amount=${depositToTransfer}&addInfo=THUEXE-${rental.id}&accountName=${encodeURIComponent(bankInfo.accountName)}`;
+  }, [rental, depositToTransfer, bankInfo]);
 
   if (isLoading) return <LoadingSpinner />;
   if (!rental) return <div className="text-center text-gray-500">Không tìm thấy đơn thuê.</div>;
@@ -129,12 +128,12 @@ const PaymentPage = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="border rounded-xl p-4 flex items-center justify-center">
-              <img src={qrUrl} alt="QR payment" className="w-56 h-56 object-contain" />
+              {qrUrl ? <img src={qrUrl} alt="QR payment" className="w-56 h-56 object-contain" /> : <span className="text-sm text-gray-400">Đang tải QR...</span>}
             </div>
             <div className="space-y-3 text-sm text-gray-700">
-              <p className="flex items-center gap-2"><Landmark className="w-4 h-4 text-primary" /> Ngân hàng: {BANK_INFO.bankName}</p>
-              <p>Chủ tài khoản: <strong>{BANK_INFO.accountName}</strong></p>
-              <p>Số tài khoản: <strong>{BANK_INFO.accountNumberDisplay}</strong></p>
+              <p className="flex items-center gap-2"><Landmark className="w-4 h-4 text-primary" /> Ngân hàng: {bankInfo?.bankName}</p>
+              <p>Chủ tài khoản: <strong>{bankInfo?.accountName}</strong></p>
+              <p>Số tài khoản: <strong>{bankInfo?.accountNumberDisplay}</strong></p>
               <p>Nội dung CK: <strong>THUEXE-{rental.id}</strong></p>
               <p className="text-amber-600">Sau khi chuyển khoản, bấm nút bên dưới để gửi xác nhận cho admin.</p>
             </div>

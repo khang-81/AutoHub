@@ -15,8 +15,6 @@ public class GetUserByIdResponse {
 
     private String email;
 
-    private String password;
-
     private String kycStatus;
 
 }

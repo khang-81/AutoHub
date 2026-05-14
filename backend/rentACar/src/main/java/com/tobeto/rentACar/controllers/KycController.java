@@ -42,6 +42,6 @@ public class KycController {
             throw new BusinessException("Yêu cầu đăng nhập.");
         }
         String token = tokenWithPrefix.replace("Bearer ", "");
-        return jwtService.extractUserId(token);
+        return jwtService.requireUserId(token);
     }
 }
