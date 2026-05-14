@@ -24,7 +24,7 @@ public class KycController {
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public UserDocumentResponse upload(
             HttpServletRequest request,
-            @RequestPart("file") MultipartFile file,
+            @RequestParam("file") MultipartFile file,
             @RequestParam("documentType") String documentType) {
         int userId = extractUserId(request);
         return userDocumentService.upload(userId, documentType, file);

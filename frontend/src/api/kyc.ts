@@ -32,6 +32,12 @@ export const getPendingKycAdminApi = async (): Promise<UserDocumentDto[]> => {
   return res.data;
 };
 
+/** Toàn bộ giấy tờ KYC của một user (admin — duyệt & đã duyệt). */
+export const getAdminKycDocumentsByUserIdApi = async (userId: number): Promise<UserDocumentDto[]> => {
+  const res = await axiosInstance.get(`/api/admin/kyc/user/${userId}`);
+  return res.data;
+};
+
 export const approveKycApi = async (id: number): Promise<UserDocumentDto> => {
   const res = await axiosInstance.put(`/api/admin/kyc/${id}/approve`);
   return res.data;
@@ -42,9 +48,15 @@ export const rejectKycApi = async (id: number, adminNote?: string): Promise<User
   return res.data;
 };
 
-/** URL đầy đủ để hiển thị ảnh (ảnh nằm trên API server) */
+/**
+ * URL đầy đủ để mở file / <img src> (cùng origin với SPA hoặc VITE_API_URL).
+ * GET /files/** được API permitAll — không cần Bearer trên thẻ img.
+ */
 export function kycFileAbsoluteUrl(fileUrl: string): string {
   if (!fileUrl) return '';
   if (fileUrl.startsWith('http')) return fileUrl;
-  return `${API_BASE_URL}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
+  const base = API_BASE_URL.replace(/\/+$/, '');
+  const path = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
+  if (!base) return path;
+  return `${base}${path}`;
 }

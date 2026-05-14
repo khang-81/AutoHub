@@ -129,8 +129,8 @@ public class Rental extends BaseEntity {
     @Column(name = "damage_notes", length = 2000)
     private String damageNotes;
 
-    /** Ảnh đính kèm hư hại — CSV của URL/đường dẫn (max 1024). */
-    @Column(name = "damage_photo_urls", length = 1024)
+    /** Ảnh đính kèm hư hại — CSV của URL/đường dẫn (nhiều ảnh upload). */
+    @Column(name = "damage_photo_urls", length = 4000)
     private String damagePhotoUrls;
 
     /** Mã khuyến mãi đã áp tại lúc tạo đơn (snapshot). null = không dùng. */

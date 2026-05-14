@@ -124,6 +124,14 @@ export const confirmRentalApi = async (id: number) => {
   return res.data;
 };
 
+/** Admin upload ảnh hư hại khi trả xe — trả về URL tương đối `/files/...` để ghép vào damagePhotoUrls. */
+export const adminUploadRentalDamagePhotoApi = async (file: File): Promise<{ url: string }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await axiosInstance.post('/api/rentals/admin/upload-damage-photo', formData);
+  return res.data;
+};
+
 export const submitTransferApi = async (id: number) => {
   const res = await axiosInstance.put(`/api/rentals/submitTransfer/${id}`);
   return res.data;

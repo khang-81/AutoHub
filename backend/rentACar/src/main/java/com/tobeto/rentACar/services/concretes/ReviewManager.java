@@ -50,7 +50,8 @@ public class ReviewManager implements ReviewService {
         Review.ReviewBuilder builder = Review.builder()
                 .user(user)
                 .rating(request.getRating())
-                .comment(request.getComment() != null ? request.getComment().trim() : null);
+                .comment(request.getComment() != null ? request.getComment().trim() : null)
+                .hiddenFromPublic(false);
 
         if (rentalId != null) {
             Rental rental = rentalRepository.findById(rentalId).orElseThrow(
@@ -113,6 +114,17 @@ public class ReviewManager implements ReviewService {
         review.setAdminReply(request.getReply().trim());
         reviewRepository.save(review);
         return new SuccessResult("Đã phản hồi đánh giá.");
+    }
+
+    @Override
+    @Transactional
+    public Result setHidden(int reviewId, boolean hidden) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy đánh giá."));
+        review.setHiddenFromPublic(hidden);
+        reviewRepository.save(review);
+        recalcCarRating(review);
+        return new SuccessResult(hidden ? "Đã ẩn đánh giá khỏi trang công khai." : "Đã hiển thị lại đánh giá.");
     }
 
     @Override
@@ -189,6 +201,7 @@ public class ReviewManager implements ReviewService {
         dto.setRating(r.getRating());
         dto.setComment(r.getComment());
         dto.setAdminReply(r.getAdminReply());
+        dto.setHiddenFromPublic(Boolean.TRUE.equals(r.getHiddenFromPublic()));
         dto.setCreatedDate(r.getCreatedDate());
         dto.setAuthorLabel(maskEmail(r.getUser() != null ? r.getUser().getEmail() : null));
         return dto;

@@ -24,6 +24,12 @@ public class KycAdminController {
     }
 
     @PreAuthorize("hasRole('admin')")
+    @GetMapping("/user/{userId}")
+    public List<UserDocumentResponse> listByUser(@PathVariable int userId) {
+        return userDocumentService.listByUser(userId);
+    }
+
+    @PreAuthorize("hasRole('admin')")
     @PutMapping("/{id}/approve")
     public UserDocumentResponse approve(@PathVariable int id) {
         return userDocumentService.approve(id);

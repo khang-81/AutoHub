@@ -184,6 +184,21 @@ else
         CONSTRAINT [FK_viewing_appointments_users] FOREIGN KEY ([user_id]) REFERENCES [dbo].[users] ([id])
       );
     END;
+
+    IF COL_LENGTH('dbo.reviews', 'admin_reply') IS NULL
+    BEGIN
+      ALTER TABLE dbo.reviews ADD admin_reply NVARCHAR(2000) NULL;
+    END;
+
+    IF COL_LENGTH('dbo.reviews', 'hidden_from_public') IS NULL
+    BEGIN
+      ALTER TABLE dbo.reviews ADD hidden_from_public BIT NOT NULL CONSTRAINT DF_reviews_hidden_from_public DEFAULT 0;
+    END;
+
+    IF COL_LENGTH('dbo.rentals', 'damage_photo_urls') IS NOT NULL
+    BEGIN
+      ALTER TABLE dbo.rentals ALTER COLUMN damage_photo_urls NVARCHAR(MAX) NULL;
+    END;
   "
   echo "Incremental migrations completed."
 fi

@@ -35,4 +35,8 @@ public class Review extends BaseEntity {
 
     @Column(name = "admin_reply", length = 2000)
     private String adminReply;
+
+    /** Ẩn khỏi trang công khai xe (admin); vẫn hiện trong quản trị. */
+    @Column(name = "hidden_from_public", nullable = false)
+    private Boolean hiddenFromPublic = false;
 }

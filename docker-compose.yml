@@ -1,6 +1,9 @@
 # Rent-A-Car / AutoHub: SQL Server + API (profile prod).
 # Copy .env.example -> .env and fill in secrets.
 # Run: docker compose up --build
+#
+# VPS + domain: host Nginx proxies to WEB_PORT (web container). /api is proxied inside Docker to api:8080.
+# API_PORT / MSSQL_PORT only change loopback on the host (local tools); they do not change public URLs.
 
 name: rentacar
 
@@ -12,8 +15,9 @@ services:
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+    # Host port default 14330: Windows often blocks 127.0.0.1:1433 (Hyper-V / local SQL Server).
     ports:
-      - "127.0.0.1:${MSSQL_PORT:-1433}:1433"
+      - "127.0.0.1:${MSSQL_PORT:-14330}:1433"
     volumes:
       - mssql_data:/var/opt/mssql
     healthcheck:
@@ -39,8 +43,9 @@ services:
     build:
       context: ./backend/rentACar
     platform: linux/amd64
+    # Host port default 8088: 8080 is often taken (Tomcat, other stacks, old containers).
     ports:
-      - "127.0.0.1:${API_PORT:-8080}:8080"
+      - "127.0.0.1:${API_PORT:-8088}:8080"
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8080/actuator/health/liveness -o /dev/null"]
       interval: 15s
@@ -54,9 +59,9 @@ services:
       SPRING_DATASOURCE_USERNAME: sa
       SPRING_DATASOURCE_PASSWORD: ${MSSQL_SA_PASSWORD}
       JWT_KEY: ${JWT_KEY}
-      APP_ADMIN_SEED_EMAIL: ${APP_ADMIN_SEED_EMAIL:-admin@autohub.local}
-      APP_ADMIN_SEED_PASSWORD: ${APP_ADMIN_SEED_PASSWORD:-}
-      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080}
+      APP_ADMIN_SEED_EMAIL: ${APP_ADMIN_SEED_EMAIL:-admin@autohub.id.vn}
+      APP_ADMIN_SEED_PASSWORD: ${APP_ADMIN_SEED_PASSWORD:-admin123@}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080,http://localhost:8088,http://127.0.0.1:8088}
       JPA_DDL_AUTO: ${JPA_DDL_AUTO:-update}
       APP_UPLOAD_ROOT: /app/uploads
       MAIL_USERNAME: ${MAIL_USERNAME:-}

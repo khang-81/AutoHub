@@ -7,8 +7,12 @@ import com.tobeto.rentACar.core.utilities.mappers.ModelMapperService;
 import com.tobeto.rentACar.core.utilities.results.Result;
 import com.tobeto.rentACar.core.utilities.results.SuccessDataResult;
 import com.tobeto.rentACar.core.utilities.results.SuccessResult;
+import com.tobeto.rentACar.entities.concretes.CorporateCustomer;
+import com.tobeto.rentACar.entities.concretes.Customer;
 import com.tobeto.rentACar.entities.concretes.Role;
 import com.tobeto.rentACar.entities.concretes.User;
+import com.tobeto.rentACar.repositories.CorporateCustomerRepository;
+import com.tobeto.rentACar.repositories.CustomerRepository;
 import com.tobeto.rentACar.repositories.RentalRepository;
 import com.tobeto.rentACar.repositories.SaleOrderRepository;
 import com.tobeto.rentACar.repositories.UserRepository;
@@ -42,6 +46,8 @@ public class UserManager implements UserService {
     private final UserRepository userRepository;
     private final RentalRepository rentalRepository;
     private final SaleOrderRepository saleOrderRepository;
+    private final CustomerRepository customerRepository;
+    private final CorporateCustomerRepository corporateCustomerRepository;
     private final ModelMapperService modelMapperService;
     private final UserBusinessRule userBusinessRule;
     private final PasswordEncoder passwordEncoder;
@@ -124,6 +130,13 @@ public class UserManager implements UserService {
 
         userBusinessRule.existsUserById(request.getId());
 
+        User toDelete = userRepository.findById(request.getId()).orElseThrow(() ->
+                new NotFoundException(messageService.getMessage(Messages.User.getUserNotFoundMessage)));
+        if (toDelete.getAuthorities() != null && toDelete.getAuthorities().stream()
+                .anyMatch(r -> r != null && r.getName() != null && "admin".equalsIgnoreCase(r.getName().trim()))) {
+            throw new BusinessException("Không thể xóa tài khoản admin.");
+        }
+
         if (rentalRepository.existsActiveByUserId(request.getId())) {
             throw new BusinessException("Không thể xóa/khóa tài khoản — người dùng còn đơn thuê đang hoạt động.");
         }
@@ -161,10 +174,23 @@ public class UserManager implements UserService {
         User user = userRepository.findById(id).orElseThrow(() ->
                 new NotFoundException(messageService.getMessage(Messages.User.getUserNotFoundMessage)));
 
-        //Mapping the object to the response object
-        return this.modelMapperService.forResponse()
-                .map(user, GetUserByIdResponse.class);
+        GetUserByIdResponse dto = this.modelMapperService.forResponse().map(user, GetUserByIdResponse.class);
 
+        customerRepository.findFirstByUserIdOrderByIdDesc(id).ifPresent((Customer c) -> {
+            dto.setCustomerFirstName(c.getFirstName());
+            dto.setCustomerLastName(c.getLastName());
+            dto.setCustomerBirthdate(c.getBirthdate());
+            dto.setCustomerInternationalId(c.getInternationalId());
+            dto.setCustomerLicenceIssueDate(c.getLicenceIssueDate());
+            dto.setProfileKind("INDIVIDUAL");
+        });
+        corporateCustomerRepository.findFirstByUserIdOrderByIdDesc(id).ifPresent((CorporateCustomer cc) -> {
+            dto.setCompanyName(cc.getCompanyName());
+            dto.setCompanyTaxNo(cc.getTaxNo());
+            dto.setProfileKind("CORPORATE");
+        });
+
+        return dto;
     }
 
     @Override
