@@ -145,8 +145,8 @@ const AdminLogin = () => {
                   type="email"
                   placeholder="admin@autohub.id.vn"
                   className={`w-full bg-white/5 border rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all ${errors.email
-                      ? 'border-red-500/50 focus:ring-red-500/30'
-                      : 'border-white/10 focus:border-primary/50 focus:ring-primary/20'
+                    ? 'border-red-500/50 focus:ring-red-500/30'
+                    : 'border-white/10 focus:border-primary/50 focus:ring-primary/20'
                     }`}
                 />
               </div>
@@ -167,8 +167,8 @@ const AdminLogin = () => {
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   className={`w-full bg-white/5 border rounded-xl pl-10 pr-11 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all ${errors.password
-                      ? 'border-red-500/50 focus:ring-red-500/30'
-                      : 'border-white/10 focus:border-primary/50 focus:ring-primary/20'
+                    ? 'border-red-500/50 focus:ring-red-500/30'
+                    : 'border-white/10 focus:border-primary/50 focus:ring-primary/20'
                     }`}
                 />
                 <button
