@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  CalendarClock, CheckCircle, Search, XCircle, UserX, CircleCheck, Eye, Phone, MessageSquare,
+  CalendarClock, CheckCircle, Search, XCircle, UserX, CircleCheck, Eye, Phone, MessageSquare, MoreHorizontal,
 } from 'lucide-react';
 import {
   getAllViewingAppointmentsAdminApi,
@@ -40,6 +40,7 @@ const ManageViewingAppointments = () => {
   } | null>(null);
   const [adminNote, setAdminNote] = useState('');
   const [detailRow, setDetailRow] = useState<ViewingAppointment | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ['viewingAppointmentsAdmin'],
@@ -62,6 +63,7 @@ const ManageViewingAppointments = () => {
       queryClient.invalidateQueries({ queryKey: ['myViewingAppointments'] });
       setModal(null);
       setAdminNote('');
+      setOpenMenuId(null);
     },
     onError: (err: unknown) => {
       const e = err as { response?: { data?: { message?: string } } };
@@ -102,7 +104,15 @@ const ManageViewingAppointments = () => {
   };
 
   return (
-    <div>
+    <div className="relative">
+      {openMenuId != null && (
+        <button
+          type="button"
+          className="fixed inset-0 z-10 cursor-default bg-black/5"
+          aria-label="Đóng menu"
+          onClick={() => setOpenMenuId(null)}
+        />
+      )}
       <div className="mb-6">
         <h1 className="font-heading font-bold text-2xl text-navy flex items-center gap-2">
           <CalendarClock className="w-7 h-7 text-primary" />
@@ -165,64 +175,106 @@ const ManageViewingAppointments = () => {
                     <td className="px-5 py-4">
                       <span className="badge text-xs bg-gray-100 text-gray-700">{statusLabel(r.status)}</span>
                     </td>
-                    <td className="px-5 py-4 text-right">
-                      <div className="flex justify-end gap-1 flex-wrap">
-                        <button
-                          type="button"
-                          title="Xem chi tiết"
-                          onClick={() => setDetailRow(r)}
-                          className="p-2 rounded-lg text-navy hover:bg-slate-100"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        {r.status === 'PENDING' && (
-                          <>
-                            <button
-                              type="button"
-                              title="Xác nhận"
-                              onClick={() => openModal(r, 'CONFIRMED')}
-                              className="p-2 rounded-lg text-green-600 hover:bg-green-50"
+                    <td className="px-5 py-4 text-right relative z-40">
+                      <div className="flex justify-end">
+                        <div className="relative inline-block text-left">
+                          <button
+                            type="button"
+                            title="Thao tác"
+                            onClick={() => setOpenMenuId((cur) => (cur === r.id ? null : r.id))}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-navy shadow-sm hover:bg-gray-50"
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                            Thao tác
+                          </button>
+                          {openMenuId === r.id && (
+                            <div
+                              className="absolute right-0 mt-1 w-52 rounded-xl border border-gray-200 bg-white shadow-lg py-1 z-50 text-sm overflow-hidden"
+                              role="menu"
                             >
-                              <CheckCircle className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              title="Hủy"
-                              onClick={() => openModal(r, 'CANCELLED')}
-                              className="p-2 rounded-lg text-red-500 hover:bg-red-50"
-                            >
-                              <XCircle className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
-                        {r.status === 'CONFIRMED' && (
-                          <>
-                            <button
-                              type="button"
-                              title="Hoàn tất"
-                              onClick={() => openModal(r, 'COMPLETED')}
-                              className="p-2 rounded-lg text-primary hover:bg-primary/10"
-                            >
-                              <CircleCheck className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              title="Không đến"
-                              onClick={() => openModal(r, 'NO_SHOW')}
-                              className="p-2 rounded-lg text-amber-600 hover:bg-amber-50"
-                            >
-                              <UserX className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              title="Hủy lịch"
-                              onClick={() => openModal(r, 'CANCELLED')}
-                              className="p-2 rounded-lg text-red-500 hover:bg-red-50"
-                            >
-                              <XCircle className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="w-full text-left px-3 py-2.5 hover:bg-gray-50 flex items-center gap-2"
+                                onClick={() => {
+                                  setDetailRow(r);
+                                  setOpenMenuId(null);
+                                }}
+                              >
+                                <Eye className="w-4 h-4 text-navy" />
+                                Xem chi tiết
+                              </button>
+                              {r.status === 'PENDING' && (
+                                <>
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    className="w-full text-left px-3 py-2.5 hover:bg-green-50 text-green-700 flex items-center gap-2"
+                                    onClick={() => {
+                                      openModal(r, 'CONFIRMED');
+                                      setOpenMenuId(null);
+                                    }}
+                                  >
+                                    <CheckCircle className="w-4 h-4" />
+                                    Xác nhận lịch
+                                  </button>
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    className="w-full text-left px-3 py-2.5 hover:bg-red-50 text-red-600 flex items-center gap-2"
+                                    onClick={() => {
+                                      openModal(r, 'CANCELLED');
+                                      setOpenMenuId(null);
+                                    }}
+                                  >
+                                    <XCircle className="w-4 h-4" />
+                                    Hủy lịch
+                                  </button>
+                                </>
+                              )}
+                              {r.status === 'CONFIRMED' && (
+                                <>
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    className="w-full text-left px-3 py-2.5 hover:bg-primary/5 text-primary flex items-center gap-2"
+                                    onClick={() => {
+                                      openModal(r, 'COMPLETED');
+                                      setOpenMenuId(null);
+                                    }}
+                                  >
+                                    <CircleCheck className="w-4 h-4" />
+                                    Hoàn tất (đã xem)
+                                  </button>
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    className="w-full text-left px-3 py-2.5 hover:bg-amber-50 text-amber-700 flex items-center gap-2"
+                                    onClick={() => {
+                                      openModal(r, 'NO_SHOW');
+                                      setOpenMenuId(null);
+                                    }}
+                                  >
+                                    <UserX className="w-4 h-4" />
+                                    Khách không đến
+                                  </button>
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    className="w-full text-left px-3 py-2.5 hover:bg-red-50 text-red-600 flex items-center gap-2"
+                                    onClick={() => {
+                                      openModal(r, 'CANCELLED');
+                                      setOpenMenuId(null);
+                                    }}
+                                  >
+                                    <XCircle className="w-4 h-4" />
+                                    Hủy lịch
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>

@@ -1,9 +1,11 @@
 package com.tobeto.rentACar.services.dtos.authentication;
 
-import com.tobeto.rentACar.core.utilities.results.SuccessResult;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 @Data
@@ -11,4 +13,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class LoginResponse {
     private String token;
+    /** Tên vai trò từ DB (vd. user, admin) — client không cần gọi GET /users/{id}/roles ngay sau login. */
+    private List<String> roles = new ArrayList<>();
 }

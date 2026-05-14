@@ -61,26 +61,29 @@ axiosInstance.interceptors.response.use(
 
     if (error.response?.status === 401 && !isAuthEndpoint) {
       const path = typeof window !== 'undefined' ? window.location?.pathname ?? '' : '';
+      const isLoginPage = path === '/login' || path === '/admin/login';
       const isAdminApp = path.startsWith('/admin') && path !== '/admin/login';
-      try {
-        if (isAdminApp) {
-          localStorage.removeItem(ADMIN_TOKEN_KEY);
-          localStorage.removeItem(ADMIN_USER_KEY);
-        } else {
-          localStorage.removeItem(USER_TOKEN_KEY);
-          localStorage.removeItem(USER_DISPLAY_KEY);
+      // Trang đăng nhập: không xóa token / không bắn unauthorized — để form xử lý lỗi (vd. GET roles sau login).
+      if (!isLoginPage) {
+        try {
+          if (isAdminApp) {
+            localStorage.removeItem(ADMIN_TOKEN_KEY);
+            localStorage.removeItem(ADMIN_USER_KEY);
+          } else {
+            localStorage.removeItem(USER_TOKEN_KEY);
+            localStorage.removeItem(USER_DISPLAY_KEY);
+          }
+        } catch {
+          /* ignore storage errors */
         }
-      } catch {
-        /* ignore storage errors */
-      }
-      // Phát sự kiện cho AuthSessionWatcher (router-aware) thay vì window.location.href.
-      try {
-        if (typeof window !== 'undefined') {
-          const detail: UnauthorizedEventDetail = { scope: isAdminApp ? 'admin' : 'user' };
-          window.dispatchEvent(new CustomEvent<UnauthorizedEventDetail>(AUTH_UNAUTHORIZED_EVENT, { detail }));
+        try {
+          if (typeof window !== 'undefined') {
+            const detail: UnauthorizedEventDetail = { scope: isAdminApp ? 'admin' : 'user' };
+            window.dispatchEvent(new CustomEvent<UnauthorizedEventDetail>(AUTH_UNAUTHORIZED_EVENT, { detail }));
+          }
+        } catch {
+          /* ignore */
         }
-      } catch {
-        /* ignore */
       }
     }
     return Promise.reject(error);

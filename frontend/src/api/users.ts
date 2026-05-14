@@ -23,12 +23,8 @@ export const getUserByIdApi = async (id: number) => {
 };
 
 export const getUserRolesApi = async (userId: number): Promise<{ name: string }[]> => {
-  try {
-    const res = await axiosInstance.get(`/api/users/${userId}/roles`);
-    return res.data || [];
-  } catch {
-    return [];
-  }
+  const res = await axiosInstance.get(`/api/users/${userId}/roles`);
+  return Array.isArray(res.data) ? res.data : [];
 };
 
 export const changePasswordApi = async (data: { currentPassword: string; newPassword: string }) => {

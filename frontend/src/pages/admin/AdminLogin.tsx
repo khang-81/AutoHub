@@ -7,7 +7,7 @@ import { Lock, Mail, Eye, EyeOff, ShieldCheck, AlertCircle } from 'lucide-react'
 import BrandLogo from '../../components/ui/BrandLogo';
 import { loginApi } from '../../api/auth';
 import { getUserRolesApi } from '../../api/users';
-import { getUserIdFromToken, getEmailFromToken, isJwtExpired } from '../../utils/helpers';
+import { getUserIdFromToken, getEmailFromToken, isJwtExpired, getApiErrorMessage, getRoleFromToken } from '../../utils/helpers';
 
 const schema = z.object({
   email: z.string().email('Email không hợp lệ'),
@@ -53,15 +53,30 @@ const AdminLogin = () => {
       const userId = getUserIdFromToken(token) ?? 0;
       const email = getEmailFromToken(token) ?? data.email;
 
-      // Trang /admin/login vẫn dùng autohub_token trong interceptor — gắn JWT trước khi gọi roles
+      const rolesFromLogin = res.loginResponse?.roles;
+      let roles: string[] = Array.isArray(rolesFromLogin)
+        ? rolesFromLogin.map((r) => String(r).trim()).filter(Boolean)
+        : [];
+
+      // Trang /admin/login vẫn dùng autohub_token trong interceptor — gắn JWT trước khi gọi roles (fallback)
       localStorage.setItem('autohub_token', token);
 
-      // Fetch roles from API
-      const rolesData = userId ? await getUserRolesApi(userId) : [];
-      const roles = rolesData.map((r) => r.name);
+      if (roles.length === 0 && userId) {
+        try {
+          roles = (await getUserRolesApi(userId)).map((r) => r.name);
+        } catch {
+          roles = getRoleFromToken(token);
+          if (roles.length === 0) {
+            localStorage.removeItem('autohub_token');
+            setError('Không tải được quyền tài khoản. Thử lại hoặc kiểm tra kết nối.');
+            return;
+          }
+        }
+      }
 
       const isAdmin = roles.some((r) => r.toLowerCase().includes('admin'));
       if (!isAdmin) {
+        localStorage.removeItem('autohub_token');
         setError('Tài khoản này không có quyền truy cập trang quản trị.');
         return;
       }
@@ -71,8 +86,8 @@ const AdminLogin = () => {
       localStorage.setItem('autohub_admin_user', JSON.stringify({ id: userId, email, roles }));
       navigate('/admin');
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      setError(e?.response?.data?.message || 'Email hoặc mật khẩu không đúng.');
+      localStorage.removeItem('autohub_token');
+      setError(getApiErrorMessage(err, 'Email hoặc mật khẩu không đúng.'));
     } finally {
       setIsLoading(false);
     }
@@ -128,7 +143,7 @@ const AdminLogin = () => {
                 <input
                   {...register('email')}
                   type="email"
-                  placeholder="admin@autohub.com"
+                  placeholder="admin@autohub.id.vn"
                   className={`w-full bg-white/5 border rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all ${errors.email
                       ? 'border-red-500/50 focus:ring-red-500/30'
                       : 'border-white/10 focus:border-primary/50 focus:ring-primary/20'

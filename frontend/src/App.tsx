@@ -43,14 +43,11 @@ import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ManageCars from './pages/admin/ManageCars';
 import ManageBrands from './pages/admin/ManageBrands';
-import ManageRentals from './pages/admin/ManageRentals';
 import ManageUsers from './pages/admin/ManageUsers';
 import ManageReports from './pages/admin/ManageReports';
 import ManageKyc from './pages/admin/ManageKyc';
-import ManageSaleOrders from './pages/admin/ManageSaleOrders';
 import ManageReviews from './pages/admin/ManageReviews';
 import ManageViewingAppointments from './pages/admin/ManageViewingAppointments';
-import ManageColors from './pages/admin/ManageColors';
 import MyViewingAppointments from './pages/user/MyViewingAppointments';
 import MyInvoices from './pages/user/MyInvoices';
 
@@ -129,12 +126,11 @@ function RoutesWithChatbot() {
           <Route path="cars/rent" element={<ManageCars />} />
           <Route path="cars/sale" element={<ManageCars />} />
           <Route path="brands" element={<ManageBrands />} />
-          <Route path="colors" element={<ManageColors />} />
-          <Route path="rentals" element={<ManageRentals />} />
+          <Route path="rentals" element={<Navigate to="/admin/cars/rent?tab=orders" replace />} />
           <Route path="users" element={<ManageUsers />} />
           <Route path="reports" element={<ManageReports />} />
           <Route path="kyc" element={<ManageKyc />} />
-          <Route path="sale-orders" element={<ManageSaleOrders />} />
+          <Route path="sale-orders" element={<Navigate to="/admin/cars/sale?tab=orders" replace />} />
           <Route path="reviews" element={<ManageReviews />} />
           <Route path="viewing-appointments" element={<ManageViewingAppointments />} />
         </Route>

@@ -36,7 +36,7 @@ public class AdminAccountBootstrap implements ApplicationRunner {
             UserRepository userRepository,
             RoleRepository roleRepository,
             PasswordEncoder passwordEncoder,
-            @Value("${app.admin.seed-email:admin@autohub.local}") String seedEmail,
+            @Value("${app.admin.seed-email:admin@autohub.id.vn}") String seedEmail,
             @Value("${app.admin.seed-password:}") String seedPassword) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;

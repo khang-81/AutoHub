@@ -4,7 +4,9 @@ import { Plus, Pencil, Trash2, Search, Car } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
+import ManageRentals from './ManageRentals';
+import ManageSaleOrders from './ManageSaleOrders';
 import { getAllCarsApi, addCarApi, updateCarApi, deleteCarApi } from '../../api/cars';
 import { getAllRentalsApi } from '../../api/rentals';
 import { getAllModelsApi } from '../../api/models';
@@ -180,6 +182,49 @@ const ManageCars = () => {
     );
   });
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const ordersTab = searchParams.get('tab') === 'orders';
+
+  const subNav = (
+    <div className="flex flex-wrap gap-2 mb-5">
+      <button
+        type="button"
+        onClick={() => setSearchParams({})}
+        className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+          !ordersTab ? 'bg-primary text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+        }`}
+      >
+        {isSaleModule ? 'Xe bán' : 'Xe thuê'}
+      </button>
+      <button
+        type="button"
+        onClick={() => setSearchParams({ tab: 'orders' })}
+        className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+          ordersTab ? 'bg-primary text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+        }`}
+      >
+        {isSaleModule ? 'Đơn mua xe' : 'Đơn thuê'}
+      </button>
+    </div>
+  );
+
+  if (ordersTab) {
+    return (
+      <div>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
+          <div>
+            <h1 className="font-heading font-bold text-2xl text-navy">
+              {isSaleModule ? 'Quản lý xe bán' : 'Quản lý xe thuê'}
+            </h1>
+            <p className="text-gray-400 text-sm mt-1">Đơn hàng gắn với kho xe</p>
+          </div>
+        </div>
+        {subNav}
+        {isSaleModule ? <ManageSaleOrders /> : <ManageRentals />}
+      </div>
+    );
+  }
+
   const isSaving = addMutation.isPending || updateMutation.isPending;
 
   return (
@@ -198,6 +243,8 @@ const ManageCars = () => {
           {isSaleModule ? 'Thêm xe bán' : 'Thêm xe thuê'}
         </button>
       </div>
+
+      {subNav}
 
       {/* Search */}
       <div className="bg-white rounded-2xl shadow-sm p-4 mb-5">

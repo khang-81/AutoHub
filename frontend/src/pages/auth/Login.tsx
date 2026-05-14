@@ -7,7 +7,7 @@ import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { loginApi } from '../../api/auth';
 import { getUserRolesApi } from '../../api/users';
 import { useAuthStore } from '../../store/authStore';
-import { getUserIdFromToken, getEmailFromToken } from '../../utils/helpers';
+import { getUserIdFromToken, getEmailFromToken, getApiErrorMessage, getRoleFromToken } from '../../utils/helpers';
 import { useToast } from '../../components/ui/Toast';
 
 const schema = z.object({
@@ -25,7 +25,10 @@ const Login = () => {
   const { login } = useAuthStore();
   const { showToast } = useToast();
 
-  const from = (location.state as { from?: Location })?.from?.pathname || '/';
+  const loginRedirectState = location.state as { from?: { pathname?: string } } | null;
+  const fromPath = loginRedirectState?.from?.pathname;
+  const redirectAfterLogin =
+    fromPath && fromPath !== '/login' ? fromPath : '/';
 
   const {
     register,
@@ -46,10 +49,25 @@ const Login = () => {
         }
         const userId = getUserIdFromToken(token) ?? 0;
         const email = getEmailFromToken(token) ?? data.email;
+
+        const rolesFromLogin = res.loginResponse?.roles;
+        let roles: string[] = Array.isArray(rolesFromLogin)
+          ? rolesFromLogin.map((r) => String(r).trim()).filter(Boolean)
+          : [];
+
         // Gắn JWT trước khi gọi API roles (axios interceptor đọc localStorage)
         localStorage.setItem('autohub_token', token);
-        const rolesData = userId ? await getUserRolesApi(userId) : [];
-        const roles = rolesData.map((r) => r.name);
+
+        if (roles.length === 0 && userId) {
+          try {
+            roles = (await getUserRolesApi(userId)).map((r) => r.name);
+          } catch {
+            roles = getRoleFromToken(token);
+            if (roles.length === 0) {
+              showToast('Đã đăng nhập nhưng không tải được danh sách vai trò. Bạn vẫn có thể dùng trang.', 'error');
+            }
+          }
+        }
         login(token, userId, email, roles);
         showToast('Đăng nhập thành công!', 'success');
         // Redirect based on role
@@ -66,15 +84,13 @@ const Login = () => {
           localStorage.removeItem('autohub_admin_user');
           // Đặc tả UC Đăng nhập: khách hàng -> Trang chủ. Nếu user bị middleware đẩy về login từ trang khác,
           // ưu tiên redirect ngược lại trang đó để giữ ngữ cảnh thao tác (Thuê/Mua/...).
-          const target = from && from !== '/login' ? from : '/';
-          navigate(target);
+          navigate(redirectAfterLogin);
         }
       } else {
         showToast(res.message || 'Đăng nhập thất bại', 'error');
       }
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      showToast(error?.response?.data?.message || 'Email hoặc mật khẩu không đúng', 'error');
+      showToast(getApiErrorMessage(err, 'Email hoặc mật khẩu không đúng'), 'error');
     } finally {
       setLoading(false);
     }

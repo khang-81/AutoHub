@@ -58,16 +58,24 @@ export function formatKilometer(km: number): string {
   return new Intl.NumberFormat('vi-VN').format(km) + ' km';
 }
 
+/** JWT dùng Base64URL, không padding — `atob` trên trình duyệt cần padding đúng bội 4. */
+function decodeJwtPayloadSegment(base64Url: string): string {
+  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  const padLen = (4 - (base64.length % 4)) % 4;
+  const padded = base64 + '='.repeat(padLen);
+  return decodeURIComponent(
+    atob(padded)
+      .split('')
+      .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+      .join('')
+  );
+}
+
 export function getRoleFromToken(token: string): string[] {
   try {
     const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
+    if (!base64Url) return [];
+    const jsonPayload = decodeJwtPayloadSegment(base64Url);
     const payload = JSON.parse(jsonPayload);
     return payload.roles || payload.authorities || [];
   } catch {
@@ -78,13 +86,8 @@ export function getRoleFromToken(token: string): string[] {
 export function getUserIdFromToken(token: string): number | null {
   try {
     const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
+    if (!base64Url) return null;
+    const jsonPayload = decodeJwtPayloadSegment(base64Url);
     const payload = JSON.parse(jsonPayload);
     const raw = payload.id ?? payload.userId;
     if (raw == null || raw === '') return null;
@@ -98,13 +101,8 @@ export function getUserIdFromToken(token: string): number | null {
 export function getEmailFromToken(token: string): string | null {
   try {
     const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
+    if (!base64Url) return null;
+    const jsonPayload = decodeJwtPayloadSegment(base64Url);
     const payload = JSON.parse(jsonPayload);
     return payload.sub || payload.email || null;
   } catch {
@@ -117,13 +115,7 @@ export function isJwtExpired(token: string): boolean {
   try {
     const base64Url = token.split('.')[1];
     if (!base64Url) return true;
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
+    const jsonPayload = decodeJwtPayloadSegment(base64Url);
     const payload = JSON.parse(jsonPayload);
     const exp = payload.exp;
     if (typeof exp !== 'number') return false;

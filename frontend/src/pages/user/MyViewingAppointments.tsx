@@ -38,6 +38,9 @@ const MyViewingAppointments = () => {
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [slots, setSlots] = useState<SlotAvailability[]>([]);
+  const [minRescheduleDate] = useState(() =>
+    new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]
+  );
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['myViewingAppointments'],
@@ -129,7 +132,7 @@ const MyViewingAppointments = () => {
                       type="date"
                       value={rescheduleDate}
                       onChange={(e) => handleDateChange(e.target.value)}
-                      min={new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]}
+                      min={minRescheduleDate}
                       className="w-full border rounded-lg px-3 py-2 text-sm"
                     />
                   </div>

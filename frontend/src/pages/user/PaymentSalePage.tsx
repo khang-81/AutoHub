@@ -7,6 +7,7 @@ import { getBankInfoApi } from '../../api/payment';
 import { useToast } from '../../components/ui/Toast';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { formatCurrency } from '../../utils/helpers';
+import { buildVietQrImageUrl } from '../../utils/vietqr';
 import type { SaleOrder } from '../../types';
 
 const PaymentSalePage = () => {
@@ -39,10 +40,8 @@ const PaymentSalePage = () => {
   });
 
   const qrUrl = useMemo(() => {
-    if (!order?.id || !order?.totalPrice || !bankInfo?.accountNumber) return '';
-    return `https://img.vietqr.io/image/${bankInfo.bankCode}-${bankInfo.accountNumber}-compact2.png?amount=${Math.round(
-      order.totalPrice
-    )}&addInfo=MUAXE-${order.id}&accountName=${encodeURIComponent(bankInfo.accountName)}`;
+    if (!order?.id || !order?.totalPrice || !bankInfo) return '';
+    return buildVietQrImageUrl(bankInfo, Math.round(order.totalPrice), `MUAXE-${order.id}`);
   }, [order, bankInfo]);
 
   if (isLoading) return <LoadingSpinner />;
@@ -92,11 +91,15 @@ const PaymentSalePage = () => {
                 <span className="text-gray-500">Nội dung:</span> MUAXE-{order.id}
               </p>
             </div>
-            {qrUrl && (
+            {qrUrl ? (
               <div className="flex flex-col items-center gap-2">
                 <QrCode className="w-5 h-5 text-primary" />
                 <img src={qrUrl} alt="QR VietQR" className="w-48 h-48 rounded-xl border border-gray-200" />
               </div>
+            ) : (
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                Chưa tạo được mã QR: kiểm tra cấu hình ngân hàng (mã NH, số TK, tên TK) trên máy chủ hoặc liên hệ quản trị.
+              </p>
             )}
             <button
               type="button"

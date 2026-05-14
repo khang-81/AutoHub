@@ -17,5 +17,7 @@ public interface ReviewService {
 
     Result adminReply(int reviewId, AdminReplyRequest request);
 
+    Result setHidden(int reviewId, boolean hidden);
+
     Result delete(int reviewId);
 }

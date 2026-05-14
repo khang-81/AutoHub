@@ -1,6 +1,7 @@
 package com.tobeto.rentACar.controllers;
 
 import com.tobeto.rentACar.core.exceptions.types.BusinessException;
+import com.tobeto.rentACar.core.services.FileStorageService;
 import com.tobeto.rentACar.core.services.JwtService;
 import com.tobeto.rentACar.core.utilities.results.Result;
 import com.tobeto.rentACar.services.abstracts.RentalService;
@@ -17,13 +18,17 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("api/rentals")
@@ -33,6 +38,7 @@ public class RentalsController {
 
     private final RentalService rentalService;
     private final JwtService jwtService;
+    private final FileStorageService fileStorageService;
 
     @PostMapping("/add")
     public AddRentalResponse add(@RequestBody @Valid AddRentalRequest request, HttpServletRequest httpRequest) {
@@ -174,6 +180,17 @@ public class RentalsController {
     @PutMapping("/admin/{id}/return")
     public Result adminReturn(@PathVariable int id, @RequestBody @Valid UserReturnCarRequest body) {
         return rentalService.adminReturn(id, body);
+    }
+
+    @PreAuthorize("hasRole('admin')")
+    @PostMapping(value = "/admin/upload-damage-photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Map<String, String> adminUploadDamagePhoto(@RequestParam("file") MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("Vui lòng chọn ảnh.");
+        }
+        String rel = fileStorageService.storeRentalDamageEvidence(file);
+        String url = "/files/" + rel.replace('\\', '/');
+        return Map.of("url", url);
     }
 
     @GetMapping("/insurance-options")

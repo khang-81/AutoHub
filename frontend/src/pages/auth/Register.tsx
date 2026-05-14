@@ -119,9 +119,7 @@ const Register = () => {
               {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</p>}
             </div>
 
-            <p className="text-xs text-gray-500">
-              Tài khoản mới chỉ là <strong>khách hàng</strong>. Quản trị viên do hệ thống cấp, không đăng ký công khai.
-            </p>
+            
 
             <button
               type="submit"

@@ -7,6 +7,7 @@ import { getBankInfoApi } from '../../api/payment';
 import { useToast } from '../../components/ui/Toast';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { formatCurrency } from '../../utils/helpers';
+import { buildVietQrImageUrl } from '../../utils/vietqr';
 import type { Rental } from '../../types';
 
 const PaymentPage = () => {
@@ -59,8 +60,8 @@ const PaymentPage = () => {
   }, [rental]);
 
   const qrUrl = useMemo(() => {
-    if (!rental?.id || !depositToTransfer || !bankInfo?.accountNumber) return '';
-    return `https://img.vietqr.io/image/${bankInfo.bankCode}-${bankInfo.accountNumber}-compact2.png?amount=${depositToTransfer}&addInfo=THUEXE-${rental.id}&accountName=${encodeURIComponent(bankInfo.accountName)}`;
+    if (!rental?.id || !depositToTransfer || !bankInfo) return '';
+    return buildVietQrImageUrl(bankInfo, depositToTransfer, `THUEXE-${rental.id}`);
   }, [rental, depositToTransfer, bankInfo]);
 
   if (isLoading) return <LoadingSpinner />;
@@ -127,8 +128,15 @@ const PaymentPage = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="border rounded-xl p-4 flex items-center justify-center">
-              {qrUrl ? <img src={qrUrl} alt="QR payment" className="w-56 h-56 object-contain" /> : <span className="text-sm text-gray-400">Đang tải QR...</span>}
+            <div className="border rounded-xl p-4 flex items-center justify-center min-h-[14rem]">
+              {qrUrl ? (
+                <img src={qrUrl} alt="QR thanh toán VietQR" className="w-56 h-56 object-contain" referrerPolicy="no-referrer" />
+              ) : (
+                <div className="text-center text-sm text-gray-500 px-4">
+                  <p className="font-medium text-navy mb-1">Chưa tạo được mã QR</p>
+                  <p>Kiểm tra cấu hình ngân hàng trên server (PAYMENT_BANK_CODE, PAYMENT_BANK_ACCOUNT_NUMBER, PAYMENT_BANK_ACCOUNT_NAME) và số tiền cọc &gt; 0.</p>
+                </div>
+              )}
             </div>
             <div className="space-y-3 text-sm text-gray-700">
               <p className="flex items-center gap-2"><Landmark className="w-4 h-4 text-primary" /> Ngân hàng: {bankInfo?.bankName}</p>

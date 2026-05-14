@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   BarChart,
@@ -33,7 +33,7 @@ import { getAllSaleOrdersApi } from '../../api/saleOrders';
 import axiosInstance from '../../api/axiosInstance';
 import { formatCurrency } from '../../utils/helpers';
 import type { Rental, Car as CarType, SaleOrder } from '../../types';
-import { format, parseISO, startOfMonth } from 'date-fns';
+import { format, parseISO, startOfMonth, eachDayOfInterval, endOfMonth } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
@@ -67,6 +67,7 @@ type MonthRow = {
 };
 
 const ManageReports = () => {
+  const [reportMonth, setReportMonth] = useState(() => format(new Date(), 'yyyy-MM'));
   const { data: rentals = [], isLoading: loadRentals } = useQuery<Rental[]>({
     queryKey: ['rentals'],
     queryFn: getAllRentalsApi,
@@ -170,6 +171,46 @@ const ManageReports = () => {
         saleCount: v.saleCount,
       }));
   }, [eligibleRentals, eligibleSales]);
+
+  const dailyRevenueInSelectedMonth = useMemo(() => {
+    const monthStart = parseISO(`${reportMonth}-01T12:00:00`);
+    const monthEnd = endOfMonth(monthStart);
+    const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+    return days.map((day) => {
+      const dayKey = format(day, 'yyyy-MM-dd');
+      let rentalRevenue = 0;
+      let saleRevenue = 0;
+      eligibleRentals.forEach((r) => {
+        if (!r.startDate) return;
+        try {
+          if (format(parseISO(r.startDate), 'yyyy-MM-dd') === dayKey) {
+            rentalRevenue += r.totalPrice || 0;
+          }
+        } catch {
+          /* skip */
+        }
+      });
+      eligibleSales.forEach((o) => {
+        const raw = o.createdDate;
+        if (!raw) return;
+        try {
+          const d = parseISO(raw.length > 10 ? raw : `${raw}T12:00:00`);
+          if (format(d, 'yyyy-MM-dd') === dayKey) {
+            saleRevenue += o.totalPrice || 0;
+          }
+        } catch {
+          /* skip */
+        }
+      });
+      return {
+        dayNum: format(day, 'd'),
+        dayKey,
+        rentalRevenue,
+        saleRevenue,
+        totalRevenue: rentalRevenue + saleRevenue,
+      };
+    });
+  }, [reportMonth, eligibleRentals, eligibleSales]);
 
   const revenueMixData = useMemo(() => {
     const items = [
@@ -435,6 +476,62 @@ const ManageReports = () => {
           <p className="font-heading font-bold text-xl text-navy">{usersCount}</p>
           <p className="text-gray-500 text-sm mt-1">Người dùng</p>
         </div>
+      </div>
+
+      {/* Doanh thu từng ngày trong tháng được chọn */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
+          <div>
+            <h2 className="font-heading font-semibold text-navy text-lg">Doanh thu theo tháng (chi tiết theo ngày)</h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Thuê: theo ngày bắt đầu đơn · Mua: theo ngày tạo đơn · Đơn hủy không tính
+            </p>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="report-month" className="text-xs text-gray-500 font-medium">
+              Chọn tháng
+            </label>
+            <input
+              id="report-month"
+              type="month"
+              value={reportMonth}
+              onChange={(e) => setReportMonth(e.target.value)}
+              className="input-field w-auto min-w-[180px]"
+            />
+          </div>
+        </div>
+        {dailyRevenueInSelectedMonth.some((d) => d.totalRevenue > 0) ? (
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart data={dailyRevenueInSelectedMonth} margin={{ top: 8, right: 12, left: 4, bottom: 0 }} barGap={2}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#eef0f4" vertical={false} />
+              <XAxis
+                dataKey="dayNum"
+                tick={{ fontSize: 10, fill: '#64748b' }}
+                interval={0}
+                axisLine={{ stroke: '#e2e8f0' }}
+              />
+              <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} />
+              <Tooltip
+                formatter={(value: unknown, name?: string | number) => {
+                  const n = String(name ?? '');
+                  return [tooltipMoney(value), n === 'rentalRevenue' ? 'Thuê xe' : n === 'saleRevenue' ? 'Bán xe' : n];
+                }}
+                labelFormatter={(label) => `Tháng ${reportMonth} — ngày ${label}`}
+                contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0' }}
+              />
+              <Legend
+                formatter={(value) => (value === 'rentalRevenue' ? 'Thuê xe' : value === 'saleRevenue' ? 'Bán xe' : value)}
+              />
+              <Bar dataKey="rentalRevenue" name="rentalRevenue" stackId="a" fill={RENT_COLOR} radius={[0, 0, 0, 0]} maxBarSize={14} />
+              <Bar dataKey="saleRevenue" name="saleRevenue" stackId="a" fill={SALE_COLOR} radius={[3, 3, 0, 0]} maxBarSize={14} />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-56 flex flex-col items-center justify-center text-gray-400 gap-2 text-sm">
+            <TrendingUp className="w-10 h-10 opacity-40" />
+            <p>Không có doanh thu trong tháng đã chọn</p>
+          </div>
+        )}
       </div>
 
       {/* Doanh thu theo tháng — grouped bar */}
