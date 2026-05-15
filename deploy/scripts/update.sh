@@ -22,6 +22,10 @@ git reset --hard "origin/${BRANCH}"
 echo "==> Rebuild and restart"
 docker compose up -d --build
 
+echo "==> Sync demo DB (accounts + catalog if outdated)"
+docker compose build db-init
+docker compose run --rm --no-deps db-init
+
 echo "==> Health"
 sleep 10
 docker compose ps

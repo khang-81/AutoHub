@@ -201,4 +201,22 @@ else
     END;
   "
   echo "Incremental migrations completed."
+
+  if [ -f /sync-demo-data.sql ]; then
+    echo "Applying sync-demo-data.sql (accounts + catalog demo, idempotent)..."
+    ok_sync=0
+    for i in $(seq 1 5); do
+      if run_master -b -i /sync-demo-data.sql; then
+        ok_sync=1
+        break
+      fi
+      echo "sync-demo-data attempt $i failed; retrying in 2s..."
+      sleep 2
+    done
+    if [ "$ok_sync" -ne 1 ]; then
+      echo "WARNING: sync-demo-data.sql failed — DB may still be on old seed. Re-run: docker compose run --rm db-init"
+      exit 1
+    fi
+    echo "Demo data sync completed."
+  fi
 fi
