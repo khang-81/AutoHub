@@ -1,7 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 SQLCMD=/opt/mssql-tools18/bin/sqlcmd
-COMMON=( -S "$DB_HOST" -U sa -P "$MSSQL_SA_PASSWORD" -C )
+# -I: QUOTED_IDENTIFIER ON (required for INSERT on tables with filtered indexes, e.g. users.email)
+COMMON=( -S "$DB_HOST" -U sa -P "$MSSQL_SA_PASSWORD" -C -I )
 
 # Không dùng -b: recovery / DB chưa ONLINE có thể làm lệnh lỗi tạm thời.
 run_master() {
