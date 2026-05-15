@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y curl ca-certificates gnupg \
   && ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev \
   && rm -rf /var/lib/apt/lists/*
 COPY autohub-full-schema.sql /autohub-full-schema.sql
+COPY sync-demo-data.sql /sync-demo-data.sql
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
