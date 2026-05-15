@@ -12,6 +12,9 @@ header = """/*
 */
 USE [autohub];
 GO
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
 SET NOCOUNT ON;
 """
 

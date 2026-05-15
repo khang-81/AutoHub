@@ -4,6 +4,9 @@
 */
 USE [autohub];
 GO
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
 SET NOCOUNT ON;
 /* Roles — khớp AuthCManager.register (roleService.findByName) */
 IF NOT EXISTS (SELECT 1 FROM [dbo].[roles] WHERE [name] = N'admin')
