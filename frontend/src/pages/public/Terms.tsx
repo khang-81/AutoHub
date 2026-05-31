@@ -8,7 +8,7 @@ const sections = [
     items: [
       'AutoHub cung cấp nền tảng đặt thuê xe tự lái và mua bán xe niêm yết trực tuyến.',
       'Thông tin xe, giá thuê, giá bán hiển thị trên website mang tính tham khảo và có thể thay đổi theo thời điểm.',
-      'Khách hàng cần hoàn tất xác minh danh tính (KYC) trước khi đặt thuê hoặc mua xe theo quy định của AutoHub.',
+      'Khách hàng cần hoàn tất xác minh GPLX (CCCD + giấy phép lái xe) trước khi đặt thuê hoặc mua xe theo quy định của AutoHub.',
     ],
   },
   {
@@ -17,7 +17,6 @@ const sections = [
     items: [
       'Thanh toán được thực hiện qua chuyển khoản ngân hàng theo thông tin hiển thị trên hệ thống.',
       'Khách hàng chịu trách nhiệm nhập đúng nội dung chuyển khoản để đơn hàng được xác nhận kịp thời.',
-      'Mã khuyến mãi (nếu có) chỉ áp dụng khi còn hiệu lực và đáp ứng điều kiện sử dụng.',
     ],
   },
   {

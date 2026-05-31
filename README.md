@@ -41,41 +41,18 @@ docker compose up --build -d
 ```
 
 - **Frontend:** http://localhost:3000
-- **Backend (host → container):** http://localhost:8088 — cổng map qua `API_PORT` trong `.env` (mặc định tránh xung đột với dịch vụ khác đang dùng 8080)
+- **Backend:** http://localhost:8088
 
-## Project Structure
 
-```
-backend/           # Spring Boot API
-frontend/          # React frontend
-deploy/            # VPS deployment scripts & Nginx config
-docker-compose.yml
-```
-
-## VPS Deployment
-
-Use `deploy/env.production.example` as `.env` on the server: it pins `API_PORT=8080`, `WEB_PORT=3000`, and `MSSQL_PORT=1433` for a typical Linux host. Public HTTPS goes to host Nginx → loopback `WEB_PORT` (the `web` container); `/api` is forwarded inside Docker to Spring, so it does not depend on the host-published API port.
-
-```bash
-bash deploy/scripts/01-bootstrap-vps.sh
-bash deploy/scripts/02-deploy.sh
-```
-
-## Update Production
-
-```bash
-bash deploy/scripts/update.sh
-```
-
-4. Open:
+## Open:
 
 - Web: `http://localhost:3000`
 - API: `http://localhost:8081`
 
-## Default Accounts (Seed Data)
+## Default Accounts 
 
 - Admin: `admin@autohub.id.vn` / `admin123@`
-- User: `tester@gmail.com` / `123456`
+- User: `user@autohub.id.vn` / `admin123@`
 
 ## Local Development (Without Docker)
 

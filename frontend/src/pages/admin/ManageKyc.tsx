@@ -35,7 +35,7 @@ function groupPendingByUserId(rows: UserDocumentDto[]): Map<number, UserDocument
   return m;
 }
 
-const ManageKyc = () => {
+const ManageKyc = ({ embedded = false }: { embedded?: boolean }) => {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const [rejectUserId, setRejectUserId] = useState<number | null>(null);
@@ -116,13 +116,17 @@ const ManageKyc = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <ShieldCheck className="w-8 h-8 text-primary" />
-        <div>
-          <h1 className="font-heading font-bold text-2xl text-navy">Duyệt giấy tờ KYC</h1>
-          <p className="text-gray-500 text-sm">Mỗi khách một dòng (CCCD + GPLX gộp) — xem ảnh/PDF rồi duyệt hoặc từ chối cả bộ</p>
+      {!embedded && (
+        <div className="flex items-center gap-3">
+          <ShieldCheck className="w-8 h-8 text-primary" />
+          <div>
+            <h1 className="font-heading font-bold text-2xl text-navy">Duyệt GPLX</h1>
+            <p className="text-gray-500 text-sm">
+              Mỗi khách một dòng (CCCD + GPLX) — xem ảnh/PDF rồi duyệt hoặc từ chối cả bộ
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {isLoading ? (
         <div className="bg-white rounded-2xl shadow-sm p-12 flex justify-center">
@@ -215,7 +219,7 @@ const ManageKyc = () => {
       <Modal
         isOpen={detailUserId != null}
         onClose={() => setDetailUserId(null)}
-        title={detailUserId != null ? `KYC — ${emailFor(detailUserId)}` : ''}
+        title={detailUserId != null ? `GPLX — ${emailFor(detailUserId)}` : ''}
         size="lg"
       >
         {detailUserId != null && (

@@ -17,7 +17,7 @@ import BrandLogo from '../ui/BrandLogo';
 const navItems = [
   { label: 'Tổng quan', to: '/dashboard', icon: LayoutDashboard, exact: true },
   { label: 'Hồ sơ của tôi', to: '/dashboard/profile', icon: User },
-  { label: 'Xác minh danh tính', to: '/dashboard/kyc', icon: IdCard },
+  { label: 'Xác minh GPLX', to: '/dashboard/kyc', icon: IdCard },
   { label: 'Lịch sử thuê xe', to: '/dashboard/rentals', icon: FileText },
   { label: 'Đơn mua xe', to: '/dashboard/sale-orders', icon: ShoppingBag },
   { label: 'Lịch xem xe', to: '/dashboard/viewing-appointments', icon: CalendarClock },

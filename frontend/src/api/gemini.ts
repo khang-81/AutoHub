@@ -8,7 +8,7 @@ const SYSTEM_PROMPT = `Bạn là AutoBot - trợ lý AI của AutoHub, nền t�
 THÔNG TIN AUTOHUB:
 - **Thuê xe tự lái:** sedan, SUV, MPV, hatchback — giá theo ngày (VNĐ/ngày), tùy xe.
 - **Mua xe:** xe niêm yết bán (giá bán một lần), có thể đặt cọc / thanh toán theo quy trình trên web.
-- **Chung:** CCCD/Hộ chiếu, GPLX hợp lệ; KYC duyệt trước khi đặt thuê; xem xe / liên hệ qua trang web.
+- **Chung:** CCCD/Hộ chiếu, GPLX hợp lệ; GPLX được duyệt trước khi đặt thuê; xem xe / liên hệ qua trang web.
 - **Thuê — quy trình gợi ý:** Chọn xe → Chọn ngày → Đặt xe → Cọc / thanh toán → Nhận xe → Trả xe → Tất toán.
 - **Mua — quy trình gợi ý:** Chọn xe bán → Đặt mua / cọc theo hướng dẫn → Thanh toán → Hoàn tất thủ tục (chi tiết theo từng xe và chính sách hiện hành).
 - Hotline: 1800-AUTO • Email: support@autohub.vn
@@ -176,15 +176,15 @@ async function tryBusinessReply(message: string): Promise<string | null> {
     }
 
     if (wantsSale(msg) && (msg.includes('điều kiện') || msg.includes('dieu kien') || msg.includes('cần gì'))) {
-        return '📋 **Mua xe (gợi ý):** Xác minh danh tính / KYC theo yêu cầu; đặt mua & thanh toán trên trang chi tiết xe; có thể đặt **lịch xem xe** trước. Chi tiết cọc & thủ tục hiển thị theo từng xe trên AutoHub.';
+        return '📋 **Mua xe (gợi ý):** Xác minh GPLX theo yêu cầu; đặt mua & thanh toán trên trang chi tiết xe; có thể đặt **lịch xem xe** trước. Chi tiết cọc & thủ tục hiển thị theo từng xe trên AutoHub.';
     }
 
     if (wantsRent(msg) && (msg.includes('điều kiện') || msg.includes('dieu kien') || (msg.includes('thuê') && msg.includes('cần')))) {
-        return '📋 **Thuê xe:** CCCD/Hộ chiếu còn hiệu lực, GPLX hợp lệ, KYC **được duyệt** trước khi đặt thuê; đặt cọc theo từng đơn.';
+        return '📋 **Thuê xe:** CCCD/Hộ chiếu còn hiệu lực, GPLX hợp lệ, **GPLX được duyệt** trước khi đặt thuê; đặt cọc theo từng đơn.';
     }
 
     if (msg.includes('điều kiện') || msg.includes('dieu kien')) {
-        return '📋 **Thuê:** KYC duyệt + GPLX + CCCD/Hộ chiếu + cọc theo đơn.\n**Mua:** kiểm tra trạng thái xe (còn bán), đặt mua / thanh toán trên web; có thể hẹn **xem xe** trước.';
+        return '📋 **Thuê:** GPLX duyệt + CCCD/Hộ chiếu + cọc theo đơn.\n**Mua:** kiểm tra trạng thái xe (còn bán), đặt mua / thanh toán trên web; có thể hẹn **xem xe** trước.';
     }
 
     if (wantsSale(msg) && (msg.includes('quy trình') || msg.includes('quy trinh') || msg.includes('các bước') || msg.includes('cac buoc'))) {

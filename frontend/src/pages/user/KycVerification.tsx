@@ -92,7 +92,7 @@ const KycVerification = () => {
       <div className="bg-white rounded-2xl shadow-sm p-6">
         <div className="flex items-center gap-3 mb-2">
           <ShieldCheck className="w-6 h-6 text-primary" />
-          <h1 className="font-heading font-bold text-xl text-navy">Xác minh danh tính (KYC)</h1>
+          <h1 className="font-heading font-bold text-xl text-navy">Xác minh GPLX</h1>
         </div>
         <p className="text-gray-500 text-sm">
           Tải ảnh CCCD và GPLX. Sau khi admin duyệt, bạn có thể đặt xe.

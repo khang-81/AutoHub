@@ -106,7 +106,7 @@ const UserDashboard = () => {
           <div className="flex items-start gap-3">
             <ShieldAlert className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-amber-900 text-sm">Hoàn tất xác minh CCCD & GPLX</p>
+              <p className="font-semibold text-amber-900 text-sm">Hoàn tất xác minh GPLX</p>
               <p className="text-amber-800/90 text-xs mt-0.5">
                 Bạn cần được duyệt giấy tờ trước khi đặt xe.
               </p>

@@ -14,8 +14,6 @@ import {
   ShoppingBag,
   MessageSquare,
   CalendarClock,
-  Palette,
-  Ticket,
 } from 'lucide-react';
 import { getEmailFromToken } from '../../utils/helpers';
 import { ADMIN_TOKEN_KEY, ADMIN_USER_KEY, clearAdminSession } from '../../utils/adminSession';
@@ -26,10 +24,7 @@ const navItems = [
   { label: 'Quản lý xe thuê', to: '/admin/cars/rent', icon: Car },
   { label: 'Quản lý xe bán', to: '/admin/cars/sale', icon: ShoppingBag },
   { label: 'Quản lý khách hàng', to: '/admin/users', icon: Users },
-  { label: 'Quản lý GPLX', to: '/admin/kyc', icon: ShieldCheck },
   { label: 'Quản lý thương hiệu & model', to: '/admin/brands', icon: Tag },
-  { label: 'Quản lý màu xe', to: '/admin/colors', icon: Palette },
-  { label: 'Mã khuyến mãi', to: '/admin/promotions', icon: Ticket },
   { label: 'Quản lý lịch xem xe', to: '/admin/viewing-appointments', icon: CalendarClock },
   { label: 'Quản lý đánh giá', to: '/admin/reviews', icon: MessageSquare },
   { label: 'Báo cáo doanh thu', to: '/admin/reports', icon: BarChart3 },
