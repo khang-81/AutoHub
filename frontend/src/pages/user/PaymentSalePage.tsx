@@ -3,23 +3,23 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { CreditCard, QrCode, Landmark, ArrowLeft } from 'lucide-react';
 import { getSaleOrderByIdApi, submitSaleTransferApi } from '../../api/saleOrders';
+import { getBankInfoApi } from '../../api/payment';
 import { useToast } from '../../components/ui/Toast';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { formatCurrency } from '../../utils/helpers';
+import { buildVietQrImageUrl } from '../../utils/vietqr';
 import type { SaleOrder } from '../../types';
-
-const BANK_INFO = {
-  bankCode: 'TCB',
-  bankName: 'Techcombank',
-  accountName: 'TA DUC KHANG',
-  accountNumber: '19073286543012',
-  accountNumberDisplay: '1907 3286 5430 12',
-};
 
 const PaymentSalePage = () => {
   const { saleOrderId } = useParams<{ saleOrderId: string }>();
   const navigate = useNavigate();
   const { showToast } = useToast();
+
+  const { data: bankInfo } = useQuery({
+    queryKey: ['bankInfo'],
+    queryFn: getBankInfoApi,
+    staleTime: Infinity,
+  });
 
   const { data: order, isLoading } = useQuery<SaleOrder>({
     queryKey: ['saleOrder', saleOrderId],
@@ -40,11 +40,9 @@ const PaymentSalePage = () => {
   });
 
   const qrUrl = useMemo(() => {
-    if (!order?.id || !order?.totalPrice) return '';
-    return `https://img.vietqr.io/image/${BANK_INFO.bankCode}-${BANK_INFO.accountNumber}-compact2.png?amount=${Math.round(
-      order.totalPrice
-    )}&addInfo=MUAXE-${order.id}&accountName=${encodeURIComponent(BANK_INFO.accountName)}`;
-  }, [order]);
+    if (!order?.id || !order?.totalPrice || !bankInfo) return '';
+    return buildVietQrImageUrl(bankInfo, Math.round(order.totalPrice), `MUAXE-${order.id}`);
+  }, [order, bankInfo]);
 
   if (isLoading) return <LoadingSpinner />;
   if (!order) return <div className="text-center text-gray-500">Không tìm thấy đơn mua.</div>;
@@ -81,23 +79,27 @@ const PaymentSalePage = () => {
             </div>
             <div className="text-sm space-y-1 text-gray-700">
               <p>
-                <span className="text-gray-500">Ngân hàng:</span> {BANK_INFO.bankName}
+                <span className="text-gray-500">Ngân hàng:</span> {bankInfo?.bankName}
               </p>
               <p>
-                <span className="text-gray-500">Số TK:</span> {BANK_INFO.accountNumberDisplay}
+                <span className="text-gray-500">Số TK:</span> {bankInfo?.accountNumberDisplay}
               </p>
               <p>
-                <span className="text-gray-500">Chủ TK:</span> {BANK_INFO.accountName}
+                <span className="text-gray-500">Chủ TK:</span> {bankInfo?.accountName}
               </p>
               <p>
                 <span className="text-gray-500">Nội dung:</span> MUAXE-{order.id}
               </p>
             </div>
-            {qrUrl && (
+            {qrUrl ? (
               <div className="flex flex-col items-center gap-2">
                 <QrCode className="w-5 h-5 text-primary" />
                 <img src={qrUrl} alt="QR VietQR" className="w-48 h-48 rounded-xl border border-gray-200" />
               </div>
+            ) : (
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                Chưa tạo được mã QR: kiểm tra cấu hình ngân hàng (mã NH, số TK, tên TK) trên máy chủ hoặc liên hệ quản trị.
+              </p>
             )}
             <button
               type="button"

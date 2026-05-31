@@ -1,7 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 SQLCMD=/opt/mssql-tools18/bin/sqlcmd
-COMMON=( -S "$DB_HOST" -U sa -P "$MSSQL_SA_PASSWORD" -C )
+# -I: QUOTED_IDENTIFIER ON (required for INSERT on tables with filtered indexes, e.g. users.email)
+COMMON=( -S "$DB_HOST" -U sa -P "$MSSQL_SA_PASSWORD" -C -I )
 
 # Không dùng -b: recovery / DB chưa ONLINE có thể làm lệnh lỗi tạm thời.
 run_master() {
@@ -184,6 +185,39 @@ else
         CONSTRAINT [FK_viewing_appointments_users] FOREIGN KEY ([user_id]) REFERENCES [dbo].[users] ([id])
       );
     END;
+
+    IF COL_LENGTH('dbo.reviews', 'admin_reply') IS NULL
+    BEGIN
+      ALTER TABLE dbo.reviews ADD admin_reply NVARCHAR(2000) NULL;
+    END;
+
+    IF COL_LENGTH('dbo.reviews', 'hidden_from_public') IS NULL
+    BEGIN
+      ALTER TABLE dbo.reviews ADD hidden_from_public BIT NOT NULL CONSTRAINT DF_reviews_hidden_from_public DEFAULT 0;
+    END;
+
+    IF COL_LENGTH('dbo.rentals', 'damage_photo_urls') IS NOT NULL
+    BEGIN
+      ALTER TABLE dbo.rentals ALTER COLUMN damage_photo_urls NVARCHAR(MAX) NULL;
+    END;
   "
   echo "Incremental migrations completed."
+
+  if [ -f /sync-demo-data.sql ]; then
+    echo "Applying sync-demo-data.sql (accounts + catalog demo, idempotent)..."
+    ok_sync=0
+    for i in $(seq 1 5); do
+      if run_master -b -i /sync-demo-data.sql; then
+        ok_sync=1
+        break
+      fi
+      echo "sync-demo-data attempt $i failed; retrying in 2s..."
+      sleep 2
+    done
+    if [ "$ok_sync" -ne 1 ]; then
+      echo "WARNING: sync-demo-data.sql failed — DB may still be on old seed. Re-run: docker compose run --rm db-init"
+      exit 1
+    fi
+    echo "Demo data sync completed."
+  fi
 fi

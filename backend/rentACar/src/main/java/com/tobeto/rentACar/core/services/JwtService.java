@@ -1,6 +1,7 @@
 package com.tobeto.rentACar.core.services;
 
 import com.tobeto.rentACar.services.dtos.user.response.GetUserByNameResponse;
+import com.tobeto.rentACar.core.exceptions.types.BusinessException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -41,6 +42,16 @@ public class JwtService {
         Date expirationDate = extractExpiration(token);
         return userDetails.getUsername().equals(username) && !expirationDate.before(new Date());
     }
+    /** Extracts userId and throws {@link BusinessException} if the claim is absent. Use instead of
+     * {@link #extractUserId} + manual null-check / unboxing to avoid NullPointerException. */
+    public int requireUserId(String token) {
+        Integer id = extractUserId(token);
+        if (id == null) {
+            throw new BusinessException("Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.");
+        }
+        return id;
+    }
+
     public Integer extractUserId(String token) {
         Claims claims = Jwts
                 .parser()

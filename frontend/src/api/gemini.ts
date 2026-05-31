@@ -29,6 +29,37 @@ export interface ChatMessage {
     content: string;
 }
 
+export type ChatReplySource = 'gemini' | 'faq' | 'fallback';
+
+export interface ChatReply {
+    content: string;
+    source: ChatReplySource;
+    model?: string;
+    totalTokens?: number;
+}
+
+export interface AiStatus {
+    geminiConfigured: boolean;
+}
+
+let aiStatusCache: { data: AiStatus; at: number } | null = null;
+const AI_STATUS_CACHE_MS = 60_000;
+
+export async function getAiStatus(): Promise<AiStatus> {
+    const now = Date.now();
+    if (aiStatusCache && now - aiStatusCache.at < AI_STATUS_CACHE_MS) {
+        return aiStatusCache.data;
+    }
+    try {
+        const res = await axiosInstance.get<AiStatus>('/api/ai/status');
+        const data = { geminiConfigured: Boolean(res.data?.geminiConfigured) };
+        aiStatusCache = { data, at: now };
+        return data;
+    } catch {
+        return { geminiConfigured: false };
+    }
+}
+
 let carsCache: { data: Car[]; at: number } | null = null;
 const CARS_CACHE_MS = 60_000;
 
@@ -306,26 +337,55 @@ function getBusinessFallback(message: string): string {
     return '🤖 Mình đang ở chế độ dự phòng. Thử hỏi về thuê/mua xe, giá, quy trình — hoặc liên hệ hotline.';
 }
 
-export const sendChatMessage = async (message: string, history: ChatMessage[]): Promise<string> => {
-    const businessReply = await tryBusinessReply(message);
-    if (businessReply) return businessReply;
+export const sendChatMessage = async (message: string, history: ChatMessage[]): Promise<ChatReply> => {
+    const status = await getAiStatus();
 
-    try {
-        const cars = await getCarsLive();
-        const liveContext = buildLiveContextBlock(cars);
+    if (status.geminiConfigured) {
+        try {
+            const cars = await getCarsLive();
+            const liveContext = buildLiveContextBlock(cars);
 
-        const res = await axiosInstance.post('/api/ai/chat', {
-            message,
-            history,
-            systemPrompt: `${SYSTEM_PROMPT}\n\nDu lieu realtime (API): ${liveContext}`,
-        });
-        if (res?.data?.success && res?.data?.message) {
-            return res.data.message as string;
+            const res = await axiosInstance.post<{
+                success?: boolean;
+                message?: string;
+                model?: string;
+                totalTokens?: number;
+            }>('/api/ai/chat', {
+                message,
+                history,
+                systemPrompt: `${SYSTEM_PROMPT}\n\nDu lieu realtime (API): ${liveContext}`,
+            });
+
+            if (res?.data?.success && res?.data?.message) {
+                return {
+                    content: res.data.message,
+                    source: 'gemini',
+                    model: res.data.model,
+                    totalTokens: res.data.totalTokens ?? undefined,
+                };
+            }
+            throw new Error(res?.data?.message || 'AI backend returned no response');
+        } catch (error) {
+            console.error('Gemini API error:', error);
+            const businessReply = await tryBusinessReply(message);
+            const fallback = businessReply || getBusinessFallback(message);
+            return {
+                content: `${toErrorMessage(error)}\n\n${fallback}`,
+                source: businessReply ? 'faq' : 'fallback',
+            };
         }
-        throw new Error(res?.data?.message || 'AI backend returned no response');
-    } catch (error) {
-        console.error('Gemini API error:', error);
-        const fallback = (await tryBusinessReply(message)) || getBusinessFallback(message);
-        return `${toErrorMessage(error)}\n\n${fallback}`;
     }
+
+    const businessReply = await tryBusinessReply(message);
+    if (businessReply) {
+        return { content: businessReply, source: 'faq' };
+    }
+
+    return {
+        content:
+            '🤖 **Chế độ FAQ:** Server chưa cấu hình `GEMINI_API_KEY` nên AutoBot chỉ trả lời câu hỏi mẫu (giá, quy trình, liên hệ…).\n\n' +
+            'Để hỏi tự do (so sánh xe, tư vấn theo ngữ cảnh…), thêm key Gemini vào `.env` trên VPS rồi `docker compose up -d --build api`.\n\n' +
+            getBusinessFallback(message),
+        source: 'fallback',
+    };
 };

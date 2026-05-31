@@ -289,7 +289,6 @@ public class ViewingAppointmentManager implements ViewingAppointmentService {
         u.setId(v.getUser().getId());
         u.setEmail(v.getUser().getEmail());
         u.setKycStatus(v.getUser().getKycStatus());
-        u.setPassword(null);
         ViewingAppointmentResponse r = new ViewingAppointmentResponse();
         r.setId(v.getId());
         r.setScheduledAt(v.getScheduledAt());

@@ -5,6 +5,7 @@ import com.tobeto.rentACar.core.services.JwtService;
 import com.tobeto.rentACar.core.utilities.results.Result;
 import com.tobeto.rentACar.services.abstracts.ReviewService;
 import com.tobeto.rentACar.services.dtos.review.request.AdminReplyRequest;
+import com.tobeto.rentACar.services.dtos.review.request.AdminReviewVisibilityRequest;
 import com.tobeto.rentACar.services.dtos.review.request.CreateReviewRequest;
 import com.tobeto.rentACar.services.dtos.review.response.ReviewResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,7 +38,7 @@ public class ReviewsController {
             throw new BusinessException("Yêu cầu đăng nhập.");
         }
         String token = tokenWithPrefix.replace("Bearer ", "");
-        int userId = jwtService.extractUserId(token);
+        int userId = jwtService.requireUserId(token);
         return reviewService.add(request, userId);
     }
 
@@ -51,6 +52,12 @@ public class ReviewsController {
     @PutMapping("/admin/{id}/reply")
     public Result adminReply(@PathVariable int id, @RequestBody @Valid AdminReplyRequest request) {
         return reviewService.adminReply(id, request);
+    }
+
+    @PreAuthorize("hasRole('admin')")
+    @PutMapping("/admin/{id}/hidden")
+    public Result setHidden(@PathVariable int id, @RequestBody @Valid AdminReviewVisibilityRequest body) {
+        return reviewService.setHidden(id, Boolean.TRUE.equals(body.getHidden()));
     }
 
     @PreAuthorize("hasRole('admin')")

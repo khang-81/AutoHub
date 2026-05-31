@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { MessageSquare, Reply, Search, Star, Trash2 } from 'lucide-react';
-import { adminReplyReviewApi, deleteReviewAdminApi, getAllReviewsAdminApi, type ReviewDto } from '../../api/reviews';
+import { MessageSquare, Reply, Search, Star, Trash2, Eye, EyeOff } from 'lucide-react';
+import { adminReplyReviewApi, deleteReviewAdminApi, getAllReviewsAdminApi, adminSetReviewHiddenApi, type ReviewDto } from '../../api/reviews';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
@@ -16,6 +16,7 @@ const ManageReviews = () => {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [replyId, setReplyId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [detailReview, setDetailReview] = useState<ReviewDto | null>(null);
 
   const { data: reviews = [], isLoading } = useQuery<ReviewDto[]>({
     queryKey: ['adminReviews'],
@@ -51,6 +52,21 @@ const ManageReviews = () => {
     onError: (err: unknown) => {
       const e = err as { response?: { data?: { message?: string } } };
       showToast(e?.response?.data?.message || 'Không thể phản hồi', 'error');
+    },
+  });
+
+  const hiddenMutation = useMutation({
+    mutationFn: ({ id, hidden }: { id: number; hidden: boolean }) => adminSetReviewHiddenApi(id, hidden),
+    onSuccess: (res: { message?: string }) => {
+      showToast(res?.message || 'Đã cập nhật hiển thị', 'success');
+      queryClient.invalidateQueries({ queryKey: ['adminReviews'] });
+      queryClient.invalidateQueries({ queryKey: ['reviews'] });
+      queryClient.invalidateQueries({ queryKey: ['cars'] });
+      queryClient.invalidateQueries({ queryKey: ['car'] });
+    },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { message?: string } } };
+      showToast(e?.response?.data?.message || 'Không thể cập nhật', 'error');
     },
   });
 
@@ -127,6 +143,7 @@ const ManageReviews = () => {
                   <th className="text-left px-5 py-4 font-medium">Khách</th>
                   <th className="text-left px-5 py-4 font-medium">Nội dung</th>
                   <th className="text-right px-5 py-4 font-medium">Ngày</th>
+                  <th className="text-left px-5 py-4 font-medium">Hiển thị</th>
                   <th className="text-right px-5 py-4 font-medium">Thao tác</th>
                 </tr>
               </thead>
@@ -150,7 +167,33 @@ const ManageReviews = () => {
                       <p className="line-clamp-2">{r.comment || <span className="text-gray-400 italic">Không có nhận xét</span>}</p>
                     </td>
                     <td className="px-5 py-4 text-right text-gray-500">{formatDate(r.createdDate)}</td>
-                    <td className="px-5 py-4 text-right flex items-center justify-end gap-1">
+                    <td className="px-5 py-4">
+                      {r.hiddenFromPublic ? (
+                        <span className="badge text-xs bg-slate-200 text-slate-700">Đã ẩn web</span>
+                      ) : (
+                        <span className="badge text-xs bg-emerald-50 text-emerald-700">Công khai</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4 text-right flex items-center justify-end gap-1 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => setDetailReview(r)}
+                        className="p-2 rounded-lg text-navy hover:bg-slate-100 transition-colors"
+                        title="Chi tiết"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          hiddenMutation.mutate({ id: r.id, hidden: !Boolean(r.hiddenFromPublic) })
+                        }
+                        disabled={hiddenMutation.isPending}
+                        className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50"
+                        title={r.hiddenFromPublic ? 'Hiện lại trên web' : 'Ẩn khỏi trang công khai'}
+                      >
+                        {r.hiddenFromPublic ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                      </button>
                       <button
                         type="button"
                         onClick={() => { setReplyId(r.id); setReplyText(r.adminReply || ''); }}
@@ -181,6 +224,55 @@ const ManageReviews = () => {
           </div>
         )}
       </div>
+
+      <Modal isOpen={!!detailReview} onClose={() => setDetailReview(null)} title={`Đánh giá #${detailReview?.id ?? ''}`} size="md">
+        {detailReview && (
+          <div className="space-y-4 text-sm">
+            <div className="flex flex-wrap gap-2">
+              <span className={`badge text-xs ${detailReview.sourceType === 'SALE_ORDER' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                {detailReview.sourceType === 'SALE_ORDER' ? `Đơn mua #${detailReview.saleOrderId}` : `Đơn thuê #${detailReview.rentalId}`}
+              </span>
+              {detailReview.hiddenFromPublic ? (
+                <span className="badge text-xs bg-slate-200 text-slate-700">Đang ẩn trên web</span>
+              ) : (
+                <span className="badge text-xs bg-emerald-50 text-emerald-700">Hiển thị công khai</span>
+              )}
+            </div>
+            <p><span className="text-gray-500">Xe:</span> <strong>{detailReview.carLabel || '—'}</strong></p>
+            <p><span className="text-gray-500">Khách:</span> {detailReview.authorLabel}</p>
+            <p><span className="text-gray-500">Ngày:</span> {formatDate(detailReview.createdDate)}</p>
+            <div className="flex gap-0.5 text-amber-500">
+              {Array.from({ length: detailReview.rating }).map((_, i) => (
+                <Star key={i} className="w-4 h-4 fill-current" />
+              ))}
+            </div>
+            <div className="rounded-xl border border-gray-100 bg-gray-50/80 p-3">
+              <p className="text-xs text-gray-500 mb-1">Nội dung</p>
+              <p className="text-gray-800 whitespace-pre-wrap">{detailReview.comment || '—'}</p>
+            </div>
+            <div className="rounded-xl border border-primary/15 bg-primary/5 p-3">
+              <p className="text-xs text-gray-500 mb-1">Phản hồi admin</p>
+              <p className="text-gray-800 whitespace-pre-wrap">{detailReview.adminReply || 'Chưa có phản hồi.'}</p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setDetailReview(null)} className="btn-outline">
+                Đóng
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !Boolean(detailReview.hiddenFromPublic);
+                  hiddenMutation.mutate({ id: detailReview.id, hidden: next });
+                  setDetailReview({ ...detailReview, hiddenFromPublic: next });
+                }}
+                className="btn-outline"
+              >
+                {detailReview.hiddenFromPublic ? 'Hiện lại web' : 'Ẩn khỏi web'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Modal isOpen={!!deleteId} onClose={() => setDeleteId(null)} title="Xóa đánh giá" size="sm">
         <p className="text-gray-600 mb-4">Bạn có chắc muốn xóa đánh giá #{deleteId}?</p>

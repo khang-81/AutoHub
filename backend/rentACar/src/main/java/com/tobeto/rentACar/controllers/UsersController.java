@@ -105,10 +105,11 @@ public class UsersController {
             throw new BusinessException("Yêu cầu đăng nhập.");
         }
         String token = tokenWithPrefix.replace("Bearer ", "");
-        int tokenUserId = jwtService.extractUserId(token);
+        int tokenUserId = jwtService.requireUserId(token);
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         boolean isAdmin = auth != null && auth.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_admin".equals(a.getAuthority()) || "admin".equals(a.getAuthority()));
+                .map(a -> a.getAuthority() != null ? a.getAuthority().toLowerCase() : "")
+                .anyMatch(a -> a.equals("role_admin") || a.equals("admin") || a.contains("admin"));
         if (!isAdmin && tokenUserId != userId) {
             throw new BusinessException("Bạn không có quyền xem vai trò tài khoản này.");
         }

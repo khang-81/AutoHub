@@ -1,11 +1,10 @@
+import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Car,
   LayoutDashboard,
   Users,
-  FileText,
   Tag,
-  Cpu,
   LogOut,
   Menu,
   X,
@@ -16,9 +15,10 @@ import {
   MessageSquare,
   CalendarClock,
   Palette,
+  Ticket,
 } from 'lucide-react';
-import { useState } from 'react';
 import { getEmailFromToken } from '../../utils/helpers';
+import { ADMIN_TOKEN_KEY, ADMIN_USER_KEY, clearAdminSession } from '../../utils/adminSession';
 import BrandLogo from '../ui/BrandLogo';
 
 const navItems = [
@@ -27,17 +27,13 @@ const navItems = [
   { label: 'Quản lý xe bán', to: '/admin/cars/sale', icon: ShoppingBag },
   { label: 'Quản lý khách hàng', to: '/admin/users', icon: Users },
   { label: 'Quản lý GPLX', to: '/admin/kyc', icon: ShieldCheck },
-  { label: 'Quản lý thương hiệu & Model', to: '/admin/brands', icon: Tag },
-  { label: 'Quản lý màu sắc', to: '/admin/colors', icon: Palette },
-  { label: 'Quản lý đơn thuê', to: '/admin/rentals', icon: FileText },
-  { label: 'Quản lý đơn mua', to: '/admin/sale-orders', icon: ShoppingBag },
+  { label: 'Quản lý thương hiệu & model', to: '/admin/brands', icon: Tag },
+  { label: 'Quản lý màu xe', to: '/admin/colors', icon: Palette },
+  { label: 'Mã khuyến mãi', to: '/admin/promotions', icon: Ticket },
   { label: 'Quản lý lịch xem xe', to: '/admin/viewing-appointments', icon: CalendarClock },
   { label: 'Quản lý đánh giá', to: '/admin/reviews', icon: MessageSquare },
   { label: 'Báo cáo doanh thu', to: '/admin/reports', icon: BarChart3 },
 ];
-
-const ADMIN_USER_KEY = 'autohub_admin_user';
-const ADMIN_TOKEN_KEY = 'autohub_admin_token';
 
 function readAdminDisplayEmail(): string {
   try {
@@ -60,8 +56,7 @@ const AdminSidebar = () => {
   const adminEmail = readAdminDisplayEmail();
 
   const handleLogout = () => {
-    localStorage.removeItem(ADMIN_TOKEN_KEY);
-    localStorage.removeItem(ADMIN_USER_KEY);
+    clearAdminSession();
     navigate('/admin/login');
   };
 
@@ -111,7 +106,7 @@ const AdminSidebar = () => {
         <div className="px-4 py-3 border-b border-navy-400">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-              <Cpu className="w-4 h-4 text-white" />
+              <ShieldCheck className="w-4 h-4 text-white" />
             </div>
             <div className="min-w-0">
               <p className="text-xs text-gray-400">Quản trị viên</p>

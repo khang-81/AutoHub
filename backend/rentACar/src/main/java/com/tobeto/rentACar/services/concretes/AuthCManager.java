@@ -28,6 +28,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -36,6 +37,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Set;
 
 
@@ -106,12 +108,38 @@ public class AuthCManager implements AuthCService {
                 return new ErrorResult(messageService.getMessage(Messages.User.userCredentialsIncorrectMessage));
             }
 
+            if (!(authentication.getPrincipal() instanceof User authenticatedUser)) {
+                return new ErrorResult(messageService.getMessage(Messages.User.userCredentialsIncorrectMessage));
+            }
+
             GetUserByNameResponse userResponse = userService.getByName(email);
 
             if (userResponse != null) {
                 String token = jwtService.generateToken(email, userResponse, userResponse.getTokenVersion());
                 LoginResponse loginResponse = new LoginResponse();
                 loginResponse.setToken(token);
+                List<String> roleNames = authenticatedUser.getAuthorities().stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .filter(a -> a != null && !a.isBlank())
+                        .toList();
+                loginResponse.setRoles(roleNames);
+
+                boolean isAdmin = roleNames.stream()
+                        .anyMatch(r -> r != null && r.equalsIgnoreCase("admin"));
+                String portal = loginUserRequest.getPortal() != null
+                        ? loginUserRequest.getPortal().trim().toUpperCase()
+                        : "USER";
+                if (!portal.equals("USER") && !portal.equals("ADMIN")) {
+                    return new ErrorResult("Portal đăng nhập không hợp lệ.");
+                }
+                if ("USER".equals(portal) && isAdmin) {
+                    return new ErrorResult(
+                            "Tài khoản quản trị không thể đăng nhập tại đây. Vui lòng dùng trang /admin/login.");
+                }
+                if ("ADMIN".equals(portal) && !isAdmin) {
+                    return new ErrorResult("Tài khoản này không có quyền truy cập trang quản trị.");
+                }
+
                 return new AuthCResult(true, messageService.getMessage(Messages.User.userLoginSuccess), loginResponse);
             }
             return new ErrorResult(messageService.getMessage(Messages.User.getUserNotFoundMessage));

@@ -15,8 +15,15 @@ public class GetUserByIdResponse {
 
     private String email;
 
-    private String password;
-
     private String kycStatus;
 
+    private String customerFirstName;
+    private String customerLastName;
+    private LocalDate customerBirthdate;
+    private String customerInternationalId;
+    private LocalDate customerLicenceIssueDate;
+    private String companyName;
+    private String companyTaxNo;
+    /** INDIVIDUAL | CORPORATE — null nếu chưa có hồ sơ chi tiết */
+    private String profileKind;
 }

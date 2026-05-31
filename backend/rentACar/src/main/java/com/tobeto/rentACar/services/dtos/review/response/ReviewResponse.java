@@ -19,6 +19,7 @@ public class ReviewResponse {
     private Integer rating;
     private String comment;
     private String adminReply;
+    private Boolean hiddenFromPublic;
     private LocalDate createdDate;
     /** Hiển thị công khai, không lộ full email */
     private String authorLabel;

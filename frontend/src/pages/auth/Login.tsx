@@ -7,7 +7,7 @@ import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { loginApi } from '../../api/auth';
 import { getUserRolesApi } from '../../api/users';
 import { useAuthStore } from '../../store/authStore';
-import { getUserIdFromToken, getEmailFromToken } from '../../utils/helpers';
+import { getUserIdFromToken, getEmailFromToken, getApiErrorMessage, getRoleFromToken } from '../../utils/helpers';
 import { useToast } from '../../components/ui/Toast';
 
 const schema = z.object({
@@ -25,7 +25,10 @@ const Login = () => {
   const { login } = useAuthStore();
   const { showToast } = useToast();
 
-  const from = (location.state as { from?: Location })?.from?.pathname || '/';
+  const loginRedirectState = location.state as { from?: { pathname?: string } } | null;
+  const fromPath = loginRedirectState?.from?.pathname;
+  const redirectAfterLogin =
+    fromPath && fromPath !== '/login' ? fromPath : '/';
 
   const {
     register,
@@ -36,9 +39,8 @@ const Login = () => {
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     try {
-      const res = await loginApi(data);
+      const res = await loginApi({ ...data, portal: 'USER' });
       if (res.success) {
-        // Extract token from nested loginResponse
         const token = res.loginResponse?.token || res.data || res.token;
         if (!token) {
           showToast('Không nhận được token từ server', 'error');
@@ -46,35 +48,45 @@ const Login = () => {
         }
         const userId = getUserIdFromToken(token) ?? 0;
         const email = getEmailFromToken(token) ?? data.email;
-        // Gắn JWT trước khi gọi API roles (axios interceptor đọc localStorage)
+
+        const rolesFromLogin = res.loginResponse?.roles;
+        let roles: string[] = Array.isArray(rolesFromLogin)
+          ? rolesFromLogin.map((r) => String(r).trim()).filter(Boolean)
+          : [];
+
         localStorage.setItem('autohub_token', token);
-        const rolesData = userId ? await getUserRolesApi(userId) : [];
-        const roles = rolesData.map((r) => r.name);
-        login(token, userId, email, roles);
-        showToast('Đăng nhập thành công!', 'success');
-        // Redirect based on role
-        const adminRole = roles.some((r: string) => r.toLowerCase().includes('admin'));
-        if (adminRole) {
-          localStorage.setItem('autohub_admin_token', token);
-          localStorage.setItem(
-            'autohub_admin_user',
-            JSON.stringify({ id: userId, email, roles })
-          );
-          navigate('/admin');
-        } else {
-          localStorage.removeItem('autohub_admin_token');
-          localStorage.removeItem('autohub_admin_user');
-          // Đặc tả UC Đăng nhập: khách hàng -> Trang chủ. Nếu user bị middleware đẩy về login từ trang khác,
-          // ưu tiên redirect ngược lại trang đó để giữ ngữ cảnh thao tác (Thuê/Mua/...).
-          const target = from && from !== '/login' ? from : '/';
-          navigate(target);
+
+        if (roles.length === 0 && userId) {
+          try {
+            roles = (await getUserRolesApi(userId)).map((r) => r.name);
+          } catch {
+            roles = getRoleFromToken(token);
+            if (roles.length === 0) {
+              showToast('Đã đăng nhập nhưng không tải được danh sách vai trò. Bạn vẫn có thể dùng trang.', 'error');
+            }
+          }
         }
+
+        const isAdminAccount = roles.some((r: string) => r.toLowerCase().includes('admin'));
+        if (isAdminAccount) {
+          localStorage.removeItem('autohub_token');
+          showToast(
+            'Tài khoản quản trị không thể đăng nhập tại đây. Vui lòng dùng trang /admin/login.',
+            'error'
+          );
+          return;
+        }
+
+        login(token, userId, email, roles);
+        localStorage.removeItem('autohub_admin_token');
+        localStorage.removeItem('autohub_admin_user');
+        showToast('Đăng nhập thành công!', 'success');
+        navigate(redirectAfterLogin);
       } else {
         showToast(res.message || 'Đăng nhập thất bại', 'error');
       }
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      showToast(error?.response?.data?.message || 'Email hoặc mật khẩu không đúng', 'error');
+      showToast(getApiErrorMessage(err, 'Email hoặc mật khẩu không đúng'), 'error');
     } finally {
       setLoading(false);
     }

@@ -66,15 +66,14 @@ public class SecurityConfiguration {
             "/v2/api-docs",
             "/v3/api-docs",
             "/v3/api-docs/**",
-            "/api/roles/**",
             "/api/brands/**",
             "/api/cars/**",
             "/api/colors/**",
             "/api/contact/**",
-            "/actuator/**"
+            "/api/ai/**"
     };
 
-    /** Actuator: chain riêng (không gắn JWT) — tránh 403 health khi deploy / Docker. */
+    /** Actuator: chỉ health/info public (khớp management.endpoints.web.exposure.include). */
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public SecurityFilterChain actuatorSecurityFilterChain(HttpSecurity http) throws Exception {
@@ -82,15 +81,17 @@ public class SecurityConfiguration {
                 .securityMatcher(EndpointRequest.toAnyEndpoint())
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(x -> x.anyRequest().permitAll());
+                .authorizeHttpRequests(x -> x
+                        .requestMatchers(EndpointRequest.to("health", "info")).permitAll()
+                        .anyRequest().denyAll());
         return http.build();
     }
 
     @Bean
     @Order(1)
-    public SecurityFilterChain authEndpointsFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain publicRateLimitedFilterChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher("/api/auth/**")
+                .securityMatcher("/api/auth/**", "/api/ai/**", "/api/contact/**")
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(x -> x.anyRequest().permitAll())
@@ -113,9 +114,12 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/api/rentals/insurance-options").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/rentals/addon-options").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/rentals/public/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/roles/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/models/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/viewing-appointments/availability").permitAll()
+                        // Ảnh/PDF KYC: trình duyệt không gửi Bearer khi <img src> hoặc mở tab mới — phải cho GET tĩnh.
+                        .requestMatchers(HttpMethod.GET, "/files/**").permitAll()
                         .anyRequest().authenticated())
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

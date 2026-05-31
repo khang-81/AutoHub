@@ -1,16 +1,23 @@
 package com.tobeto.rentACar.services.concretes;
 
 import com.tobeto.rentACar.core.exceptions.types.BusinessException;
+import com.tobeto.rentACar.core.exceptions.types.NotFoundException;
+import com.tobeto.rentACar.core.utilities.results.Result;
+import com.tobeto.rentACar.core.utilities.results.SuccessResult;
 import com.tobeto.rentACar.entities.concretes.Promotion;
 import com.tobeto.rentACar.repositories.PromotionRepository;
 import com.tobeto.rentACar.services.abstracts.PromotionService;
+import com.tobeto.rentACar.services.dtos.promotion.request.AddPromotionRequest;
 import com.tobeto.rentACar.services.dtos.promotion.request.ApplyPromotionRequest;
+import com.tobeto.rentACar.services.dtos.promotion.request.UpdatePromotionRequest;
 import com.tobeto.rentACar.services.dtos.promotion.response.ApplyPromotionResponse;
+import com.tobeto.rentACar.services.dtos.promotion.response.GetAllPromotionsResponse;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
@@ -66,6 +73,125 @@ public class PromotionManager implements PromotionService {
             promo.setActive(false);
         }
         promotionRepository.save(promo);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<GetAllPromotionsResponse> getAll() {
+        return promotionRepository.findAll().stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public Result add(AddPromotionRequest request) {
+        String code = normalizeCode(request.getCode());
+        validateConfig(request.getDiscountType(), request.getAppliesTo(), request.getDiscountValue(),
+                request.getValidFrom(), request.getValidTo());
+        if (promotionRepository.existsByCodeIgnoreCase(code)) {
+            throw new BusinessException("Mã khuyến mãi đã tồn tại.");
+        }
+        Promotion promo = Promotion.builder()
+                .code(code)
+                .description(trimOrNull(request.getDescription()))
+                .discountType(request.getDiscountType().trim().toUpperCase(Locale.ROOT))
+                .discountValue(request.getDiscountValue())
+                .appliesTo(request.getAppliesTo().trim().toUpperCase(Locale.ROOT))
+                .validFrom(request.getValidFrom())
+                .validTo(request.getValidTo())
+                .usageLimit(request.getUsageLimit())
+                .maxDiscountAmount(request.getMaxDiscountAmount())
+                .minOrderValue(request.getMinOrderValue())
+                .active(request.getActive() == null || request.getActive())
+                .usageCount(0)
+                .build();
+        promotionRepository.save(promo);
+        return new SuccessResult("Thêm mã khuyến mãi thành công.");
+    }
+
+    @Override
+    @Transactional
+    public Result update(UpdatePromotionRequest request) {
+        Promotion promo = promotionRepository.findById(request.getId())
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy mã khuyến mãi."));
+        String code = normalizeCode(request.getCode());
+        validateConfig(request.getDiscountType(), request.getAppliesTo(), request.getDiscountValue(),
+                request.getValidFrom(), request.getValidTo());
+        if (promotionRepository.existsByCodeIgnoreCaseAndIdNot(code, request.getId())) {
+            throw new BusinessException("Mã khuyến mãi đã tồn tại.");
+        }
+        promo.setCode(code);
+        promo.setDescription(trimOrNull(request.getDescription()));
+        promo.setDiscountType(request.getDiscountType().trim().toUpperCase(Locale.ROOT));
+        promo.setDiscountValue(request.getDiscountValue());
+        promo.setAppliesTo(request.getAppliesTo().trim().toUpperCase(Locale.ROOT));
+        promo.setValidFrom(request.getValidFrom());
+        promo.setValidTo(request.getValidTo());
+        promo.setUsageLimit(request.getUsageLimit());
+        promo.setMaxDiscountAmount(request.getMaxDiscountAmount());
+        promo.setMinOrderValue(request.getMinOrderValue());
+        promo.setActive(request.getActive());
+        promotionRepository.save(promo);
+        return new SuccessResult("Cập nhật mã khuyến mãi thành công.");
+    }
+
+    @Override
+    @Transactional
+    public Result delete(int id) {
+        Promotion promo = promotionRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy mã khuyến mãi."));
+        if (promo.getUsageCount() > 0) {
+            promo.setActive(false);
+            promotionRepository.save(promo);
+            return new SuccessResult("Mã đã được sử dụng — đã vô hiệu hóa thay vì xóa.");
+        }
+        promotionRepository.delete(promo);
+        return new SuccessResult("Xóa mã khuyến mãi thành công.");
+    }
+
+    private GetAllPromotionsResponse toResponse(Promotion promo) {
+        return new GetAllPromotionsResponse(
+                promo.getId(),
+                promo.getCode(),
+                promo.getDescription(),
+                promo.getDiscountType(),
+                promo.getDiscountValue(),
+                promo.getAppliesTo(),
+                promo.getValidFrom(),
+                promo.getValidTo(),
+                promo.getUsageLimit(),
+                promo.getUsageCount(),
+                promo.getMaxDiscountAmount(),
+                promo.getMinOrderValue(),
+                promo.isActive()
+        );
+    }
+
+    private void validateConfig(String discountType, String appliesTo, Double discountValue,
+                                LocalDate validFrom, LocalDate validTo) {
+        String type = discountType == null ? "" : discountType.trim().toUpperCase(Locale.ROOT);
+        String applies = appliesTo == null ? "" : appliesTo.trim().toUpperCase(Locale.ROOT);
+        if (!ALLOWED_TYPES.contains(type)) {
+            throw new BusinessException("Loại giảm giá không hợp lệ.");
+        }
+        if (!ALLOWED_APPLIES_TO.contains(applies)) {
+            throw new BusinessException("Phạm vi áp dụng không hợp lệ.");
+        }
+        if ("PERCENT".equals(type) && discountValue != null && discountValue > 100) {
+            throw new BusinessException("Giảm giá phần trăm không được vượt quá 100.");
+        }
+        if (validFrom != null && validTo != null && validFrom.isAfter(validTo)) {
+            throw new BusinessException("Ngày bắt đầu không được sau ngày kết thúc.");
+        }
+    }
+
+    private static String trimOrNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private Promotion findValid(String code, String scope) {

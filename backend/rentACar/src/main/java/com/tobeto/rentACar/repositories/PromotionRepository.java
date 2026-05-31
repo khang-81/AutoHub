@@ -7,4 +7,8 @@ import java.util.Optional;
 
 public interface PromotionRepository extends JpaRepository<Promotion, Integer> {
     Optional<Promotion> findByCodeIgnoreCase(String code);
+
+    boolean existsByCodeIgnoreCase(String code);
+
+    boolean existsByCodeIgnoreCaseAndIdNot(String code, Integer id);
 }

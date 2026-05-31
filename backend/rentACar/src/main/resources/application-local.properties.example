@@ -1,8 +1,10 @@
-# Sao chép thành application-local.properties trong cùng thư mục (src/main/resources/).
-# File application-local.properties đã gitignore — dùng để ghi đè mail/Gemini/DB cục bộ.
-# Được nạp tự động nhờ spring.config.import trong application.properties (optional).
+# Copy to application-local.properties in same directory (src/main/resources/).
+# File application-local.properties is gitignored — use to override local dev settings.
+# Loaded automatically via spring.config.import in application.properties (optional).
 
-# spring.datasource.url=jdbc:sqlserver://localhost;databaseName=autohub;encrypt=false;trustServerCertificate=true
+# For local dev with SQL Server on host machine (not Docker):
+# spring.datasource.url=jdbc:sqlserver://localhost:1433;databaseName=autohub;encrypt=false;trustServerCertificate=true
+# spring.datasource.password=YourLocalPassword
 
 # MAIL_USERNAME=
 # MAIL_PASSWORD=

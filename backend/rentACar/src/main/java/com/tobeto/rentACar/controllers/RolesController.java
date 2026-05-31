@@ -1,7 +1,6 @@
 package com.tobeto.rentACar.controllers;
 
 
-import com.tobeto.rentACar.core.utilities.results.Result;
 import com.tobeto.rentACar.services.abstracts.RoleService;
 import com.tobeto.rentACar.services.dtos.role.RoleDto;
 import lombok.Data;
@@ -23,8 +22,9 @@ public class RolesController {
         return roleService.createRole(roleDto);
     }
 
+    @PreAuthorize("hasRole('admin')")
     @DeleteMapping("/delete")
-    public void deleteRole(Integer id) {
+    public void deleteRole(@RequestParam Integer id) {
         roleService.deleteRole(id);
     }
 

@@ -12,6 +12,7 @@ export interface ReviewDto {
   adminReply?: string | null;
   createdDate: string;
   authorLabel: string;
+  hiddenFromPublic?: boolean;
 }
 
 export const getReviewsByCarIdApi = async (carId: number, minRating?: number): Promise<ReviewDto[]> => {
@@ -37,5 +38,10 @@ export const adminReplyReviewApi = async (id: number, reply: string) => {
 
 export const deleteReviewAdminApi = async (id: number) => {
   const res = await axiosInstance.delete(`/api/reviews/admin/delete/${id}`);
+  return res.data;
+};
+
+export const adminSetReviewHiddenApi = async (id: number, hidden: boolean) => {
+  const res = await axiosInstance.put(`/api/reviews/admin/${id}/hidden`, { hidden });
   return res.data;
 };

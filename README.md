@@ -1,69 +1,70 @@
 # AutoHub
 
-AutoHub is a full-stack car rental and sales platform with KYC, booking, payments, reviews, and admin operations.
+Modern full-stack car rental and vehicle marketplace platform.
+
+## Features
+
+- Car rental & vehicle listings
+- JWT authentication & role-based access
+- Booking & invoice management
+- Bank transfer payment flow
+- Reviews & admin dashboard
 
 ## Tech Stack
 
-- **Backend:** Spring Boot 3, Spring Security 6 (JWT), JPA/Hibernate, Flyway
-- **Frontend:** React 19, Vite, TanStack Query, Tailwind CSS, Zustand
-- **Database:** SQL Server (Docker local)
-- **E2E Testing:** Playwright
-- **Deployment:** Docker Compose (recommended), Render + Vercel (cloud)
+- **Backend:** Spring Boot 3, Spring Security, JWT, JPA/Hibernate, Flyway
+- **Frontend:** React 19, Vite, Tailwind CSS, Zustand
+- **Database:** SQL Server 2022
+- **Deployment:** Docker Compose + Nginx + Let's Encrypt SSL
 
-## Architecture
+## Production
 
+Deployed on VPS with custom domain:
+
+🌐 [autohub.id.vn](https://autohub.id.vn)
+
+## Infrastructure
+
+- Dockerized full-stack application
+- Host Nginx reverse proxy
+- HTTPS with Let's Encrypt
+- SQL Server running in Docker
+- CI-friendly deployment scripts
+
+## Quick Start
+
+### Run locally
+
+```bash
+cp docker-compose.env.example .env
+docker compose up --build -d
 ```
-┌──────────────┐        ┌──────────────┐       ┌───────────┐
-│  React SPA   │──API──▶│  Spring Boot │──JPA─▶│ SQL Server│
-│  (Vite)      │        │  REST + JWT  │       └───────────┘
-└──────────────┘        └──────────────┘
-                              │
-                    ┌─────────┼─────────┐
-                    ▼         ▼         ▼
-               Flyway     Email     File Storage
-```
+
+- **Frontend:** http://localhost:3000
+- **Backend (host → container):** http://localhost:8088 — cổng map qua `API_PORT` trong `.env` (mặc định tránh xung đột với dịch vụ khác đang dùng 8080)
 
 ## Project Structure
 
 ```
-├── backend/rentACar/          # Spring Boot API
-│   ├── src/main/java/com/tobeto/rentACar/
-│   │   ├── controllers/       # REST endpoints
-│   │   ├── entities/          # JPA entities
-│   │   ├── repositories/      # Spring Data repos
-│   │   ├── services/          # Business logic (abstracts + concretes)
-│   │   └── core/              # Security, filters, config, utilities
-│   └── src/main/resources/
-│       ├── application.properties
-│       └── db/migration/      # Flyway SQL migrations
-├── frontend/                  # React SPA
-│   ├── src/
-│   │   ├── api/               # Axios API clients
-│   │   ├── components/        # Reusable UI components
-│   │   ├── pages/             # Route pages (admin/, user/, public/)
-│   │   ├── store/             # Zustand stores
-│   │   └── types/             # TypeScript interfaces
-│   └── vite.config.ts
-├── e2e/                       # Playwright E2E tests
-│   ├── tests/
-│   └── playwright.config.ts
-└── docker-compose.yml
+backend/           # Spring Boot API
+frontend/          # React frontend
+deploy/            # VPS deployment scripts & Nginx config
+docker-compose.yml
 ```
 
-## Quick Start (Docker)
+## VPS Deployment
 
-1. Copy environment template:
+Use `deploy/env.production.example` as `.env` on the server: it pins `API_PORT=8080`, `WEB_PORT=3000`, and `MSSQL_PORT=1433` for a typical Linux host. Public HTTPS goes to host Nginx → loopback `WEB_PORT` (the `web` container); `/api` is forwarded inside Docker to Spring, so it does not depend on the host-published API port.
 
 ```bash
-cp docker-compose.env.example .env
+bash deploy/scripts/01-bootstrap-vps.sh
+bash deploy/scripts/02-deploy.sh
 ```
 
-2. Update required values in `.env` (at least `MSSQL_SA_PASSWORD`, `JWT_KEY`).
-
-3. Build and start:
+## Update Production
 
 ```bash
-docker compose up --build
+bash deploy/scripts/update.sh
 ```
 
 4. Open:
@@ -81,91 +82,5 @@ docker compose up --build
 **Backend:**
 
 ```bash
-cd backend/rentACar
-mvn spring-boot:run
+bash deploy/scripts/backup-db.sh
 ```
-
-**Frontend:**
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-## Testing
-
-### E2E Tests (Playwright)
-
-```bash
-cd e2e
-npm install
-npx playwright install chromium
-npx playwright test
-```
-
-Set `BASE_URL` env var to point to your running frontend (default: `http://localhost:3000`).
-
-### Run headed (debug):
-
-```bash
-npx playwright test --headed
-```
-
-## API Highlights
-
-| Endpoint | Method | Auth | Description |
-|---|---|---|---|
-| `/api/auth/register` | POST | No | Register customer |
-| `/api/auth/login` | POST | No | Login, returns JWT |
-| `/api/cars/**` | GET | No | Browse cars |
-| `/api/rentals` | POST | User | Create rental |
-| `/api/viewing-appointments` | POST | User | Book viewing |
-| `/api/reports/rentals/excel` | GET | Admin | Export report |
-| `/api/reviews/admin/{id}/reply` | PUT | Admin | Reply to review |
-
-## Security
-
-- JWT authentication with token versioning
-- Rate limiting on `/api/auth/**` (10 req/min per IP)
-- CORS configured for frontend origin
-- `/files/**` and `/api/ai/**` require authentication
-- Passwords hashed with BCrypt
-
-## Database Migrations
-
-Flyway handles schema migrations in `backend/rentACar/src/main/resources/db/migration/`.
-
-- `V1__add_performance_indexes.sql` — indexes for common queries
-
-Add new migrations as `V{N}__{description}.sql`.
-
-## Environment Notes
-
-- Do not commit secrets.
-- Docker Compose reads variables from root `.env`.
-- For OTP email delivery, set `MAIL_USERNAME` and `MAIL_PASSWORD` (Gmail App Password recommended).
-- `FRONTEND_URL` should match the web URL used by users (used in password reset email flow).
-
-## Common Commands
-
-```bash
-# Rebuild only API
-docker compose build api --no-cache
-
-# Rebuild only web
-docker compose build web --no-cache
-
-# Stop and remove containers
-docker compose down
-
-# Run E2E tests
-cd e2e && npx playwright test
-```
-
-## Contributors
-
-- [Hazar Akatay](https://github.com/EarthCaspian)
-- [Senem Yılmaz](https://github.com/senemyilmazz)
-- [Duygu Şen Tosunoğlu](https://github.com/duygusen)
-- [İnci Gülçin Durak Yolcu](https://github.com/InciGulcinDY)

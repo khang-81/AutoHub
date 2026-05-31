@@ -4,10 +4,10 @@
 
   Backend & docker-compose: databaseName=autohub (application.properties, SPRING_DATASOURCE_URL).
 
-  Tài khoản demo (mật khẩu: 12345678 — BCrypt strength 10):
-    admin@autohub.local  → role admin
-    user@autohub.local   → role user
-    corp@autohub.local   → role user (khách hàng doanh nghiệp mẫu)
+  Tài khoản demo (mật khẩu: admin123@ — BCrypt strength 10):
+    admin@autohub.id.vn  → role admin
+    user@autohub.id.vn   → role user (khách cá nhân)
+    corp@autohub.id.vn   → role user (khách doanh nghiệp mẫu)
 */
 
 IF DB_ID(N'autohub') IS NULL
@@ -227,6 +227,8 @@ CREATE TABLE [dbo].[reviews] (
     [user_id]      INT            NOT NULL,
     [rating]       INT            NOT NULL,
     [comment]      NVARCHAR (2000) NULL,
+    [admin_reply]  NVARCHAR (2000) NULL,
+    [hidden_from_public] BIT      NOT NULL CONSTRAINT [DF_reviews_hidden_from_public] DEFAULT ((0)),
     CONSTRAINT [PK_reviews] PRIMARY KEY CLUSTERED ([id] ASC),
     CONSTRAINT [FK_reviews_rentals] FOREIGN KEY ([rental_id]) REFERENCES [dbo].[rentals] ([id]),
     CONSTRAINT [FK_reviews_sale_orders] FOREIGN KEY ([sale_order_id]) REFERENCES [dbo].[sale_orders] ([id]),
@@ -283,7 +285,7 @@ GO
 
 /* =========================================================================================
    Seed dữ liệu mẫu (idempotent — chạy lại an toàn cho các bản ghi có kiểm tra NOT EXISTS)
-   Mật khẩu người dùng: 12345678
+   Mật khẩu tài khoản demo: admin123@
    ========================================================================================= */
 SET NOCOUNT ON;
 
@@ -307,6 +309,9 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[brands] WHERE [name] = N'VinFast')
 IF NOT EXISTS (SELECT 1 FROM [dbo].[brands] WHERE [name] = N'Mazda')
     INSERT INTO [dbo].[brands] ([created_date], [name], [logo_path])
     VALUES (CAST(GETDATE() AS DATE), N'Mazda', NULL);
+IF NOT EXISTS (SELECT 1 FROM [dbo].[brands] WHERE [name] = N'Mercedes-Benz')
+    INSERT INTO [dbo].[brands] ([created_date], [name], [logo_path])
+    VALUES (CAST(GETDATE() AS DATE), N'Mercedes-Benz', NULL);
 GO
 
 /* Models */
@@ -325,6 +330,42 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[
 IF NOT EXISTS (SELECT 1 FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[brand_id] = b.[id] WHERE b.[name] = N'Mazda' AND m.[name] = N'CX-5')
     INSERT INTO [dbo].[models] ([created_date], [name], [brand_id])
     SELECT CAST(GETDATE() AS DATE), N'CX-5', [id] FROM [dbo].[brands] WHERE [name] = N'Mazda';
+IF NOT EXISTS (SELECT 1 FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[brand_id] = b.[id] WHERE b.[name] = N'VinFast' AND m.[name] = N'VF 3')
+    INSERT INTO [dbo].[models] ([created_date], [name], [brand_id])
+    SELECT CAST(GETDATE() AS DATE), N'VF 3', [id] FROM [dbo].[brands] WHERE [name] = N'VinFast';
+IF NOT EXISTS (SELECT 1 FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[brand_id] = b.[id] WHERE b.[name] = N'VinFast' AND m.[name] = N'VF 8')
+    INSERT INTO [dbo].[models] ([created_date], [name], [brand_id])
+    SELECT CAST(GETDATE() AS DATE), N'VF 8', [id] FROM [dbo].[brands] WHERE [name] = N'VinFast';
+IF NOT EXISTS (SELECT 1 FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[brand_id] = b.[id] WHERE b.[name] = N'VinFast' AND m.[name] = N'VF 9')
+    INSERT INTO [dbo].[models] ([created_date], [name], [brand_id])
+    SELECT CAST(GETDATE() AS DATE), N'VF 9', [id] FROM [dbo].[brands] WHERE [name] = N'VinFast';
+IF NOT EXISTS (SELECT 1 FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[brand_id] = b.[id] WHERE b.[name] = N'Toyota' AND m.[name] = N'Corolla Cross')
+    INSERT INTO [dbo].[models] ([created_date], [name], [brand_id])
+    SELECT CAST(GETDATE() AS DATE), N'Corolla Cross', [id] FROM [dbo].[brands] WHERE [name] = N'Toyota';
+IF NOT EXISTS (SELECT 1 FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[brand_id] = b.[id] WHERE b.[name] = N'Toyota' AND m.[name] = N'Fortuner')
+    INSERT INTO [dbo].[models] ([created_date], [name], [brand_id])
+    SELECT CAST(GETDATE() AS DATE), N'Fortuner', [id] FROM [dbo].[brands] WHERE [name] = N'Toyota';
+IF NOT EXISTS (SELECT 1 FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[brand_id] = b.[id] WHERE b.[name] = N'Honda' AND m.[name] = N'Civic')
+    INSERT INTO [dbo].[models] ([created_date], [name], [brand_id])
+    SELECT CAST(GETDATE() AS DATE), N'Civic', [id] FROM [dbo].[brands] WHERE [name] = N'Honda';
+IF NOT EXISTS (SELECT 1 FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[brand_id] = b.[id] WHERE b.[name] = N'Honda' AND m.[name] = N'CR-V')
+    INSERT INTO [dbo].[models] ([created_date], [name], [brand_id])
+    SELECT CAST(GETDATE() AS DATE), N'CR-V', [id] FROM [dbo].[brands] WHERE [name] = N'Honda';
+IF NOT EXISTS (SELECT 1 FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[brand_id] = b.[id] WHERE b.[name] = N'Mazda' AND m.[name] = N'Mazda3')
+    INSERT INTO [dbo].[models] ([created_date], [name], [brand_id])
+    SELECT CAST(GETDATE() AS DATE), N'Mazda3', [id] FROM [dbo].[brands] WHERE [name] = N'Mazda';
+IF NOT EXISTS (SELECT 1 FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[brand_id] = b.[id] WHERE b.[name] = N'Mazda' AND m.[name] = N'BT-50')
+    INSERT INTO [dbo].[models] ([created_date], [name], [brand_id])
+    SELECT CAST(GETDATE() AS DATE), N'BT-50', [id] FROM [dbo].[brands] WHERE [name] = N'Mazda';
+IF NOT EXISTS (SELECT 1 FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[brand_id] = b.[id] WHERE b.[name] = N'Mercedes-Benz' AND m.[name] = N'C-Class')
+    INSERT INTO [dbo].[models] ([created_date], [name], [brand_id])
+    SELECT CAST(GETDATE() AS DATE), N'C-Class', [id] FROM [dbo].[brands] WHERE [name] = N'Mercedes-Benz';
+IF NOT EXISTS (SELECT 1 FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[brand_id] = b.[id] WHERE b.[name] = N'Mercedes-Benz' AND m.[name] = N'E-Class')
+    INSERT INTO [dbo].[models] ([created_date], [name], [brand_id])
+    SELECT CAST(GETDATE() AS DATE), N'E-Class', [id] FROM [dbo].[brands] WHERE [name] = N'Mercedes-Benz';
+IF NOT EXISTS (SELECT 1 FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[brand_id] = b.[id] WHERE b.[name] = N'Mercedes-Benz' AND m.[name] = N'GLC')
+    INSERT INTO [dbo].[models] ([created_date], [name], [brand_id])
+    SELECT CAST(GETDATE() AS DATE), N'GLC', [id] FROM [dbo].[brands] WHERE [name] = N'Mercedes-Benz';
 GO
 
 /* Colors */
@@ -340,18 +381,18 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[colors] WHERE [name] = N'Xanh dương')
     INSERT INTO [dbo].[colors] ([created_date], [name], [code]) VALUES (CAST(GETDATE() AS DATE), N'Xanh dương', N'#1E3A8A');
 GO
 
-/* Users — BCrypt hash của "12345678" (bcrypt rounds 10), tương thích BCryptPasswordEncoder */
-DECLARE @pwd NVARCHAR(255) = N'$2b$10$.Uuu11fj963cC00HG6ApVOQV.ZeufsLm9ngqPA9fYqKdCz.UOd5Vi';
+/* Users — BCrypt hash của "admin123@" (bcrypt rounds 10), tương thích BCryptPasswordEncoder */
+DECLARE @pwd NVARCHAR(255) = N'$2b$10$bqBMqaSpBHVrUJmlzVTDbeVb/eoFx4F5qzPJJn0YwISSF6TFCc7V2';
 
-IF NOT EXISTS (SELECT 1 FROM [dbo].[users] WHERE [email] = N'admin@autohub.local')
+IF NOT EXISTS (SELECT 1 FROM [dbo].[users] WHERE [email] = N'admin@autohub.id.vn')
     INSERT INTO [dbo].[users] ([created_date], [email], [password], [kyc_status])
-    VALUES (CAST(GETDATE() AS DATE), N'admin@autohub.local', @pwd, N'APPROVED');
-IF NOT EXISTS (SELECT 1 FROM [dbo].[users] WHERE [email] = N'user@autohub.local')
+    VALUES (CAST(GETDATE() AS DATE), N'admin@autohub.id.vn', @pwd, N'APPROVED');
+IF NOT EXISTS (SELECT 1 FROM [dbo].[users] WHERE [email] = N'user@autohub.id.vn')
     INSERT INTO [dbo].[users] ([created_date], [email], [password], [kyc_status])
-    VALUES (CAST(GETDATE() AS DATE), N'user@autohub.local', @pwd, N'APPROVED');
-IF NOT EXISTS (SELECT 1 FROM [dbo].[users] WHERE [email] = N'corp@autohub.local')
+    VALUES (CAST(GETDATE() AS DATE), N'user@autohub.id.vn', @pwd, N'APPROVED');
+IF NOT EXISTS (SELECT 1 FROM [dbo].[users] WHERE [email] = N'corp@autohub.id.vn')
     INSERT INTO [dbo].[users] ([created_date], [email], [password], [kyc_status])
-    VALUES (CAST(GETDATE() AS DATE), N'corp@autohub.local', @pwd, N'PENDING');
+    VALUES (CAST(GETDATE() AS DATE), N'corp@autohub.id.vn', @pwd, N'APPROVED');
 GO
 
 /* users_roles */
@@ -359,37 +400,37 @@ INSERT INTO [dbo].[users_roles] ([user_id], [role_id])
 SELECT u.[id], r.[id]
 FROM [dbo].[users] u
 CROSS JOIN [dbo].[roles] r
-WHERE u.[email] = N'admin@autohub.local' AND r.[name] = N'admin'
+WHERE u.[email] = N'admin@autohub.id.vn' AND r.[name] = N'admin'
   AND NOT EXISTS (SELECT 1 FROM [dbo].[users_roles] ur WHERE ur.[user_id] = u.[id] AND ur.[role_id] = r.[id]);
 
 INSERT INTO [dbo].[users_roles] ([user_id], [role_id])
 SELECT u.[id], r.[id]
 FROM [dbo].[users] u
 CROSS JOIN [dbo].[roles] r
-WHERE u.[email] = N'user@autohub.local' AND r.[name] = N'user'
+WHERE u.[email] = N'user@autohub.id.vn' AND r.[name] = N'user'
   AND NOT EXISTS (SELECT 1 FROM [dbo].[users_roles] ur WHERE ur.[user_id] = u.[id] AND ur.[role_id] = r.[id]);
 
 INSERT INTO [dbo].[users_roles] ([user_id], [role_id])
 SELECT u.[id], r.[id]
 FROM [dbo].[users] u
 CROSS JOIN [dbo].[roles] r
-WHERE u.[email] = N'corp@autohub.local' AND r.[name] = N'user'
+WHERE u.[email] = N'corp@autohub.id.vn' AND r.[name] = N'user'
   AND NOT EXISTS (SELECT 1 FROM [dbo].[users_roles] ur WHERE ur.[user_id] = u.[id] AND ur.[role_id] = r.[id]);
 GO
 
 /* customers + corporate_customers */
-IF NOT EXISTS (SELECT 1 FROM [dbo].[customers] c INNER JOIN [dbo].[users] u ON c.[user_id] = u.[id] WHERE u.[email] = N'user@autohub.local')
+IF NOT EXISTS (SELECT 1 FROM [dbo].[customers] c INNER JOIN [dbo].[users] u ON c.[user_id] = u.[id] WHERE u.[email] = N'user@autohub.id.vn')
     INSERT INTO [dbo].[customers] ([created_date], [first_name], [last_name], [birthdate], [international_id], [licence_issue_date], [user_id])
-    SELECT CAST(GETDATE() AS DATE), N'Minh', N'Nguyễn', DATEFROMPARTS(1995, 6, 15), N'001095012345', DATEFROMPARTS(2020, 3, 1), [id]
-    FROM [dbo].[users] WHERE [email] = N'user@autohub.local';
+    SELECT CAST(GETDATE() AS DATE), N'Văn Minh', N'Nguyễn', DATEFROMPARTS(1995, 6, 15), N'079195012345', DATEFROMPARTS(2020, 3, 1), [id]
+    FROM [dbo].[users] WHERE [email] = N'user@autohub.id.vn';
 
-IF NOT EXISTS (SELECT 1 FROM [dbo].[corporate_customers] cc INNER JOIN [dbo].[users] u ON cc.[user_id] = u.[id] WHERE u.[email] = N'corp@autohub.local')
+IF NOT EXISTS (SELECT 1 FROM [dbo].[corporate_customers] cc INNER JOIN [dbo].[users] u ON cc.[user_id] = u.[id] WHERE u.[email] = N'corp@autohub.id.vn')
     INSERT INTO [dbo].[corporate_customers] ([created_date], [company_name], [tax_no], [user_id])
     SELECT CAST(GETDATE() AS DATE), N'Công ty TNHH AutoHub Demo', N'0101234567', [id]
-    FROM [dbo].[users] WHERE [email] = N'corp@autohub.local';
+    FROM [dbo].[users] WHERE [email] = N'corp@autohub.id.vn';
 GO
 
-/* Xe mẫu reset đầy đủ: 20 xe thuê + 20 xe mua (mỗi xe đúng 1 vai trò) */
+/* Xe mẫu: VinFast, Toyota, Honda, Mazda, Mercedes-Benz — 5 thương hiệu × 3 model × (1 thuê + 1 mua); màu Trắng. */
 DELETE FROM [dbo].[viewing_appointments];
 DELETE FROM [dbo].[reviews];
 DELETE FROM [dbo].[invoices];
@@ -415,76 +456,65 @@ SELECT
     m.id,
     c.id
 FROM (
-    VALUES
-      (N'29A11111', 2023, 500, 18500,  950000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=1200&q=80', N'Toyota',  N'Camry', N'Trắng'),
-      (N'29A11112', 2022, 450, 22000,  720000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1549924231-f129b911e442?w=1200&q=80', N'Honda',   N'City',  N'Bạc'),
-      (N'29A11113', 2021, 400, 32000,  680000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=1200&q=80', N'Toyota',  N'Vios',  N'Đen'),
-      (N'29A11114', 2024, 550, 12000, 1100000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1200&q=80', N'Mazda',   N'CX-5',  N'Đỏ'),
-      (N'29A11115', 2023, 520, 16000,  990000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1493238792000-8113da705763?w=1200&q=80', N'VinFast', N'VF e34',N'Xanh dương'),
-      (N'29A11116', 2022, 480, 26000,  830000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1200&q=80', N'Toyota',  N'Camry', N'Bạc'),
-      (N'29A11117', 2021, 430, 34000,  700000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=1200&q=80', N'Honda',   N'City',  N'Trắng'),
-      (N'29A11118', 2020, 380, 41000,  620000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1462396881884-de2c07cb95ed?w=1200&q=80', N'Toyota',  N'Vios',  N'Đen'),
-      (N'29A11119', 2024, 560,  9000, 1200000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?w=1200&q=80', N'Mazda',   N'CX-5',  N'Đỏ'),
-      (N'29A11120', 2023, 510, 15000,  960000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1489824904134-891ab64532f1?w=1200&q=80', N'VinFast', N'VF e34',N'Xanh dương'),
-      (N'29A11121', 2022, 470, 23000,  780000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1542282088-fe8426682b8f?w=1200&q=80', N'Toyota',  N'Camry', N'Trắng'),
-      (N'29A11122', 2021, 420, 33000,  690000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=1200&q=80', N'Honda',   N'City',  N'Bạc'),
-      (N'29A11123', 2020, 390, 45000,  610000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1553440569-bcc63803a83d?w=1200&q=80', N'Toyota',  N'Vios',  N'Đen'),
-      (N'29A11124', 2024, 570,  7000, 1250000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=1200&q=80', N'Mazda',   N'CX-5',  N'Đỏ'),
-      (N'29A11125', 2023, 530, 13000, 1020000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=1200&q=80', N'VinFast', N'VF e34',N'Xanh dương'),
-      (N'29A11126', 2022, 490, 21000,  840000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1532581140115-3e355d1ed1de?w=1200&q=80', N'Toyota',  N'Camry', N'Bạc'),
-      (N'29A11127', 2021, 440, 30000,  730000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1522932467653-e48f79727abf?w=1200&q=80', N'Honda',   N'City',  N'Trắng'),
-      (N'29A11128', 2020, 400, 39000,  640000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1541443131876-44b03de101c5?w=1200&q=80', N'Toyota',  N'Vios',  N'Đen'),
-      (N'29A11129', 2024, 580,  6000, 1280000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1563720223185-11003d516935?w=1200&q=80', N'Mazda',   N'CX-5',  N'Đỏ'),
-      (N'29A11130', 2023, 540, 11000, 1050000.0, N'RENT_ONLY', NULL,          NULL,          N'https://images.unsplash.com/photo-1551830820-330a71b99659?w=1200&q=80', N'VinFast', N'VF e34',N'Xanh dương'),
-
-      (N'30F77777', 2023,   0,  5000,       0.0, N'SALE_ONLY', 920000000.0, N'SOLD',      N'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=1200&q=80', N'Mazda',   N'CX-5',  N'Xanh dương'),
-      (N'51K88888', 2024,   0,  8000,       0.0, N'SALE_ONLY', 685000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=1200&q=80', N'VinFast', N'VF e34',N'Đỏ'),
-      (N'30A20001', 2022,   0, 18000,       0.0, N'SALE_ONLY', 790000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1200&q=80', N'Toyota',  N'Camry', N'Đen'),
-      (N'30A20002', 2021,   0, 26000,       0.0, N'SALE_ONLY', 510000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1549924231-f129b911e442?w=1200&q=80', N'Honda',   N'City',  N'Trắng'),
-      (N'30A20003', 2020,   0, 35000,       0.0, N'SALE_ONLY', 430000000.0, N'RESERVED',  N'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=1200&q=80', N'Toyota',  N'Vios',  N'Bạc'),
-      (N'30A20004', 2024,   0,  7000,       0.0, N'SALE_ONLY', 970000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=1200&q=80', N'Mazda',   N'CX-5',  N'Đỏ'),
-      (N'30A20005', 2023,   0, 12000,       0.0, N'SALE_ONLY', 710000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=1200&q=80', N'VinFast', N'VF e34',N'Xanh dương'),
-      (N'30A20006', 2022,   0, 19000,       0.0, N'SALE_ONLY', 760000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1489824904134-891ab64532f1?w=1200&q=80', N'Toyota',  N'Camry', N'Bạc'),
-      (N'30A20007', 2021,   0, 24000,       0.0, N'SALE_ONLY', 495000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1532581140115-3e355d1ed1de?w=1200&q=80', N'Honda',   N'City',  N'Đen'),
-      (N'30A20008', 2020,   0, 32000,       0.0, N'SALE_ONLY', 415000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1522932467653-e48f79727abf?w=1200&q=80', N'Toyota',  N'Vios',  N'Trắng'),
-      (N'30A20009', 2024,   0,  6000,       0.0, N'SALE_ONLY', 990000000.0, N'RESERVED',  N'https://images.unsplash.com/photo-1563720223185-11003d516935?w=1200&q=80', N'Mazda',   N'CX-5',  N'Xanh dương'),
-      (N'30A20010', 2023,   0, 11000,       0.0, N'SALE_ONLY', 705000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1551830820-330a71b99659?w=1200&q=80', N'VinFast', N'VF e34',N'Đỏ'),
-      (N'30A20011', 2022,   0, 21000,       0.0, N'SALE_ONLY', 745000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1542282088-fe8426682b8f?w=1200&q=80', N'Toyota',  N'Camry', N'Trắng'),
-      (N'30A20012', 2021,   0, 28000,       0.0, N'SALE_ONLY', 485000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=1200&q=80', N'Honda',   N'City',  N'Bạc'),
-      (N'30A20013', 2020,   0, 36000,       0.0, N'SALE_ONLY', 405000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1553440569-bcc63803a83d?w=1200&q=80', N'Toyota',  N'Vios',  N'Đen'),
-      (N'30A20014', 2024,   0,  5000,       0.0, N'SALE_ONLY', 1010000000.0,N'AVAILABLE', N'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?w=1200&q=80', N'Mazda',   N'CX-5',  N'Đỏ'),
-      (N'30A20015', 2023,   0, 14000,       0.0, N'SALE_ONLY', 695000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1200&q=80', N'VinFast', N'VF e34',N'Xanh dương'),
-      (N'30A20016', 2022,   0, 22000,       0.0, N'SALE_ONLY', 735000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1493238792000-8113da705763?w=1200&q=80', N'Toyota',  N'Camry', N'Đen'),
-      (N'30A20017', 2021,   0, 30000,       0.0, N'SALE_ONLY', 475000000.0, N'RESERVED',  N'https://images.unsplash.com/photo-1462396881884-de2c07cb95ed?w=1200&q=80', N'Honda',   N'City',  N'Trắng'),
-      (N'30A20018', 2020,   0, 38000,       0.0, N'SALE_ONLY', 398000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1541443131876-44b03de101c5?w=1200&q=80', N'Toyota',  N'Vios',  N'Bạc')
-) AS src(plate, model_year, min_findeks_rate, kilometer, daily_price, listing_type, sale_price, sale_status, image_path, brand_name, model_name, color_name)
+VALUES
+(N'51R0001', 2023, 500, 10100, 805000.0, N'RENT_ONLY', NULL, NULL, N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=1', N'VinFast', N'VF 3'),
+      (N'51S0002', 2023, 500, 0, 0.0, N'SALE_ONLY', 452000000.0, N'SOLD', N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=2', N'VinFast', N'VF 3'),
+      (N'51R0003', 2023, 500, 10300, 815000.0, N'RENT_ONLY', NULL, NULL, N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=3', N'VinFast', N'VF 8'),
+      (N'51S0004', 2023, 500, 0, 0.0, N'SALE_ONLY', 454000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=4', N'VinFast', N'VF 8'),
+      (N'51R0005', 2023, 500, 10500, 825000.0, N'RENT_ONLY', NULL, NULL, N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=5', N'VinFast', N'VF 9'),
+      (N'51S0006', 2023, 500, 0, 0.0, N'SALE_ONLY', 456000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=6', N'VinFast', N'VF 9'),
+      (N'51R0007', 2023, 500, 10700, 835000.0, N'RENT_ONLY', NULL, NULL, N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=7', N'Toyota', N'Camry'),
+      (N'51S0008', 2023, 500, 0, 0.0, N'SALE_ONLY', 458000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=8', N'Toyota', N'Camry'),
+      (N'51R0009', 2023, 500, 10900, 845000.0, N'RENT_ONLY', NULL, NULL, N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=9', N'Toyota', N'Corolla Cross'),
+      (N'51S0010', 2023, 500, 0, 0.0, N'SALE_ONLY', 460000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=10', N'Toyota', N'Corolla Cross'),
+      (N'51R0011', 2023, 500, 11100, 855000.0, N'RENT_ONLY', NULL, NULL, N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=11', N'Toyota', N'Fortuner'),
+      (N'51S0012', 2023, 500, 0, 0.0, N'SALE_ONLY', 462000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=12', N'Toyota', N'Fortuner'),
+      (N'51R0013', 2023, 500, 11300, 865000.0, N'RENT_ONLY', NULL, NULL, N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=13', N'Honda', N'City'),
+      (N'51S0014', 2023, 500, 0, 0.0, N'SALE_ONLY', 464000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=14', N'Honda', N'City'),
+      (N'51R0015', 2023, 500, 11500, 875000.0, N'RENT_ONLY', NULL, NULL, N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=15', N'Honda', N'Civic'),
+      (N'51S0016', 2023, 500, 0, 0.0, N'SALE_ONLY', 466000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=16', N'Honda', N'Civic'),
+      (N'51R0017', 2023, 500, 11700, 885000.0, N'RENT_ONLY', NULL, NULL, N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=17', N'Honda', N'CR-V'),
+      (N'51S0018', 2023, 500, 0, 0.0, N'SALE_ONLY', 468000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=18', N'Honda', N'CR-V'),
+      (N'51R0019', 2023, 500, 11900, 895000.0, N'RENT_ONLY', NULL, NULL, N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=19', N'Mazda', N'Mazda3'),
+      (N'51S0020', 2023, 500, 0, 0.0, N'SALE_ONLY', 470000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=20', N'Mazda', N'Mazda3'),
+      (N'51R0021', 2023, 500, 12100, 905000.0, N'RENT_ONLY', NULL, NULL, N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=21', N'Mazda', N'CX-5'),
+      (N'51S0022', 2023, 500, 0, 0.0, N'SALE_ONLY', 472000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=22', N'Mazda', N'CX-5'),
+      (N'51R0023', 2023, 500, 12300, 915000.0, N'RENT_ONLY', NULL, NULL, N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=23', N'Mazda', N'BT-50'),
+      (N'51S0024', 2023, 500, 0, 0.0, N'SALE_ONLY', 474000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=24', N'Mazda', N'BT-50'),
+      (N'51R0025', 2023, 500, 12500, 925000.0, N'RENT_ONLY', NULL, NULL, N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=25', N'Mercedes-Benz', N'C-Class'),
+      (N'51S0026', 2023, 500, 0, 0.0, N'SALE_ONLY', 476000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=26', N'Mercedes-Benz', N'C-Class'),
+      (N'51R0027', 2023, 500, 12700, 935000.0, N'RENT_ONLY', NULL, NULL, N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=27', N'Mercedes-Benz', N'E-Class'),
+      (N'51S0028', 2023, 500, 0, 0.0, N'SALE_ONLY', 478000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=28', N'Mercedes-Benz', N'E-Class'),
+      (N'51R0029', 2023, 500, 12900, 945000.0, N'RENT_ONLY', NULL, NULL, N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=29', N'Mercedes-Benz', N'GLC'),
+      (N'51S0030', 2023, 500, 0, 0.0, N'SALE_ONLY', 480000000.0, N'AVAILABLE', N'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&sig=30', N'Mercedes-Benz', N'GLC')
+) AS src(plate, model_year, min_findeks_rate, kilometer, daily_price, listing_type, sale_price, sale_status, image_path, brand_name, model_name)
 JOIN [dbo].[brands] b ON b.[name] = src.brand_name
 JOIN [dbo].[models] m ON m.[brand_id] = b.[id] AND m.[name] = src.model_name
-JOIN [dbo].[colors] c ON c.[name] = src.color_name;
+JOIN [dbo].[colors] c ON c.[name] = N'Trắng';
 GO
 
 /* user_documents (KYC mẫu) */
-IF NOT EXISTS (SELECT 1 FROM [dbo].[user_documents] ud INNER JOIN [dbo].[users] u ON ud.[user_id] = u.[id] WHERE u.[email] = N'user@autohub.local' AND ud.[document_type] = N'CCCD')
+IF NOT EXISTS (SELECT 1 FROM [dbo].[user_documents] ud INNER JOIN [dbo].[users] u ON ud.[user_id] = u.[id] WHERE u.[email] = N'user@autohub.id.vn' AND ud.[document_type] = N'CCCD')
     INSERT INTO [dbo].[user_documents] ([created_date], [document_type], [file_path], [status], [admin_note], [reviewed_at], [user_id])
     SELECT CAST(GETDATE() AS DATE), N'CCCD', N'uploads/kyc/demo-cccd-user.pdf', N'APPROVED', NULL, SYSUTCDATETIME(), [id]
-    FROM [dbo].[users] WHERE [email] = N'user@autohub.local';
+    FROM [dbo].[users] WHERE [email] = N'user@autohub.id.vn';
 
-IF NOT EXISTS (SELECT 1 FROM [dbo].[user_documents] ud INNER JOIN [dbo].[users] u ON ud.[user_id] = u.[id] WHERE u.[email] = N'user@autohub.local' AND ud.[document_type] = N'GPLX')
+IF NOT EXISTS (SELECT 1 FROM [dbo].[user_documents] ud INNER JOIN [dbo].[users] u ON ud.[user_id] = u.[id] WHERE u.[email] = N'user@autohub.id.vn' AND ud.[document_type] = N'GPLX')
     INSERT INTO [dbo].[user_documents] ([created_date], [document_type], [file_path], [status], [admin_note], [reviewed_at], [user_id])
     SELECT CAST(GETDATE() AS DATE), N'GPLX', N'uploads/kyc/demo-gplx-user.pdf', N'APPROVED', NULL, SYSUTCDATETIME(), [id]
-    FROM [dbo].[users] WHERE [email] = N'user@autohub.local';
+    FROM [dbo].[users] WHERE [email] = N'user@autohub.id.vn';
 
-IF NOT EXISTS (SELECT 1 FROM [dbo].[user_documents] ud INNER JOIN [dbo].[users] u ON ud.[user_id] = u.[id] WHERE u.[email] = N'corp@autohub.local' AND ud.[document_type] = N'CCCD')
+IF NOT EXISTS (SELECT 1 FROM [dbo].[user_documents] ud INNER JOIN [dbo].[users] u ON ud.[user_id] = u.[id] WHERE u.[email] = N'corp@autohub.id.vn' AND ud.[document_type] = N'CCCD')
     INSERT INTO [dbo].[user_documents] ([created_date], [document_type], [file_path], [status], [admin_note], [reviewed_at], [user_id])
-    SELECT CAST(GETDATE() AS DATE), N'CCCD', N'uploads/kyc/demo-cccd-corp.pdf', N'PENDING', NULL, NULL, [id]
-    FROM [dbo].[users] WHERE [email] = N'corp@autohub.local';
+    SELECT CAST(GETDATE() AS DATE), N'CCCD', N'uploads/kyc/demo-cccd-corp.pdf', N'APPROVED', NULL, SYSUTCDATETIME(), [id]
+    FROM [dbo].[users] WHERE [email] = N'corp@autohub.id.vn';
 GO
 
 /* Đơn thuê + hóa đơn + đánh giá (một lần nếu chưa có rental) */
 IF NOT EXISTS (SELECT 1 FROM [dbo].[rentals])
 BEGIN
-    DECLARE @carRent INT = (SELECT TOP 1 [id] FROM [dbo].[cars] WHERE [plate] = N'29A11111');
-    DECLARE @uidRenter INT = (SELECT [id] FROM [dbo].[users] WHERE [email] = N'user@autohub.local');
+    DECLARE @carRent INT = (SELECT TOP 1 [id] FROM [dbo].[cars] WHERE [plate] = N'51R0001');
+    DECLARE @uidRenter INT = (SELECT [id] FROM [dbo].[users] WHERE [email] = N'user@autohub.id.vn');
     IF @carRent IS NOT NULL AND @uidRenter IS NOT NULL
     BEGIN
         INSERT INTO [dbo].[rentals] (
@@ -495,7 +525,7 @@ BEGIN
         )
         VALUES (
             CAST(GETDATE() AS DATE), DATEADD(DAY, -30, CAST(GETDATE() AS DATE)), DATEADD(DAY, -23, CAST(GETDATE() AS DATE)),
-            DATEADD(DAY, -23, CAST(GETDATE() AS DATE)), 18500, 18720,
+            DATEADD(DAY, -23, CAST(GETDATE() AS DATE)), 10100, 10250,
             6650000, N'BANK_TRANSFER', N'PAID', N'COMPLETED', 2000000, N'REFUNDED',
             N'BASIC', 150000, 0, N'Ba Đình',
             @carRent, @uidRenter
@@ -511,11 +541,11 @@ BEGIN
 END
 GO
 
-/* Đơn bán + hóa đơn (xe 30F77777 đã SOLD — chỉ thêm hóa đơn nếu chưa có sale_order) */
+/* Đơn bán + hóa đơn (xe 51S0002 VinFast VF 3 — SOLD; khớp giá seed) */
 IF NOT EXISTS (SELECT 1 FROM [dbo].[sale_orders])
 BEGIN
-    DECLARE @carSold INT = (SELECT TOP 1 [id] FROM [dbo].[cars] WHERE [plate] = N'30F77777');
-    DECLARE @uidBuyer INT = (SELECT [id] FROM [dbo].[users] WHERE [email] = N'user@autohub.local');
+    DECLARE @carSold INT = (SELECT TOP 1 [id] FROM [dbo].[cars] WHERE [plate] = N'51S0002');
+    DECLARE @uidBuyer INT = (SELECT [id] FROM [dbo].[users] WHERE [email] = N'user@autohub.id.vn');
     IF @carSold IS NOT NULL AND @uidBuyer IS NOT NULL
     BEGIN
         INSERT INTO [dbo].[sale_orders] (
@@ -523,23 +553,23 @@ BEGIN
             [car_id], [user_id]
         )
         VALUES (
-            CAST(GETDATE() AS DATE), 920000000, N'BANK_TRANSFER', N'PAID', N'COMPLETED',
+            CAST(GETDATE() AS DATE), 452000000, N'BANK_TRANSFER', N'PAID', N'COMPLETED',
             @carSold, @uidBuyer
         );
         DECLARE @saleId INT = SCOPE_IDENTITY();
         INSERT INTO [dbo].[invoices] ([created_date], [invoice_no], [total_price], [discount_rate], [tax_rate], [rental_id], [sale_order_id])
-        VALUES (CAST(GETDATE() AS DATE), N'INV-SALE-DEMO-001', 920000000, 0, 10, NULL, @saleId);
+        VALUES (CAST(GETDATE() AS DATE), N'INV-SALE-DEMO-001', 452000000, 0, 10, NULL, @saleId);
     END
 END
 GO
 
 /* Lịch xem xe mẫu — thêm ngay sau khi xe được reset (bảng luôn trống tại đây) */
-DECLARE @vCar1 INT = (SELECT TOP 1 [id] FROM [dbo].[cars] WHERE [plate] = N'51K88888');   -- VinFast VF e34, AVAILABLE
-DECLARE @vCar2 INT = (SELECT TOP 1 [id] FROM [dbo].[cars] WHERE [plate] = N'30A20001');   -- Toyota Camry, AVAILABLE
-DECLARE @vCar3 INT = (SELECT TOP 1 [id] FROM [dbo].[cars] WHERE [plate] = N'30A20002');   -- Honda City, AVAILABLE
-DECLARE @vCar4 INT = (SELECT TOP 1 [id] FROM [dbo].[cars] WHERE [plate] = N'30A20004');   -- Mazda CX-5, AVAILABLE
-DECLARE @vUser INT = (SELECT [id] FROM [dbo].[users] WHERE [email] = N'user@autohub.local');
-DECLARE @vCorp INT = (SELECT [id] FROM [dbo].[users] WHERE [email] = N'corp@autohub.local');
+DECLARE @vCar1 INT = (SELECT TOP 1 [id] FROM [dbo].[cars] WHERE [plate] = N'51S0004');   -- VinFast VF 8, AVAILABLE
+DECLARE @vCar2 INT = (SELECT TOP 1 [id] FROM [dbo].[cars] WHERE [plate] = N'51S0008');   -- Toyota Camry, AVAILABLE
+DECLARE @vCar3 INT = (SELECT TOP 1 [id] FROM [dbo].[cars] WHERE [plate] = N'51S0010');   -- Toyota Corolla Cross, AVAILABLE
+DECLARE @vCar4 INT = (SELECT TOP 1 [id] FROM [dbo].[cars] WHERE [plate] = N'51S0014');   -- Honda City, AVAILABLE
+DECLARE @vUser INT = (SELECT [id] FROM [dbo].[users] WHERE [email] = N'user@autohub.id.vn');
+DECLARE @vCorp INT = (SELECT [id] FROM [dbo].[users] WHERE [email] = N'corp@autohub.id.vn');
 
 IF @vCar1 IS NOT NULL AND @vUser IS NOT NULL
     INSERT INTO [dbo].[viewing_appointments] ([created_date], [scheduled_at], [status], [note], [contact_phone], [admin_note], [car_id], [user_id])

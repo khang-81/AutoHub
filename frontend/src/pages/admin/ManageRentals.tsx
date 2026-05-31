@@ -6,6 +6,7 @@ import {
   deleteRentalApi,
   confirmRentalApi,
   adminReturnRentalApi,
+  adminUploadRentalDamagePhotoApi,
   type ReturnRentalFormBody,
 } from '../../api/rentals';
 import { useToast } from '../../components/ui/Toast';
@@ -73,6 +74,26 @@ const ManageRentals = () => {
     onError: (err: unknown) => {
       const apiError = err as { response?: { data?: { message?: string } } };
       showToast(apiError?.response?.data?.message ?? 'Lỗi khi xác nhận trả xe', 'error');
+    },
+  });
+
+  const uploadDamageMutation = useMutation({
+    mutationFn: adminUploadRentalDamagePhotoApi,
+    onSuccess: (data: { url?: string }) => {
+      const url = (data?.url || '').trim();
+      if (!url) {
+        showToast('Phản hồi tải ảnh không hợp lệ', 'error');
+        return;
+      }
+      setReturnForm((f) => ({
+        ...f,
+        damagePhotoUrls: f.damagePhotoUrls.trim() ? `${f.damagePhotoUrls.trim()},${url}` : url,
+      }));
+      showToast('Đã tải ảnh — URL đã thêm vào danh sách', 'success');
+    },
+    onError: (err: unknown) => {
+      const apiError = err as { response?: { data?: { message?: string } } };
+      showToast(apiError?.response?.data?.message ?? 'Không tải được ảnh', 'error');
     },
   });
 
@@ -440,15 +461,31 @@ const ManageRentals = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Ảnh minh chứng (URL, phân tách bằng dấu phẩy)
+                Ảnh minh chứng (URL, phân tách bằng dấu phẩy) — hoặc tải ảnh lên
               </label>
-              <input
-                type="text"
-                value={returnForm.damagePhotoUrls}
-                onChange={(e) => setReturnForm((f) => ({ ...f, damagePhotoUrls: e.target.value }))}
-                className="input-field w-full"
-                placeholder="https://...,https://..."
-              />
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={returnForm.damagePhotoUrls}
+                  onChange={(e) => setReturnForm((f) => ({ ...f, damagePhotoUrls: e.target.value }))}
+                  className="input-field w-full flex-1"
+                  placeholder="/files/...,https://..."
+                />
+                <label className="inline-flex items-center justify-center px-4 py-2 rounded-xl border border-navy/20 text-navy text-sm font-medium hover:bg-navy/5 cursor-pointer shrink-0">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploadDamageMutation.isPending}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = '';
+                      if (file) uploadDamageMutation.mutate(file);
+                    }}
+                  />
+                  {uploadDamageMutation.isPending ? 'Đang tải...' : 'Chọn ảnh'}
+                </label>
+              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-2">

@@ -55,6 +55,7 @@ public class RentalManager implements RentalService {
     private MessageService messageService;
 
     @Override
+    @Transactional
     public AddRentalResponse add(AddRentalRequest request) {
 
         for (RentalBusinessRule rule : rentalBusinessRules) {

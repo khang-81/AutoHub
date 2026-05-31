@@ -35,6 +35,15 @@ public class FileStorageService {
         return "/files/" + relative;
     }
 
+    public String storeRentalDamageEvidence(MultipartFile file) throws IOException {
+        String ext = extension(file.getOriginalFilename());
+        String relative = Paths.get("rental-damage", UUID.randomUUID() + ext).toString().replace('\\', '/');
+        Path dest = Paths.get(uploadRoot).resolve(relative).normalize();
+        Files.createDirectories(dest.getParent());
+        file.transferTo(dest.toFile());
+        return relative;
+    }
+
     private static String extension(String name) {
         if (name == null || !name.contains(".")) {
             return ".jpg";

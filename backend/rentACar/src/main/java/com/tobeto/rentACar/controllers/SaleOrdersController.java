@@ -34,7 +34,7 @@ public class SaleOrdersController {
             throw new BusinessException("Yêu cầu đăng nhập.");
         }
         String token = tokenWithPrefix.replace("Bearer ", "");
-        int userId = jwtService.extractUserId(token);
+        int userId = jwtService.requireUserId(token);
         return saleOrderService.add(request, userId);
     }
 
@@ -51,7 +51,7 @@ public class SaleOrdersController {
             throw new BusinessException("Yêu cầu đăng nhập.");
         }
         String token = tokenWithPrefix.replace("Bearer ", "");
-        int userId = jwtService.extractUserId(token);
+        int userId = jwtService.requireUserId(token);
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         boolean isAdmin = auth != null && auth.getAuthorities().stream()
                 .anyMatch(a -> "ROLE_admin".equals(a.getAuthority()) || "admin".equals(a.getAuthority()));
@@ -65,7 +65,7 @@ public class SaleOrdersController {
             throw new BusinessException("Yêu cầu đăng nhập.");
         }
         String token = tokenWithPrefix.replace("Bearer ", "");
-        int userId = jwtService.extractUserId(token);
+        int userId = jwtService.requireUserId(token);
         return saleOrderService.getByUserId(userId);
     }
 
@@ -76,7 +76,7 @@ public class SaleOrdersController {
             throw new BusinessException("Yêu cầu đăng nhập.");
         }
         String token = tokenWithPrefix.replace("Bearer ", "");
-        int userId = jwtService.extractUserId(token);
+        int userId = jwtService.requireUserId(token);
         return saleOrderService.submitTransfer(id, userId);
     }
 
@@ -96,7 +96,7 @@ public class SaleOrdersController {
             throw new BusinessException("Yêu cầu đăng nhập.");
         }
         String token = tokenWithPrefix.replace("Bearer ", "");
-        int userId = jwtService.extractUserId(token);
+        int userId = jwtService.requireUserId(token);
         boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
                 .anyMatch(a -> "ROLE_admin".equals(a.getAuthority()) || "admin".equals(a.getAuthority()));
         String reason = body != null ? body.getReason() : null;

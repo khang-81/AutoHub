@@ -42,6 +42,8 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         try {
           localStorage.removeItem(TOKEN_STORAGE_KEY);
+          localStorage.removeItem('autohub_admin_token');
+          localStorage.removeItem('autohub_admin_user');
         } catch {
           /* ignore */
         }
