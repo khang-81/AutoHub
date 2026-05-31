@@ -18,7 +18,7 @@ import {
   Ticket,
 } from 'lucide-react';
 import { getEmailFromToken } from '../../utils/helpers';
-import { useAuthStore, ADMIN_TOKEN_KEY, ADMIN_USER_KEY } from '../../store/authStore';
+import { ADMIN_TOKEN_KEY, ADMIN_USER_KEY, clearAdminSession } from '../../utils/adminSession';
 import BrandLogo from '../ui/BrandLogo';
 
 const navItems = [
@@ -52,12 +52,11 @@ function readAdminDisplayEmail(): string {
 const AdminSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const logout = useAuthStore((s) => s.logout);
   const [collapsed, setCollapsed] = useState(false);
   const adminEmail = readAdminDisplayEmail();
 
   const handleLogout = () => {
-    logout();
+    clearAdminSession();
     navigate('/admin/login');
   };
 

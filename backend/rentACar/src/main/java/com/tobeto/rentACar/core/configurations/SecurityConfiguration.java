@@ -70,11 +70,10 @@ public class SecurityConfiguration {
             "/api/cars/**",
             "/api/colors/**",
             "/api/contact/**",
-            "/api/ai/**",
-            "/actuator/**"
+            "/api/ai/**"
     };
 
-    /** Actuator: chain riêng (không gắn JWT) — tránh 403 health khi deploy / Docker. */
+    /** Actuator: chỉ health/info public (khớp management.endpoints.web.exposure.include). */
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public SecurityFilterChain actuatorSecurityFilterChain(HttpSecurity http) throws Exception {
@@ -82,15 +81,17 @@ public class SecurityConfiguration {
                 .securityMatcher(EndpointRequest.toAnyEndpoint())
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(x -> x.anyRequest().permitAll());
+                .authorizeHttpRequests(x -> x
+                        .requestMatchers(EndpointRequest.to("health", "info")).permitAll()
+                        .anyRequest().denyAll());
         return http.build();
     }
 
     @Bean
     @Order(1)
-    public SecurityFilterChain authEndpointsFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain publicRateLimitedFilterChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher("/api/auth/**")
+                .securityMatcher("/api/auth/**", "/api/ai/**", "/api/contact/**")
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(x -> x.anyRequest().permitAll())

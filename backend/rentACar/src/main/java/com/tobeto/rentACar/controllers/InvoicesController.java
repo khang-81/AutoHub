@@ -1,5 +1,6 @@
 package com.tobeto.rentACar.controllers;
 
+import com.tobeto.rentACar.core.exceptions.types.UnauthorizedException;
 import com.tobeto.rentACar.core.services.JwtService;
 import com.tobeto.rentACar.core.utilities.results.Result;
 import com.tobeto.rentACar.services.abstracts.InvoiceService;
@@ -51,11 +52,13 @@ public class InvoicesController {
     public List<GetAllInvoicesResponse> getMyInvoices(jakarta.servlet.http.HttpServletRequest request){
         String tokenWithPrefix = request.getHeader("Authorization");
         if (tokenWithPrefix == null || !tokenWithPrefix.startsWith("Bearer ")) {
-            return List.of();
+            throw new UnauthorizedException("Yêu cầu đăng nhập.");
         }
         String token = tokenWithPrefix.substring(7);
         Integer userId = jwtService.extractUserId(token);
-        if (userId == null) return List.of();
+        if (userId == null) {
+            throw new UnauthorizedException("Token không hợp lệ hoặc đã hết hạn.");
+        }
         return invoiceService.getByUserId(userId);
     }
 

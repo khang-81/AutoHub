@@ -2,6 +2,8 @@
 export interface LoginRequest {
   email: string;
   password: string;
+  /** USER = /login; ADMIN = /admin/login */
+  portal?: 'USER' | 'ADMIN';
 }
 
 export interface RegisterRequest {
@@ -413,7 +415,6 @@ export interface AuthState {
   isAuthenticated: boolean;
   isAdmin: boolean;
   login: (token: string, userId: number, email: string, roles: string[]) => void;
-  loginAsAdmin: (token: string, userId: number, email: string, roles: string[]) => void;
   logout: () => void;
 }
 

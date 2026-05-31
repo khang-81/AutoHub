@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, ChevronDown, User, LogOut, LayoutDashboard } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { hasValidAdminSession } from '../../utils/adminSession';
 import BrandLogo from '../ui/BrandLogo';
 
 const Navbar = () => {
@@ -9,6 +10,7 @@ const Navbar = () => {
     const [scrolled, setScrolled] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
     const { isAuthenticated, isAdmin, email, logout } = useAuthStore();
+    const adminPortalActive = hasValidAdminSession();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -136,6 +138,14 @@ const Navbar = () => {
                                     </div>
                                 )}
                             </div>
+                        ) : adminPortalActive ? (
+                            <Link
+                                to="/admin"
+                                className="btn-primary !py-2 !px-5 text-sm flex items-center gap-2"
+                            >
+                                <LayoutDashboard className="w-4 h-4" />
+                                Cổng quản trị
+                            </Link>
                         ) : (
                             <>
                                 <Link
@@ -193,6 +203,14 @@ const Navbar = () => {
                                     Đăng xuất
                                 </button>
                             </>
+                        ) : adminPortalActive ? (
+                            <Link
+                                to="/admin"
+                                className="btn-primary !py-2 text-center"
+                                onClick={() => setIsOpen(false)}
+                            >
+                                Cổng quản trị
+                            </Link>
                         ) : (
                             <>
                                 <Link to="/login" className="btn-outline !py-2 text-center" onClick={() => setIsOpen(false)}>
