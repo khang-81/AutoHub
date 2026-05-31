@@ -8,6 +8,7 @@ import UserLayout from './components/layout/UserLayout';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import AdminProtectedRoute from './components/layout/AdminProtectedRoute';
 import AuthSessionWatcher from './components/layout/AuthSessionWatcher';
+import ScrollToTop from './components/layout/ScrollToTop';
 
 // Toast
 import { ToastProvider } from './components/ui/Toast';
@@ -45,11 +46,8 @@ import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ManageCars from './pages/admin/ManageCars';
 import ManageBrands from './pages/admin/ManageBrands';
-import ManageColors from './pages/admin/ManageColors';
-import ManagePromotions from './pages/admin/ManagePromotions';
 import ManageUsers from './pages/admin/ManageUsers';
 import ManageReports from './pages/admin/ManageReports';
-import ManageKyc from './pages/admin/ManageKyc';
 import ManageReviews from './pages/admin/ManageReviews';
 import ManageViewingAppointments from './pages/admin/ManageViewingAppointments';
 import MyViewingAppointments from './pages/user/MyViewingAppointments';
@@ -132,12 +130,12 @@ function RoutesWithChatbot() {
           <Route path="cars/rent" element={<ManageCars />} />
           <Route path="cars/sale" element={<ManageCars />} />
           <Route path="brands" element={<ManageBrands />} />
-          <Route path="colors" element={<ManageColors />} />
-          <Route path="promotions" element={<ManagePromotions />} />
+          <Route path="promotions" element={<Navigate to="/admin" replace />} />
           <Route path="rentals" element={<Navigate to="/admin/cars/rent?tab=orders" replace />} />
           <Route path="users" element={<ManageUsers />} />
           <Route path="reports" element={<ManageReports />} />
-          <Route path="kyc" element={<ManageKyc />} />
+          <Route path="kyc" element={<Navigate to="/admin/cars/rent?tab=gplx" replace />} />
+          <Route path="colors" element={<Navigate to="/admin/cars/rent" replace />} />
           <Route path="sale-orders" element={<Navigate to="/admin/cars/sale?tab=orders" replace />} />
           <Route path="reviews" element={<ManageReviews />} />
           <Route path="viewing-appointments" element={<ManageViewingAppointments />} />
@@ -158,6 +156,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <BrowserRouter>
+          <ScrollToTop />
           <AuthSessionWatcher />
           <RoutesWithChatbot />
         </BrowserRouter>

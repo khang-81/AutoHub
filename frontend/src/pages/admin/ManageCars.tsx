@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import ManageRentals from './ManageRentals';
 import ManageSaleOrders from './ManageSaleOrders';
+import ManageKyc from './ManageKyc';
 import { getAllCarsApi, addCarApi, updateCarApi, deleteCarApi } from '../../api/cars';
 import { getAllRentalsApi } from '../../api/rentals';
 import { getAllModelsApi } from '../../api/models';
@@ -183,7 +184,9 @@ const ManageCars = () => {
   });
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const ordersTab = searchParams.get('tab') === 'orders';
+  const activeTab = searchParams.get('tab');
+  const ordersTab = activeTab === 'orders';
+  const gplxTab = activeTab === 'gplx';
 
   const subNav = (
     <div className="flex flex-wrap gap-2 mb-5">
@@ -191,7 +194,7 @@ const ManageCars = () => {
         type="button"
         onClick={() => setSearchParams({})}
         className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-          !ordersTab ? 'bg-primary text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          !ordersTab && !gplxTab ? 'bg-primary text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
         }`}
       >
         {isSaleModule ? 'Xe bán' : 'Xe thuê'}
@@ -205,8 +208,32 @@ const ManageCars = () => {
       >
         {isSaleModule ? 'Đơn mua xe' : 'Đơn thuê'}
       </button>
+      {!isSaleModule && (
+        <button
+          type="button"
+          onClick={() => setSearchParams({ tab: 'gplx' })}
+          className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+            gplxTab ? 'bg-primary text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Duyệt GPLX
+        </button>
+      )}
     </div>
   );
+
+  if (gplxTab && !isSaleModule) {
+    return (
+      <div>
+        <div className="mb-2">
+          <h1 className="font-heading font-bold text-2xl text-navy">Quản lý xe thuê</h1>
+          <p className="text-gray-400 text-sm mt-1">Duyệt giấy phép lái xe khách hàng</p>
+        </div>
+        {subNav}
+        <ManageKyc embedded />
+      </div>
+    );
+  }
 
   if (ordersTab) {
     return (

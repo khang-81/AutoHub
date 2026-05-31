@@ -11,7 +11,10 @@ import com.tobeto.rentACar.repositories.UserRepository;
 import com.tobeto.rentACar.services.abstracts.UserDocumentService;
 import com.tobeto.rentACar.services.constants.KycConstants;
 import com.tobeto.rentACar.services.dtos.kyc.response.UserDocumentResponse;
-import lombok.AllArgsConstructor;
+import com.tobeto.rentACar.services.kyc.KycStatusCalculator;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,13 +27,18 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
+@Slf4j
 public class UserDocumentManager implements UserDocumentService {
 
     private final UserDocumentRepository userDocumentRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
     private final BusinessMailNotificationSender businessMailNotificationSender;
+
+    /** Dev/Docker local: tự duyệt khi đủ CCCD + GPLX. Production: false. */
+    @Value("${app.kyc.auto-approve:false}")
+    private boolean kycAutoApprove;
 
     @Override
     @Transactional
@@ -68,6 +76,7 @@ public class UserDocumentManager implements UserDocumentService {
         }
         userDocumentRepository.save(doc);
         refreshUserKycStatus(userId);
+        tryAutoApproveIfEnabled(userId);
         return toResponse(doc);
     }
 
@@ -151,38 +160,34 @@ public class UserDocumentManager implements UserDocumentService {
     private void refreshUserKycStatus(int userId) {
         User user = userRepository.findById(userId).orElseThrow();
         List<UserDocument> docs = userDocumentRepository.findByUser_Id(userId);
-        Optional<UserDocument> oc = docs.stream()
-                .filter(d -> KycConstants.DOC_CCCD.equals(d.getDocumentType()))
-                .findFirst();
-        Optional<UserDocument> og = docs.stream()
-                .filter(d -> KycConstants.DOC_GPLX.equals(d.getDocumentType()))
-                .findFirst();
-
-        if (oc.isEmpty() && og.isEmpty()) {
-            user.setKycStatus(KycConstants.USER_KYC_NOT_SUBMITTED);
-        } else if (oc.isEmpty() || og.isEmpty()) {
-            user.setKycStatus(KycConstants.USER_KYC_PENDING);
-        } else {
-            UserDocument c = oc.get();
-            UserDocument g = og.get();
-            boolean anyRejected = KycConstants.DOC_REJECTED.equals(c.getStatus())
-                    || KycConstants.DOC_REJECTED.equals(g.getStatus());
-            boolean bothApproved = KycConstants.DOC_APPROVED.equals(c.getStatus())
-                    && KycConstants.DOC_APPROVED.equals(g.getStatus());
-            boolean anyPending = KycConstants.DOC_PENDING.equals(c.getStatus())
-                    || KycConstants.DOC_PENDING.equals(g.getStatus());
-
-            if (bothApproved) {
-                user.setKycStatus(KycConstants.USER_KYC_APPROVED);
-            } else if (anyRejected) {
-                user.setKycStatus(KycConstants.USER_KYC_REJECTED);
-            } else if (anyPending) {
-                user.setKycStatus(KycConstants.USER_KYC_PENDING);
-            } else {
-                user.setKycStatus(KycConstants.USER_KYC_PENDING);
-            }
-        }
+        user.setKycStatus(KycStatusCalculator.resolveUserKycStatus(docs));
         userRepository.save(user);
+    }
+
+    /**
+     * Khi {@code app.kyc.auto-approve=true}: duyệt ngay cả bộ CCCD+GPLX đang PENDING (không gửi email).
+     * Bật qua env {@code APP_KYC_AUTO_APPROVE=true} (Docker / VPS).
+     */
+    private void tryAutoApproveIfEnabled(int userId) {
+        if (!kycAutoApprove) {
+            return;
+        }
+        List<UserDocument> docs = userDocumentRepository.findByUser_Id(userId);
+        if (!KycStatusCalculator.bothDocumentsPending(docs)) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        for (UserDocument doc : docs) {
+            if (!KycConstants.DOC_PENDING.equals(doc.getStatus())) {
+                continue;
+            }
+            doc.setStatus(KycConstants.DOC_APPROVED);
+            doc.setReviewedAt(now);
+            doc.setAdminNote(null);
+            userDocumentRepository.save(doc);
+        }
+        refreshUserKycStatus(userId);
+        log.info("Auto-approved KYC for userId={} (app.kyc.auto-approve=true)", userId);
     }
 
     private UserDocumentResponse toResponse(UserDocument d) {

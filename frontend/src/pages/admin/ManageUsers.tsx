@@ -155,7 +155,7 @@ const ManageUsers = () => {
             <div className="rounded-xl border border-gray-100 bg-slate-50/80 p-4 space-y-2">
               <p><span className="text-gray-500">ID:</span> <strong>{d.id}</strong></p>
               <p><span className="text-gray-500">Email:</span> <strong>{d.email}</strong></p>
-              <p><span className="text-gray-500">KYC:</span> {d.kycStatus ?? '—'}</p>
+              <p><span className="text-gray-500">GPLX:</span> {d.kycStatus ?? '—'}</p>
               <p><span className="text-gray-500">Loại hồ sơ:</span> {d.profileKind ?? 'Chưa có'}</p>
             </div>
 

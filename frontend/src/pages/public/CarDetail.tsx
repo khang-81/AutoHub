@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DatePicker from 'react-datepicker';
@@ -14,7 +14,6 @@ import { addSaleOrderApi } from '../../api/saleOrders';
 import { createViewingAppointmentApi } from '../../api/viewingAppointments';
 import { getProfileApi } from '../../api/users';
 import { getReviewsByCarIdApi } from '../../api/reviews';
-import { applyPromotionApi } from '../../api/promotions';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../components/ui/Toast';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -53,16 +52,9 @@ const CarDetail = () => {
   /** Tab trong khối thuê / mua / đặt lịch xem */
   const [bookingMode, setBookingMode] = useState<'rent' | 'buy' | 'view'>('rent');
 
-  // Promo code state — mỗi flow rent/buy có 1 trạng thái riêng vì amount khác nhau.
-  const [rentPromoInput, setRentPromoInput] = useState('');
-  const [rentPromoApplied, setRentPromoApplied] = useState<{ code: string; discount: number } | null>(null);
-  const [rentPromoError, setRentPromoError] = useState<string | null>(null);
-  const [rentPromoLoading, setRentPromoLoading] = useState(false);
-
-  const [buyPromoInput, setBuyPromoInput] = useState('');
-  const [buyPromoApplied, setBuyPromoApplied] = useState<{ code: string; discount: number } | null>(null);
-  const [buyPromoError, setBuyPromoError] = useState<string | null>(null);
-  const [buyPromoLoading, setBuyPromoLoading] = useState(false);
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [id, location.pathname]);
 
   const { data: car, isLoading } = useQuery<CarType>({
     queryKey: ['car', id],
@@ -139,8 +131,7 @@ const CarDetail = () => {
   const addonsTotal = rentalDays > 0 ? addonFeePerDay * rentalDays : 0;
   const extrasNum = Math.max(0, parseFloat(extraFeesAmount.replace(/,/g, '')) || 0);
   const subtotal = baseRental + insuranceTotal + addonsTotal + extrasNum;
-  const rentDiscount = rentPromoApplied ? Math.min(subtotal, rentPromoApplied.discount) : 0;
-  const totalPrice = Math.max(0, subtotal - rentDiscount);
+  const totalPrice = subtotal;
   const depositEstimate = totalPrice > 0 ? Math.max(500_000, totalPrice * 0.15) : 0;
 
   const listingType = (car?.listingType || 'RENT_ONLY').toUpperCase();
@@ -208,62 +199,6 @@ const CarDetail = () => {
     return 'Điền thông tin và gửi yêu cầu.';
   }, [forcedBookingMode]);
 
-  const handleApplyRentPromo = async () => {
-    setRentPromoError(null);
-    if (!isAuthenticated) {
-      setRentPromoError('Vui lòng đăng nhập để áp mã khuyến mãi.');
-      return;
-    }
-    const code = rentPromoInput.trim();
-    if (!code) {
-      setRentPromoError('Vui lòng nhập mã khuyến mãi.');
-      return;
-    }
-    if (subtotal <= 0) {
-      setRentPromoError('Vui lòng chọn ngày thuê trước khi áp mã.');
-      return;
-    }
-    setRentPromoLoading(true);
-    try {
-      const res = await applyPromotionApi({ code, scope: 'RENT', amount: subtotal });
-      setRentPromoApplied({ code: res.code, discount: res.discountAmount });
-      showToast(res.message ?? 'Đã áp mã khuyến mãi.', 'success');
-    } catch (err: unknown) {
-      const apiError = err as { response?: { data?: { message?: string } } };
-      const msg = apiError?.response?.data?.message ?? 'Không thể áp mã khuyến mãi.';
-      setRentPromoError(msg);
-      setRentPromoApplied(null);
-    } finally {
-      setRentPromoLoading(false);
-    }
-  };
-
-  const handleApplyBuyPromo = async () => {
-    setBuyPromoError(null);
-    if (!isAuthenticated) {
-      setBuyPromoError('Vui lòng đăng nhập để áp mã khuyến mãi.');
-      return;
-    }
-    const code = buyPromoInput.trim();
-    if (!code || !car || !car.salePrice || car.salePrice <= 0) {
-      setBuyPromoError('Mã hoặc giá xe không hợp lệ.');
-      return;
-    }
-    setBuyPromoLoading(true);
-    try {
-      const res = await applyPromotionApi({ code, scope: 'SALE', amount: car.salePrice });
-      setBuyPromoApplied({ code: res.code, discount: res.discountAmount });
-      showToast(res.message ?? 'Đã áp mã khuyến mãi.', 'success');
-    } catch (err: unknown) {
-      const apiError = err as { response?: { data?: { message?: string } } };
-      const msg = apiError?.response?.data?.message ?? 'Không thể áp mã khuyến mãi.';
-      setBuyPromoError(msg);
-      setBuyPromoApplied(null);
-    } finally {
-      setBuyPromoLoading(false);
-    }
-  };
-
   const viewingMutation = useMutation({
     mutationFn: () =>
       createViewingAppointmentApi({
@@ -312,7 +247,6 @@ const CarDetail = () => {
       addSaleOrderApi({
         carId: Number(id),
         paymentMethod: pm,
-        promotionCode: buyPromoApplied?.code || undefined,
       }),
     onSuccess: (res, pm) => {
       queryClient.invalidateQueries({ queryKey: ['cars'] });
@@ -422,7 +356,6 @@ const CarDetail = () => {
       insuranceCode: insuranceCode || 'NONE',
       extraFeesAmount: extrasNum,
       pickupDistrict: pickupDistrict || undefined,
-      promotionCode: rentPromoApplied?.code || undefined,
       addonCodes: selectedAddons.length > 0 ? selectedAddons : undefined,
     });
   };
@@ -726,7 +659,7 @@ const CarDetail = () => {
               <>
               {isAuthenticated && !profileLoading && profile?.kycStatus !== 'APPROVED' && (
                 <div className="mb-5 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm">
-                  <p className="font-medium mb-1">Cần xác minh danh tính</p>
+                  <p className="font-medium mb-1">Cần xác minh GPLX</p>
                   <p className="text-gray-700 mb-2">Tải CCCD và GPLX để đặt xe.</p>
                   <Link to="/dashboard/kyc" className="text-primary font-semibold hover:underline">
                     Đi tới xác minh →
@@ -921,49 +854,6 @@ const CarDetail = () => {
                   />
                   <p className="text-xs text-gray-400 mt-1">Giao xe tận nơi, phát sinh khác (nếu có)</p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Mã khuyến mãi (nếu có)</label>
-                  {rentPromoApplied ? (
-                    <div className="flex items-center justify-between gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm">
-                      <span className="text-green-700">
-                        Đã áp <strong>{rentPromoApplied.code}</strong> — giảm {formatCurrency(rentPromoApplied.discount)}
-                      </span>
-                      <button
-                        type="button"
-                        className="text-xs text-red-600 hover:underline"
-                        onClick={() => {
-                          setRentPromoApplied(null);
-                          setRentPromoInput('');
-                          setRentPromoError(null);
-                        }}
-                      >
-                        Bỏ
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={rentPromoInput}
-                        onChange={(e) => setRentPromoInput(e.target.value.toUpperCase())}
-                        placeholder="VD: WELCOME10"
-                        className="input-field flex-1 uppercase"
-                        disabled={rentPromoLoading}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleApplyRentPromo}
-                        disabled={rentPromoLoading || subtotal <= 0}
-                        className="btn-secondary px-4"
-                      >
-                        {rentPromoLoading ? '...' : 'Áp dụng'}
-                      </button>
-                    </div>
-                  )}
-                  {rentPromoError && (
-                    <p className="text-xs text-red-600 mt-1">{rentPromoError}</p>
-                  )}
-                </div>
               </div>
 
               {/* Price breakdown */}
@@ -996,12 +886,6 @@ const CarDetail = () => {
                     <div className="flex justify-between text-sm text-gray-600">
                       <span>Phụ phí</span>
                       <span>{formatCurrency(extrasNum)}</span>
-                    </div>
-                  )}
-                  {rentDiscount > 0 && (
-                    <div className="flex justify-between text-sm text-green-700">
-                      <span>Khuyến mãi ({rentPromoApplied?.code})</span>
-                      <span>-{formatCurrency(rentDiscount)}</span>
                     </div>
                   )}
                   <hr className="border-gray-200" />
@@ -1196,66 +1080,8 @@ const CarDetail = () => {
                 {isAuthenticated && !profileLoading && profile?.kycStatus !== 'APPROVED' && (
                   <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm">
                     <Link to="/dashboard/kyc" className="text-primary font-semibold hover:underline">
-                      Xác minh KYC để đặt mua →
+                      Xác minh GPLX để đặt mua →
                     </Link>
-                  </div>
-                )}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Mã khuyến mãi (nếu có)</label>
-                  {buyPromoApplied ? (
-                    <div className="flex items-center justify-between gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm">
-                      <span className="text-green-700">
-                        Đã áp <strong>{buyPromoApplied.code}</strong> — giảm {formatCurrency(buyPromoApplied.discount)}
-                      </span>
-                      <button
-                        type="button"
-                        className="text-xs text-red-600 hover:underline"
-                        onClick={() => {
-                          setBuyPromoApplied(null);
-                          setBuyPromoInput('');
-                          setBuyPromoError(null);
-                        }}
-                      >
-                        Bỏ
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={buyPromoInput}
-                        onChange={(e) => setBuyPromoInput(e.target.value.toUpperCase())}
-                        placeholder="VD: SALE5"
-                        className="input-field flex-1 uppercase"
-                        disabled={buyPromoLoading}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleApplyBuyPromo}
-                        disabled={buyPromoLoading || !car.salePrice}
-                        className="btn-secondary px-4"
-                      >
-                        {buyPromoLoading ? '...' : 'Áp dụng'}
-                      </button>
-                    </div>
-                  )}
-                  {buyPromoError && <p className="text-xs text-red-600 mt-1">{buyPromoError}</p>}
-                </div>
-                {buyPromoApplied && car.salePrice && (
-                  <div className="rounded-lg bg-white border border-amber-200 p-3 text-sm">
-                    <div className="flex justify-between text-gray-600">
-                      <span>Giá niêm yết</span>
-                      <span>{formatCurrency(car.salePrice)}</span>
-                    </div>
-                    <div className="flex justify-between text-green-700">
-                      <span>Khuyến mãi</span>
-                      <span>-{formatCurrency(Math.min(car.salePrice, buyPromoApplied.discount))}</span>
-                    </div>
-                    <hr className="my-1 border-amber-100" />
-                    <div className="flex justify-between font-semibold text-amber-700">
-                      <span>Tổng phải trả</span>
-                      <span>{formatCurrency(Math.max(0, car.salePrice - buyPromoApplied.discount))}</span>
-                    </div>
                   </div>
                 )}
                 <label className="block text-sm font-medium text-gray-700 mb-2">Thanh toán</label>

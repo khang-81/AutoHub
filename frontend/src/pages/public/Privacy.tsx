@@ -7,8 +7,8 @@ const sections = [
     title: '1. Dữ liệu thu thập',
     items: [
       'Thông tin đăng ký: email, mật khẩu (đã mã hóa), họ tên, số giấy tờ.',
-      'Thông tin KYC: ảnh CCCD/GPLX và dữ liệu xác minh danh tính.',
-      'Dữ liệu giao dịch: lịch sử thuê/mua xe, thanh toán, mã khuyến mãi đã sử dụng.',
+      'Thông tin GPLX: ảnh CCCD/GPLX và dữ liệu xác minh giấy phép lái xe.',
+      'Dữ liệu giao dịch: lịch sử thuê/mua xe và thanh toán.',
       'Dữ liệu kỹ thuật: IP, trình duyệt, cookie phiên đăng nhập (JWT).',
     ],
   },
@@ -27,7 +27,7 @@ const sections = [
     title: '3. Bảo mật & lưu trữ',
     items: [
       'Mật khẩu được băm; token đăng nhập có thời hạn và có thể bị vô hiệu khi đổi mật khẩu.',
-      'Tài liệu KYC được lưu trên máy chủ riêng, chỉ admin được phép truy cập.',
+      'Tài liệu GPLX được lưu trên máy chủ riêng, chỉ admin được phép truy cập.',
       'AutoHub không bán hoặc chia sẻ dữ liệu cá nhân cho bên thứ ba vì mục đích marketing.',
     ],
   },

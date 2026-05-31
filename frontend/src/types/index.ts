@@ -183,8 +183,6 @@ export interface AddRentalRequest {
   insuranceCode?: string;
   extraFeesAmount?: number;
   pickupDistrict?: string;
-  /** Mã khuyến mãi (tuỳ chọn). Backend re-validate và snapshot vào đơn. */
-  promotionCode?: string;
   /** Add-on stack được (Sprint 2 — bảo hiểm chuyến đi multi-package). */
   addonCodes?: string[];
 }
@@ -285,58 +283,6 @@ export interface SaleOrder {
 export interface AddSaleOrderRequest {
   carId: number;
   paymentMethod: 'CASH' | 'BANK_TRANSFER';
-  /** Mã khuyến mãi (tuỳ chọn). Backend re-validate và snapshot vào đơn. */
-  promotionCode?: string;
-}
-
-export interface ApplyPromotionRequest {
-  code: string;
-  scope: 'RENT' | 'SALE';
-  amount: number;
-}
-
-export interface ApplyPromotionResponse {
-  code: string;
-  description?: string;
-  orderAmount: number;
-  discountAmount: number;
-  finalAmount: number;
-  message?: string;
-}
-
-export interface Promotion {
-  id: number;
-  code: string;
-  description?: string;
-  discountType: 'PERCENT' | 'FIXED';
-  discountValue: number;
-  appliesTo: 'RENT' | 'SALE' | 'BOTH';
-  validFrom?: string | null;
-  validTo?: string | null;
-  usageLimit?: number | null;
-  usageCount: number;
-  maxDiscountAmount?: number | null;
-  minOrderValue?: number | null;
-  active: boolean;
-}
-
-export interface AddPromotionRequest {
-  code: string;
-  description?: string;
-  discountType: 'PERCENT' | 'FIXED';
-  discountValue: number;
-  appliesTo: 'RENT' | 'SALE' | 'BOTH';
-  validFrom?: string;
-  validTo?: string;
-  usageLimit?: number;
-  maxDiscountAmount?: number;
-  minOrderValue?: number;
-  active?: boolean;
-}
-
-export interface UpdatePromotionRequest extends AddPromotionRequest {
-  id: number;
-  active: boolean;
 }
 
 export interface AddSaleOrderResponse {
