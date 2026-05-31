@@ -1,7 +1,13 @@
 package com.tobeto.rentACar.services.abstracts;
 
+import com.tobeto.rentACar.services.dtos.promotion.request.AddPromotionRequest;
 import com.tobeto.rentACar.services.dtos.promotion.request.ApplyPromotionRequest;
+import com.tobeto.rentACar.services.dtos.promotion.request.UpdatePromotionRequest;
 import com.tobeto.rentACar.services.dtos.promotion.response.ApplyPromotionResponse;
+import com.tobeto.rentACar.services.dtos.promotion.response.GetAllPromotionsResponse;
+import com.tobeto.rentACar.core.utilities.results.Result;
+
+import java.util.List;
 
 public interface PromotionService {
 
@@ -19,6 +25,14 @@ public interface PromotionService {
 
     /** Tăng usageCount sau khi đơn được tạo thành công. No-op khi code = null. */
     void consume(String code);
+
+    List<GetAllPromotionsResponse> getAll();
+
+    Result add(AddPromotionRequest request);
+
+    Result update(UpdatePromotionRequest request);
+
+    Result delete(int id);
 
     record PromotionApplyResult(String code, double discountAmount) {}
 }

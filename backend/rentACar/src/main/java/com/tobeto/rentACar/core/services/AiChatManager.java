@@ -43,23 +43,34 @@ public class AiChatManager implements AiChatService {
     }
 
     @Override
+    public boolean isGeminiConfigured() {
+        return apiKey != null && !apiKey.isBlank();
+    }
+
+    @Override
     public AiChatResponse chat(AiChatRequest request) {
-        if (apiKey == null || apiKey.isBlank()) {
-            return new AiChatResponse(false, "Gemini API key is missing on server", null);
+        if (!isGeminiConfigured()) {
+            return new AiChatResponse(false, "Gemini API key is missing on server", null, null, null, null);
         }
 
         String prompt = request.getMessage() == null ? "" : request.getMessage().trim();
         if (prompt.isBlank()) {
-            return new AiChatResponse(false, "Message is required", null);
+            return new AiChatResponse(false, "Message is required", null, null, null, null);
         }
 
         List<String> errors = new ArrayList<>();
         boolean hasQuotaError = false;
         for (String model : MODEL_CANDIDATES) {
             try {
-                String text = callGemini(model, request);
-                if (text != null && !text.isBlank()) {
-                    return new AiChatResponse(true, text.trim(), model);
+                GeminiResult result = callGemini(model, request);
+                if (result.text() != null && !result.text().isBlank()) {
+                    return new AiChatResponse(
+                            true,
+                            result.text().trim(),
+                            model,
+                            result.promptTokens(),
+                            result.completionTokens(),
+                            result.totalTokens());
                 }
             } catch (Exception e) {
                 String msg = e.getMessage() == null ? "Unknown error" : e.getMessage();
@@ -78,10 +89,12 @@ public class AiChatManager implements AiChatService {
         } else {
             err = "Unknown Gemini error";
         }
-        return new AiChatResponse(false, err, null);
+        return new AiChatResponse(false, err, null, null, null, null);
     }
 
-    private String callGemini(String model, AiChatRequest request) throws IOException, InterruptedException {
+    private record GeminiResult(String text, Integer promptTokens, Integer completionTokens, Integer totalTokens) {}
+
+    private GeminiResult callGemini(String model, AiChatRequest request) throws IOException, InterruptedException {
         Map<String, Object> payload = new HashMap<>();
         payload.put("contents", toContents(request));
 
@@ -104,9 +117,22 @@ public class AiChatManager implements AiChatService {
         JsonNode root = objectMapper.readTree(response.body());
         JsonNode textNode = root.path("candidates").path(0).path("content").path("parts").path(0).path("text");
         if (textNode.isMissingNode() || textNode.isNull()) {
+            return new GeminiResult(null, null, null, null);
+        }
+
+        JsonNode usage = root.path("usageMetadata");
+        Integer promptTokens = intOrNull(usage, "promptTokenCount");
+        Integer completionTokens = intOrNull(usage, "candidatesTokenCount");
+        Integer totalTokens = intOrNull(usage, "totalTokenCount");
+        return new GeminiResult(textNode.asText(), promptTokens, completionTokens, totalTokens);
+    }
+
+    private static Integer intOrNull(JsonNode node, String field) {
+        JsonNode v = node.path(field);
+        if (v.isMissingNode() || v.isNull() || !v.isNumber()) {
             return null;
         }
-        return textNode.asText();
+        return v.asInt();
     }
 
     private List<Map<String, Object>> toContents(AiChatRequest request) {

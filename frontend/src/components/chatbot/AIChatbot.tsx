@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Bot, User, Loader2 } from 'lucide-react';
-import { sendChatMessage } from '../../api/gemini';
-import type { ChatMessage } from '../../api/gemini';
+import { getAiStatus, sendChatMessage } from '../../api/gemini';
+import type { ChatMessage, ChatReplySource } from '../../api/gemini';
 
 const QUICK_QUESTIONS = [
   '💰 Giá thuê và giá mua xe?',
@@ -24,8 +24,17 @@ const AIChatbot = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [geminiConfigured, setGeminiConfigured] = useState<boolean | null>(null);
+  const [lastTokens, setLastTokens] = useState<number | null>(null);
+  const [lastSource, setLastSource] = useState<ChatReplySource | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    getAiStatus()
+      .then((status) => setGeminiConfigured(status.geminiConfigured))
+      .catch(() => setGeminiConfigured(false));
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -37,6 +46,14 @@ const AIChatbot = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const statusLabel = (() => {
+    if (lastSource === 'gemini') return 'Trực tuyến • Gemini';
+    if (lastSource === 'faq') return 'Trực tuyến • FAQ';
+    if (lastSource === 'fallback') return 'Trực tuyến • AutoBot';
+    if (geminiConfigured === null) return 'Đang kết nối...';
+    return geminiConfigured ? 'Trực tuyến • Gemini' : 'Trực tuyến • FAQ';
+  })();
 
   const handleSend = async (text?: string) => {
     const msg = text || input.trim();
@@ -51,7 +68,9 @@ const AIChatbot = () => {
       // Skip the initial greeting message when sending context to Gemini.
       const history = messages.slice(1);
       const response = await sendChatMessage(msg, history);
-      setMessages((prev) => [...prev, { role: 'model', content: response }]);
+      setLastSource(response.source);
+      setLastTokens(response.totalTokens ?? null);
+      setMessages((prev) => [...prev, { role: 'model', content: response.content }]);
       if (!isOpen) setUnread((u) => u + 1);
     } catch {
       setMessages((prev) => [
@@ -122,7 +141,7 @@ const AIChatbot = () => {
               <p className="text-sm font-semibold leading-tight">AutoBot AI</p>
               <div className="flex items-center gap-1">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-400" />
-                <span className="text-[10px] text-gray-300 sm:text-xs">Trực tuyến • Gemini</span>
+                <span className="text-[10px] text-gray-300 sm:text-xs">{statusLabel}</span>
               </div>
             </div>
             <button
@@ -214,12 +233,18 @@ const AIChatbot = () => {
                 type="button"
                 onClick={() => handleSend()}
                 disabled={!input.trim() || loading}
+                aria-label="Gửi tin nhắn"
                 className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-primary transition-colors hover:bg-primary/90 disabled:opacity-40"
               >
                 <Send className="h-3.5 w-3.5 text-white" />
               </button>
             </div>
-            <p className="mt-1 text-center text-[10px] text-gray-400">AutoBot • AutoHub</p>
+            <p className="mt-1 text-center text-[10px] text-gray-400">
+              AutoBot • AutoHub
+              {lastTokens != null && lastSource === 'gemini' && (
+                <span className="text-gray-300"> • {lastTokens} tokens</span>
+              )}
+            </p>
           </div>
         </div>
       )}

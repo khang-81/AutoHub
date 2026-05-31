@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AUTH_UNAUTHORIZED_EVENT, type UnauthorizedEventDetail } from '../../api/axiosInstance';
 import { useAuthStore } from '../../store/authStore';
+import { clearAdminSession } from '../../utils/adminSession';
 import { useToast } from '../ui/Toast';
 
 /**
@@ -24,6 +25,7 @@ const AuthSessionWatcher = () => {
 
       if (scope === 'admin') {
         if (path === '/admin/login') return;
+        clearAdminSession();
         navigate('/admin/login', { replace: true });
         showToast('Phiên đăng nhập admin đã hết hạn. Vui lòng đăng nhập lại.', 'info');
         return;

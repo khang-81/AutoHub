@@ -8,6 +8,7 @@ import BrandLogo from '../../components/ui/BrandLogo';
 import { loginApi } from '../../api/auth';
 import { getUserRolesApi } from '../../api/users';
 import { getUserIdFromToken, getEmailFromToken, isJwtExpired, getApiErrorMessage, getRoleFromToken } from '../../utils/helpers';
+import { saveAdminSession } from '../../utils/adminSession';
 
 const schema = z.object({
   email: z.string().email('Email không hợp lệ'),
@@ -37,7 +38,7 @@ const AdminLogin = () => {
     try {
       setIsLoading(true);
       setError('');
-      const res = await loginApi(data);
+      const res = await loginApi({ ...data, portal: 'ADMIN' });
       if (!res.success) {
         setError(res.message || 'Email hoặc mật khẩu không đúng.');
         return;
@@ -81,9 +82,8 @@ const AdminLogin = () => {
         return;
       }
 
-      // Lưu phiên admin độc lập
-      localStorage.setItem('autohub_admin_token', token);
-      localStorage.setItem('autohub_admin_user', JSON.stringify({ id: userId, email, roles }));
+      saveAdminSession(token, userId, email, roles);
+      localStorage.removeItem('autohub_token');
       navigate('/admin');
     } catch (err: unknown) {
       localStorage.removeItem('autohub_token');

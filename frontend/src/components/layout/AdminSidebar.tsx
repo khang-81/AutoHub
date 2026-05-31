@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Car,
@@ -13,9 +14,11 @@ import {
   ShoppingBag,
   MessageSquare,
   CalendarClock,
+  Palette,
+  Ticket,
 } from 'lucide-react';
-import { useState } from 'react';
 import { getEmailFromToken } from '../../utils/helpers';
+import { ADMIN_TOKEN_KEY, ADMIN_USER_KEY, clearAdminSession } from '../../utils/adminSession';
 import BrandLogo from '../ui/BrandLogo';
 
 const navItems = [
@@ -25,13 +28,12 @@ const navItems = [
   { label: 'Quản lý khách hàng', to: '/admin/users', icon: Users },
   { label: 'Quản lý GPLX', to: '/admin/kyc', icon: ShieldCheck },
   { label: 'Quản lý thương hiệu & model', to: '/admin/brands', icon: Tag },
+  { label: 'Quản lý màu xe', to: '/admin/colors', icon: Palette },
+  { label: 'Mã khuyến mãi', to: '/admin/promotions', icon: Ticket },
   { label: 'Quản lý lịch xem xe', to: '/admin/viewing-appointments', icon: CalendarClock },
   { label: 'Quản lý đánh giá', to: '/admin/reviews', icon: MessageSquare },
   { label: 'Báo cáo doanh thu', to: '/admin/reports', icon: BarChart3 },
 ];
-
-const ADMIN_USER_KEY = 'autohub_admin_user';
-const ADMIN_TOKEN_KEY = 'autohub_admin_token';
 
 function readAdminDisplayEmail(): string {
   try {
@@ -54,8 +56,7 @@ const AdminSidebar = () => {
   const adminEmail = readAdminDisplayEmail();
 
   const handleLogout = () => {
-    localStorage.removeItem(ADMIN_TOKEN_KEY);
-    localStorage.removeItem(ADMIN_USER_KEY);
+    clearAdminSession();
     navigate('/admin/login');
   };
 

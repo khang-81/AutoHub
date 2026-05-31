@@ -73,6 +73,7 @@ const Footer = () => {
                 { label: 'Giới thiệu', to: '/about' },
                 { label: 'Liên hệ', to: '/contact' },
                 { label: 'Điều khoản dịch vụ', to: '/terms' },
+                { label: 'Chính sách bảo mật', to: '/privacy' },
               ].map((link) => (
                 <li key={link.to}>
                   <Link 

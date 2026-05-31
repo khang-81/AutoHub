@@ -2,6 +2,8 @@
 export interface LoginRequest {
   email: string;
   password: string;
+  /** USER = /login; ADMIN = /admin/login */
+  portal?: 'USER' | 'ADMIN';
 }
 
 export interface RegisterRequest {
@@ -300,6 +302,41 @@ export interface ApplyPromotionResponse {
   discountAmount: number;
   finalAmount: number;
   message?: string;
+}
+
+export interface Promotion {
+  id: number;
+  code: string;
+  description?: string;
+  discountType: 'PERCENT' | 'FIXED';
+  discountValue: number;
+  appliesTo: 'RENT' | 'SALE' | 'BOTH';
+  validFrom?: string | null;
+  validTo?: string | null;
+  usageLimit?: number | null;
+  usageCount: number;
+  maxDiscountAmount?: number | null;
+  minOrderValue?: number | null;
+  active: boolean;
+}
+
+export interface AddPromotionRequest {
+  code: string;
+  description?: string;
+  discountType: 'PERCENT' | 'FIXED';
+  discountValue: number;
+  appliesTo: 'RENT' | 'SALE' | 'BOTH';
+  validFrom?: string;
+  validTo?: string;
+  usageLimit?: number;
+  maxDiscountAmount?: number;
+  minOrderValue?: number;
+  active?: boolean;
+}
+
+export interface UpdatePromotionRequest extends AddPromotionRequest {
+  id: number;
+  active: boolean;
 }
 
 export interface AddSaleOrderResponse {

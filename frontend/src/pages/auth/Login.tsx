@@ -39,9 +39,8 @@ const Login = () => {
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     try {
-      const res = await loginApi(data);
+      const res = await loginApi({ ...data, portal: 'USER' });
       if (res.success) {
-        // Extract token from nested loginResponse
         const token = res.loginResponse?.token || res.data || res.token;
         if (!token) {
           showToast('Không nhận được token từ server', 'error');
@@ -55,7 +54,6 @@ const Login = () => {
           ? rolesFromLogin.map((r) => String(r).trim()).filter(Boolean)
           : [];
 
-        // Gắn JWT trước khi gọi API roles (axios interceptor đọc localStorage)
         localStorage.setItem('autohub_token', token);
 
         if (roles.length === 0 && userId) {
@@ -68,24 +66,22 @@ const Login = () => {
             }
           }
         }
-        login(token, userId, email, roles);
-        showToast('Đăng nhập thành công!', 'success');
-        // Redirect based on role
-        const adminRole = roles.some((r: string) => r.toLowerCase().includes('admin'));
-        if (adminRole) {
-          localStorage.setItem('autohub_admin_token', token);
-          localStorage.setItem(
-            'autohub_admin_user',
-            JSON.stringify({ id: userId, email, roles })
+
+        const isAdminAccount = roles.some((r: string) => r.toLowerCase().includes('admin'));
+        if (isAdminAccount) {
+          localStorage.removeItem('autohub_token');
+          showToast(
+            'Tài khoản quản trị không thể đăng nhập tại đây. Vui lòng dùng trang /admin/login.',
+            'error'
           );
-          navigate('/admin');
-        } else {
-          localStorage.removeItem('autohub_admin_token');
-          localStorage.removeItem('autohub_admin_user');
-          // Đặc tả UC Đăng nhập: khách hàng -> Trang chủ. Nếu user bị middleware đẩy về login từ trang khác,
-          // ưu tiên redirect ngược lại trang đó để giữ ngữ cảnh thao tác (Thuê/Mua/...).
-          navigate(redirectAfterLogin);
+          return;
         }
+
+        login(token, userId, email, roles);
+        localStorage.removeItem('autohub_admin_token');
+        localStorage.removeItem('autohub_admin_user');
+        showToast('Đăng nhập thành công!', 'success');
+        navigate(redirectAfterLogin);
       } else {
         showToast(res.message || 'Đăng nhập thất bại', 'error');
       }

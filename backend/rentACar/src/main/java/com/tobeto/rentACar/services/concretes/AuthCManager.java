@@ -123,6 +123,23 @@ public class AuthCManager implements AuthCService {
                         .filter(a -> a != null && !a.isBlank())
                         .toList();
                 loginResponse.setRoles(roleNames);
+
+                boolean isAdmin = roleNames.stream()
+                        .anyMatch(r -> r != null && r.equalsIgnoreCase("admin"));
+                String portal = loginUserRequest.getPortal() != null
+                        ? loginUserRequest.getPortal().trim().toUpperCase()
+                        : "USER";
+                if (!portal.equals("USER") && !portal.equals("ADMIN")) {
+                    return new ErrorResult("Portal đăng nhập không hợp lệ.");
+                }
+                if ("USER".equals(portal) && isAdmin) {
+                    return new ErrorResult(
+                            "Tài khoản quản trị không thể đăng nhập tại đây. Vui lòng dùng trang /admin/login.");
+                }
+                if ("ADMIN".equals(portal) && !isAdmin) {
+                    return new ErrorResult("Tài khoản này không có quyền truy cập trang quản trị.");
+                }
+
                 return new AuthCResult(true, messageService.getMessage(Messages.User.userLoginSuccess), loginResponse);
             }
             return new ErrorResult(messageService.getMessage(Messages.User.getUserNotFoundMessage));
