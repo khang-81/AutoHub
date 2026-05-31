@@ -73,8 +73,8 @@ docker compose up --build
 
 ## Default Accounts (Seed Data)
 
-- Admin: `admin@autohub.local` / `12345678`
-- User: `user@autohub.local` / `12345678`
+- Admin: `admin@autohub.id.vn` / `admin123@`
+- User: `tester@gmail.com` / `123456`
 
 ## Local Development (Without Docker)
 
