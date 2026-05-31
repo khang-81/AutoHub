@@ -21,6 +21,7 @@ import CarListing from './pages/public/CarListing';
 import CarDetail from './pages/public/CarDetail';
 import Contact from './pages/public/Contact';
 import About from './pages/public/About';
+import Terms from './pages/public/Terms';
 
 // Auth pages
 import Login from './pages/auth/Login';
@@ -43,6 +44,7 @@ import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ManageCars from './pages/admin/ManageCars';
 import ManageBrands from './pages/admin/ManageBrands';
+import ManageColors from './pages/admin/ManageColors';
 import ManageUsers from './pages/admin/ManageUsers';
 import ManageReports from './pages/admin/ManageReports';
 import ManageKyc from './pages/admin/ManageKyc';
@@ -78,6 +80,7 @@ function RoutesWithChatbot() {
           <Route path="/cars/:id/view" element={<CarDetail />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/about" element={<About />} />
+          <Route path="/terms" element={<Terms />} />
         </Route>
 
         {/* Auth routes — dùng chung PublicLayout để có Navbar + Footer */}
@@ -126,6 +129,7 @@ function RoutesWithChatbot() {
           <Route path="cars/rent" element={<ManageCars />} />
           <Route path="cars/sale" element={<ManageCars />} />
           <Route path="brands" element={<ManageBrands />} />
+          <Route path="colors" element={<ManageColors />} />
           <Route path="rentals" element={<Navigate to="/admin/cars/rent?tab=orders" replace />} />
           <Route path="users" element={<ManageUsers />} />
           <Route path="reports" element={<ManageReports />} />

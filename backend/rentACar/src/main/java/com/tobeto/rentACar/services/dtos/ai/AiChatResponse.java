@@ -11,4 +11,8 @@ public class AiChatResponse {
     private boolean success;
     private String message;
     private String model;
+    /** Token usage from Gemini usageMetadata (null if unavailable). */
+    private Integer promptTokens;
+    private Integer completionTokens;
+    private Integer totalTokens;
 }

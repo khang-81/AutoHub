@@ -70,6 +70,7 @@ public class SecurityConfiguration {
             "/api/cars/**",
             "/api/colors/**",
             "/api/contact/**",
+            "/api/ai/**",
             "/actuator/**"
     };
 
