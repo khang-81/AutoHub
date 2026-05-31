@@ -12,6 +12,8 @@ import type { AuthState } from '../types';
  *  Thay đổi token CHỈ qua login()/logout() để tránh drift.
  */
 export const TOKEN_STORAGE_KEY = 'autohub_token';
+export const ADMIN_TOKEN_KEY = 'autohub_admin_token';
+export const ADMIN_USER_KEY = 'autohub_admin_user';
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -42,6 +44,8 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         try {
           localStorage.removeItem(TOKEN_STORAGE_KEY);
+          localStorage.removeItem(ADMIN_TOKEN_KEY);
+          localStorage.removeItem(ADMIN_USER_KEY);
         } catch {
           /* ignore */
         }
@@ -52,6 +56,25 @@ export const useAuthStore = create<AuthState>()(
           roles: [],
           isAuthenticated: false,
           isAdmin: false,
+        });
+      },
+
+      /** Đăng nhập admin: lưu token admin riêng và đồng bộ Zustand để Navbar hiển thị đúng. */
+      loginAsAdmin: (token: string, userId: number, email: string, roles: string[]) => {
+        try {
+          localStorage.setItem(TOKEN_STORAGE_KEY, token);
+          localStorage.setItem(ADMIN_TOKEN_KEY, token);
+          localStorage.setItem(ADMIN_USER_KEY, JSON.stringify({ id: userId, email, roles }));
+        } catch {
+          /* storage có thể bị block */
+        }
+        set({
+          token,
+          userId,
+          email,
+          roles,
+          isAuthenticated: true,
+          isAdmin: roles.some((r) => r.toLowerCase().includes('admin')),
         });
       },
     }),

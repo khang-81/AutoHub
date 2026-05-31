@@ -7,6 +7,7 @@ import { Lock, Mail, Eye, EyeOff, ShieldCheck, AlertCircle } from 'lucide-react'
 import BrandLogo from '../../components/ui/BrandLogo';
 import { loginApi } from '../../api/auth';
 import { getUserRolesApi } from '../../api/users';
+import { useAuthStore } from '../../store/authStore';
 import { getUserIdFromToken, getEmailFromToken, isJwtExpired, getApiErrorMessage, getRoleFromToken } from '../../utils/helpers';
 
 const schema = z.object({
@@ -18,6 +19,7 @@ type FormData = z.infer<typeof schema>;
 
 const AdminLogin = () => {
   const navigate = useNavigate();
+  const loginAsAdmin = useAuthStore((s) => s.loginAsAdmin);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -81,9 +83,7 @@ const AdminLogin = () => {
         return;
       }
 
-      // Lưu phiên admin độc lập
-      localStorage.setItem('autohub_admin_token', token);
-      localStorage.setItem('autohub_admin_user', JSON.stringify({ id: userId, email, roles }));
+      loginAsAdmin(token, userId, email, roles);
       navigate('/admin');
     } catch (err: unknown) {
       localStorage.removeItem('autohub_token');

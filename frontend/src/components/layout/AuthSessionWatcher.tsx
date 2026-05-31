@@ -24,6 +24,7 @@ const AuthSessionWatcher = () => {
 
       if (scope === 'admin') {
         if (path === '/admin/login') return;
+        logout();
         navigate('/admin/login', { replace: true });
         showToast('Phiên đăng nhập admin đã hết hạn. Vui lòng đăng nhập lại.', 'info');
         return;

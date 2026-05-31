@@ -65,7 +65,11 @@ const Terms = () => {
             <p className="text-gray-600 text-sm leading-relaxed">
               Bằng việc đăng ký tài khoản, đặt thuê hoặc mua xe trên AutoHub, bạn đồng ý tuân thủ các điều khoản
               này. AutoHub có thể cập nhật điều khoản theo thời gian; phiên bản mới có hiệu lực khi được đăng tải
-              trên website.
+              trên website. Xem thêm{' '}
+              <Link to="/privacy" className="text-primary hover:underline">
+                Chính sách bảo mật
+              </Link>
+              .
             </p>
           </div>
 
