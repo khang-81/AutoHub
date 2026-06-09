@@ -41,11 +41,10 @@ const UserLayout = () => {
                   <Link
                     key={item.to}
                     to={item.to}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                      isActive(item)
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive(item)
                         ? 'bg-primary text-white font-semibold'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-navy'
-                    }`}
+                      }`}
                   >
                     <item.icon className="w-5 h-5" />
                     <span className="text-sm">{item.label}</span>
