@@ -1,7 +1,111 @@
--- Gallery — sinh từ car-catalog.json
+/* Danh mục xe thực tế: 35 model × (1 thuê + 1 bán) = 70 xe; không đơn/lịch demo. */
+DELETE FROM [dbo].[viewing_appointments];
+DELETE FROM [dbo].[reviews];
+DELETE FROM [dbo].[invoices];
+DELETE FROM [dbo].[rentals];
+DELETE FROM [dbo].[sale_orders];
 DELETE FROM [dbo].[car_images];
+DELETE FROM [dbo].[cars];
+DBCC CHECKIDENT ('[dbo].[cars]', RESEED, 0);
+
+INSERT INTO [dbo].[cars]
+([created_date], [model_year], [service_city], [plate], [min_findeks_rate], [kilometer], [daily_price], [listing_type], [sale_price], [sale_status], [image_path], [seats], [transmission], [fuel_type], [model_id], [color_id])
+SELECT
+    CAST(GETDATE() AS DATE),
+    src.model_year,
+    N'Hà Nội',
+    src.plate,
+    src.min_findeks_rate,
+    src.kilometer,
+    src.daily_price,
+    src.listing_type,
+    src.sale_price,
+    src.sale_status,
+    src.image_path,
+    src.seats,
+    src.transmission,
+    src.fuel_type,
+    m.id,
+    c.id
+FROM (
+VALUES
+      (N'51R0001', 2023, 500, 18500, 1500000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/2018_Toyota_Camry_XLE_V6_in_Midnight_Black_Metallic%2C_front_left_%28NY%29.jpg/800px-2018_Toyota_Camry_XLE_V6_in_Midnight_Black_Metallic%2C_front_left_%28NY%29.jpg', 5, N'AUTO', N'GASOLINE', N'Toyota', N'Camry 2.5Q'),
+      (N'51S0001', 2023, 500, 12000, 0.0, N'SALE_ONLY', 1050000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/2018_Toyota_Camry_XLE_V6_in_Midnight_Black_Metallic%2C_front_left_%28NY%29.jpg/800px-2018_Toyota_Camry_XLE_V6_in_Midnight_Black_Metallic%2C_front_left_%28NY%29.jpg', 5, N'AUTO', N'GASOLINE', N'Toyota', N'Camry 2.5Q'),
+      (N'51R0002', 2023, 500, 22000, 900000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/2021_Toyota_Corolla_Cross_Hybrid_%28front%29.jpg/800px-2021_Toyota_Corolla_Cross_Hybrid_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Toyota', N'Corolla Cross 1.8V'),
+      (N'51S0002', 2023, 500, 8500, 0.0, N'SALE_ONLY', 820000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/2021_Toyota_Corolla_Cross_Hybrid_%28front%29.jpg/800px-2021_Toyota_Corolla_Cross_Hybrid_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Toyota', N'Corolla Cross 1.8V'),
+      (N'51R0003', 2023, 500, 31000, 1600000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/2016_Toyota_Fortuner_%28front%29.jpg/800px-2016_Toyota_Fortuner_%28front%29.jpg', 7, N'AUTO', N'DIESEL', N'Toyota', N'Fortuner Legender 2.4AT'),
+      (N'51S0003', 2023, 500, 15000, 0.0, N'SALE_ONLY', 1150000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/2016_Toyota_Fortuner_%28front%29.jpg/800px-2016_Toyota_Fortuner_%28front%29.jpg', 7, N'AUTO', N'DIESEL', N'Toyota', N'Fortuner Legender 2.4AT'),
+      (N'51R0004', 2023, 500, 42000, 650000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/2018_Toyota_Vios_%28front%29.jpg/800px-2018_Toyota_Vios_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Toyota', N'Vios 1.5G CVT'),
+      (N'51S0004', 2023, 500, 28000, 0.0, N'SALE_ONLY', 480000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/2018_Toyota_Vios_%28front%29.jpg/800px-2018_Toyota_Vios_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Toyota', N'Vios 1.5G CVT'),
+      (N'51R0005', 2024, 500, 12000, 1300000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/2023_Toyota_Innova_Cross_%28front%29.jpg/800px-2023_Toyota_Innova_Cross_%28front%29.jpg', 7, N'AUTO', N'GASOLINE', N'Toyota', N'Innova Cross 2.0G'),
+      (N'51S0005', 2024, 500, 5000, 0.0, N'SALE_ONLY', 950000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/2023_Toyota_Innova_Cross_%28front%29.jpg/800px-2023_Toyota_Innova_Cross_%28front%29.jpg', 7, N'AUTO', N'GASOLINE', N'Toyota', N'Innova Cross 2.0G'),
+      (N'51R0006', 2024, 500, 28000, 1500000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/2018_Toyota_Hilux_%28front%29.jpg/800px-2018_Toyota_Hilux_%28front%29.jpg', 5, N'AUTO', N'DIESEL', N'Toyota', N'Hilux 2.8 Legender'),
+      (N'51S0006', 2024, 500, 11000, 0.0, N'SALE_ONLY', 1150000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/2018_Toyota_Hilux_%28front%29.jpg/800px-2018_Toyota_Hilux_%28front%29.jpg', 5, N'AUTO', N'DIESEL', N'Toyota', N'Hilux 2.8 Legender'),
+      (N'51R0007', 2024, 500, 9500, 850000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/2022_Toyota_Yaris_Cross_%28front%29.jpg/800px-2022_Toyota_Yaris_Cross_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Toyota', N'Yaris Cross 1.5G'),
+      (N'51S0007', 2024, 500, 6000, 0.0, N'SALE_ONLY', 720000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/2022_Toyota_Yaris_Cross_%28front%29.jpg/800px-2022_Toyota_Yaris_Cross_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Toyota', N'Yaris Cross 1.5G'),
+      (N'51R0008', 2023, 500, 35000, 700000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/2020_Honda_City_RS_%28front%29.jpg/800px-2020_Honda_City_RS_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Honda', N'City RS 1.5Turbo'),
+      (N'51S0008', 2023, 500, 22000, 0.0, N'SALE_ONLY', 580000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/2020_Honda_City_RS_%28front%29.jpg/800px-2020_Honda_City_RS_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Honda', N'City RS 1.5Turbo'),
+      (N'51R0009', 2023, 500, 24000, 950000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/2022_Honda_Civic_FE_%28front%29.jpg/800px-2022_Honda_Civic_FE_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Honda', N'Civic RS Turbo'),
+      (N'51S0009', 2023, 500, 14000, 0.0, N'SALE_ONLY', 780000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/2022_Honda_Civic_FE_%28front%29.jpg/800px-2022_Honda_Civic_FE_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Honda', N'Civic RS Turbo'),
+      (N'51R0010', 2023, 500, 27000, 1200000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/2017_Honda_CR-V_%28front%29.jpg/800px-2017_Honda_CR-V_%28front%29.jpg', 7, N'AUTO', N'GASOLINE', N'Honda', N'CR-V L Turbo'),
+      (N'51S0010', 2023, 500, 16000, 0.0, N'SALE_ONLY', 980000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/2017_Honda_CR-V_%28front%29.jpg/800px-2017_Honda_CR-V_%28front%29.jpg', 7, N'AUTO', N'GASOLINE', N'Honda', N'CR-V L Turbo'),
+      (N'51R0011', 2024, 500, 15000, 850000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/2022_Honda_HR-V_%28front%29.jpg/800px-2022_Honda_HR-V_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Honda', N'HR-V G 1.5L'),
+      (N'51S0011', 2024, 500, 8000, 0.0, N'SALE_ONLY', 720000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/2022_Honda_HR-V_%28front%29.jpg/800px-2022_Honda_HR-V_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Honda', N'HR-V G 1.5L'),
+      (N'51R0012', 2023, 500, 19000, 1400000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/2021_Honda_Accord_%28front%29.jpg/800px-2021_Honda_Accord_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Honda', N'Accord Turbo'),
+      (N'51S0012', 2023, 500, 10000, 0.0, N'SALE_ONLY', 1250000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/2021_Honda_Accord_%28front%29.jpg/800px-2021_Honda_Accord_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Honda', N'Accord Turbo'),
+      (N'51R0013', 2023, 500, 38000, 800000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/2019_Honda_BR-V_%28front%29.jpg/800px-2019_Honda_BR-V_%28front%29.jpg', 7, N'AUTO', N'GASOLINE', N'Honda', N'BR-V G 1.5CVT'),
+      (N'51S0013', 2023, 500, 25000, 0.0, N'SALE_ONLY', 680000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/2019_Honda_BR-V_%28front%29.jpg/800px-2019_Honda_BR-V_%28front%29.jpg', 7, N'AUTO', N'GASOLINE', N'Honda', N'BR-V G 1.5CVT'),
+      (N'51R0014', 2023, 500, 45000, 1600000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/2018_Honda_Odyssey_%28front%29.jpg/800px-2018_Honda_Odyssey_%28front%29.jpg', 7, N'AUTO', N'GASOLINE', N'Honda', N'Odyssey 2.4L'),
+      (N'51S0014', 2023, 500, 32000, 0.0, N'SALE_ONLY', 1380000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/2018_Honda_Odyssey_%28front%29.jpg/800px-2018_Honda_Odyssey_%28front%29.jpg', 7, N'AUTO', N'GASOLINE', N'Honda', N'Odyssey 2.4L'),
+      (N'51R0015', 2024, 500, 8000, 650000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/VinFast_VF_3_in_Hanoi.jpg/800px-VinFast_VF_3_in_Hanoi.jpg', 4, N'AUTO', N'ELECTRIC', N'VinFast', N'VF 3 Standard'),
+      (N'51S0015', 2024, 500, 3500, 0.0, N'SALE_ONLY', 280000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/VinFast_VF_3_in_Hanoi.jpg/800px-VinFast_VF_3_in_Hanoi.jpg', 4, N'AUTO', N'ELECTRIC', N'VinFast', N'VF 3 Standard'),
+      (N'51R0016', 2024, 500, 11000, 900000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/VinFast_VF_5_at_Vietnam_Motorshow_2022.jpg/800px-VinFast_VF_5_at_Vietnam_Motorshow_2022.jpg', 5, N'AUTO', N'ELECTRIC', N'VinFast', N'VF 5 Plus'),
+      (N'51S0016', 2024, 500, 6000, 0.0, N'SALE_ONLY', 520000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/VinFast_VF_5_at_Vietnam_Motorshow_2022.jpg/800px-VinFast_VF_5_at_Vietnam_Motorshow_2022.jpg', 5, N'AUTO', N'ELECTRIC', N'VinFast', N'VF 5 Plus'),
+      (N'51R0017', 2024, 500, 14000, 1100000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/VinFast_VF_8_Eco.jpg/800px-VinFast_VF_8_Eco.jpg', 5, N'AUTO', N'ELECTRIC', N'VinFast', N'VF 6 Eco'),
+      (N'51S0017', 2024, 500, 7500, 0.0, N'SALE_ONLY', 720000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/VinFast_VF_8_Eco.jpg/800px-VinFast_VF_8_Eco.jpg', 5, N'AUTO', N'ELECTRIC', N'VinFast', N'VF 6 Eco'),
+      (N'51R0018', 2024, 500, 9000, 1400000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/VinFast_VF_8_Eco.jpg/800px-VinFast_VF_8_Eco.jpg', 5, N'AUTO', N'ELECTRIC', N'VinFast', N'VF 7 Plus'),
+      (N'51S0018', 2024, 500, 4000, 0.0, N'SALE_ONLY', 920000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/VinFast_VF_8_Eco.jpg/800px-VinFast_VF_8_Eco.jpg', 5, N'AUTO', N'ELECTRIC', N'VinFast', N'VF 7 Plus'),
+      (N'51R0019', 2023, 500, 21000, 1800000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/VinFast_VF_8_Eco.jpg/800px-VinFast_VF_8_Eco.jpg', 5, N'AUTO', N'ELECTRIC', N'VinFast', N'VF 8 Eco'),
+      (N'51S0019', 2023, 500, 12000, 0.0, N'SALE_ONLY', 1050000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/VinFast_VF_8_Eco.jpg/800px-VinFast_VF_8_Eco.jpg', 5, N'AUTO', N'ELECTRIC', N'VinFast', N'VF 8 Eco'),
+      (N'51R0020', 2023, 500, 16000, 2200000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/VinFast_VF_9_at_VinFast_Manufacturing_Plant.jpg/800px-VinFast_VF_9_at_VinFast_Manufacturing_Plant.jpg', 7, N'AUTO', N'ELECTRIC', N'VinFast', N'VF 9 Eco'),
+      (N'51S0020', 2023, 500, 9000, 0.0, N'SALE_ONLY', 1550000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/VinFast_VF_9_at_VinFast_Manufacturing_Plant.jpg/800px-VinFast_VF_9_at_VinFast_Manufacturing_Plant.jpg', 7, N'AUTO', N'ELECTRIC', N'VinFast', N'VF 9 Eco'),
+      (N'51R0021', 2024, 500, 7000, 2000000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/VinFast_VF_8_Eco.jpg/800px-VinFast_VF_8_Eco.jpg', 5, N'AUTO', N'ELECTRIC', N'VinFast', N'VF 8 Premium'),
+      (N'51S0021', 2024, 500, 2500, 0.0, N'SALE_ONLY', 1150000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/VinFast_VF_8_Eco.jpg/800px-VinFast_VF_8_Eco.jpg', 5, N'AUTO', N'ELECTRIC', N'VinFast', N'VF 8 Premium'),
+      (N'51R0022', 2023, 500, 26000, 900000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/2019_Mazda3_%28BP%29_Sedan_%28front%29.jpg/800px-2019_Mazda3_%28BP%29_Sedan_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Mazda', N'Mazda3 2.0G Luxury'),
+      (N'51S0022', 2023, 500, 15000, 0.0, N'SALE_ONLY', 750000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/2019_Mazda3_%28BP%29_Sedan_%28front%29.jpg/800px-2019_Mazda3_%28BP%29_Sedan_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Mazda', N'Mazda3 2.0G Luxury'),
+      (N'51R0023', 2023, 500, 33000, 1200000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/2017_Mazda_CX-5_%28front%29.jpg/800px-2017_Mazda_CX-5_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Mazda', N'CX-5 2.5G Premium'),
+      (N'51S0023', 2023, 500, 18000, 0.0, N'SALE_ONLY', 980000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/2017_Mazda_CX-5_%28front%29.jpg/800px-2017_Mazda_CX-5_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Mazda', N'CX-5 2.5G Premium'),
+      (N'51R0024', 2024, 500, 14000, 1000000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/2020_Mazda_CX-30_%28front%29.jpg/800px-2020_Mazda_CX-30_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Mazda', N'CX-30 2.0G Premium'),
+      (N'51S0024', 2024, 500, 7000, 0.0, N'SALE_ONLY', 860000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/2020_Mazda_CX-30_%28front%29.jpg/800px-2020_Mazda_CX-30_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Mazda', N'CX-30 2.0G Premium'),
+      (N'51R0025', 2024, 500, 52000, 950000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/2012_Mazda_BT-50_%28front%29.jpg/800px-2012_Mazda_BT-50_%28front%29.jpg', 5, N'AUTO', N'DIESEL', N'Mazda', N'BT-50 Premium 4x4'),
+      (N'51S0025', 2024, 500, 35000, 0.0, N'SALE_ONLY', 780000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/2012_Mazda_BT-50_%28front%29.jpg/800px-2012_Mazda_BT-50_%28front%29.jpg', 5, N'AUTO', N'DIESEL', N'Mazda', N'BT-50 Premium 4x4'),
+      (N'51R0026', 2023, 500, 29000, 1400000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/2017_Mazda_CX-5_%28front%29.jpg/800px-2017_Mazda_CX-5_%28front%29.jpg', 7, N'AUTO', N'GASOLINE', N'Mazda', N'CX-8 2.5G Luxury'),
+      (N'51S0026', 2023, 500, 16000, 0.0, N'SALE_ONLY', 1150000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/2017_Mazda_CX-5_%28front%29.jpg/800px-2017_Mazda_CX-5_%28front%29.jpg', 7, N'AUTO', N'GASOLINE', N'Mazda', N'CX-8 2.5G Luxury'),
+      (N'51R0027', 2023, 500, 41000, 1200000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/2019_Mazda3_%28BP%29_Sedan_%28front%29.jpg/800px-2019_Mazda3_%28BP%29_Sedan_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Mazda', N'Mazda6 2.5G Premium'),
+      (N'51S0027', 2023, 500, 28000, 0.0, N'SALE_ONLY', 1020000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/2019_Mazda3_%28BP%29_Sedan_%28front%29.jpg/800px-2019_Mazda3_%28BP%29_Sedan_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Mazda', N'Mazda6 2.5G Premium'),
+      (N'51R0028', 2024, 500, 11000, 1250000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/2017_Mazda_CX-5_%28front%29.jpg/800px-2017_Mazda_CX-5_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Mazda', N'CX-5 Signature'),
+      (N'51S0028', 2024, 500, 5500, 0.0, N'SALE_ONLY', 1050000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/2017_Mazda_CX-5_%28front%29.jpg/800px-2017_Mazda_CX-5_%28front%29.jpg', 5, N'AUTO', N'GASOLINE', N'Mazda', N'CX-5 Signature'),
+      (N'51R0029', 2023, 500, 22000, 3500000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Mercedes-Benz_W206_IMG_6743.jpg/800px-Mercedes-Benz_W206_IMG_6743.jpg', 5, N'AUTO', N'GASOLINE', N'Mercedes-Benz', N'C 200 Avantgarde'),
+      (N'51S0029', 2023, 500, 11000, 0.0, N'SALE_ONLY', 1950000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Mercedes-Benz_W206_IMG_6743.jpg/800px-Mercedes-Benz_W206_IMG_6743.jpg', 5, N'AUTO', N'GASOLINE', N'Mercedes-Benz', N'C 200 Avantgarde'),
+      (N'51R0030', 2024, 500, 8500, 4000000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Mercedes-Benz_W206_IMG_6743.jpg/800px-Mercedes-Benz_W206_IMG_6743.jpg', 5, N'AUTO', N'GASOLINE', N'Mercedes-Benz', N'C 300 AMG Line'),
+      (N'51S0030', 2024, 500, 4000, 0.0, N'SALE_ONLY', 2250000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Mercedes-Benz_W206_IMG_6743.jpg/800px-Mercedes-Benz_W206_IMG_6743.jpg', 5, N'AUTO', N'GASOLINE', N'Mercedes-Benz', N'C 300 AMG Line'),
+      (N'51R0031', 2024, 500, 12000, 5000000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Mercedes-Benz_W213_IMG_3527.jpg/800px-Mercedes-Benz_W213_IMG_3527.jpg', 5, N'AUTO', N'GASOLINE', N'Mercedes-Benz', N'E 300 AMG Line'),
+      (N'51S0031', 2024, 500, 6000, 0.0, N'SALE_ONLY', 2850000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Mercedes-Benz_W213_IMG_3527.jpg/800px-Mercedes-Benz_W213_IMG_3527.jpg', 5, N'AUTO', N'GASOLINE', N'Mercedes-Benz', N'E 300 AMG Line'),
+      (N'51R0032', 2024, 500, 15000, 4200000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Mercedes-Benz_X254_IMG_0112.jpg/800px-Mercedes-Benz_X254_IMG_0112.jpg', 5, N'AUTO', N'GASOLINE', N'Mercedes-Benz', N'GLC 300 4MATIC'),
+      (N'51S0032', 2024, 500, 7500, 0.0, N'SALE_ONLY', 2450000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Mercedes-Benz_X254_IMG_0112.jpg/800px-Mercedes-Benz_X254_IMG_0112.jpg', 5, N'AUTO', N'GASOLINE', N'Mercedes-Benz', N'GLC 300 4MATIC'),
+      (N'51R0033', 2023, 500, 28000, 3800000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Mercedes-Benz_X254_IMG_0112.jpg/800px-Mercedes-Benz_X254_IMG_0112.jpg', 5, N'AUTO', N'GASOLINE', N'Mercedes-Benz', N'GLC 200 4MATIC'),
+      (N'51S0033', 2023, 500, 14000, 0.0, N'SALE_ONLY', 2150000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Mercedes-Benz_X254_IMG_0112.jpg/800px-Mercedes-Benz_X254_IMG_0112.jpg', 5, N'AUTO', N'GASOLINE', N'Mercedes-Benz', N'GLC 200 4MATIC'),
+      (N'51R0034', 2024, 500, 9000, 5500000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Mercedes-Benz_X254_IMG_0112.jpg/800px-Mercedes-Benz_X254_IMG_0112.jpg', 5, N'AUTO', N'GASOLINE', N'Mercedes-Benz', N'GLE 450 4MATIC'),
+      (N'51S0034', 2024, 500, 3500, 0.0, N'SALE_ONLY', 3850000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Mercedes-Benz_X254_IMG_0112.jpg/800px-Mercedes-Benz_X254_IMG_0112.jpg', 5, N'AUTO', N'GASOLINE', N'Mercedes-Benz', N'GLE 450 4MATIC'),
+      (N'51R0035', 2024, 500, 5000, 7000000.0, N'RENT_ONLY', NULL, NULL, N'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Mercedes-Benz_W213_IMG_3527.jpg/800px-Mercedes-Benz_W213_IMG_3527.jpg', 5, N'AUTO', N'GASOLINE', N'Mercedes-Benz', N'S 450 L'),
+      (N'51S0035', 2024, 500, 2000, 0.0, N'SALE_ONLY', 5200000000.0, N'AVAILABLE', N'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Mercedes-Benz_W213_IMG_3527.jpg/800px-Mercedes-Benz_W213_IMG_3527.jpg', 5, N'AUTO', N'GASOLINE', N'Mercedes-Benz', N'S 450 L')
+) AS src(plate, model_year, min_findeks_rate, kilometer, daily_price, listing_type, sale_price, sale_status, image_path, seats, transmission, fuel_type, brand_name, model_name)
+JOIN [dbo].[brands] b ON b.[name] = src.brand_name
+JOIN [dbo].[models] m ON m.[brand_id] = b.[id] AND m.[name] = src.model_name
+JOIN [dbo].[colors] c ON c.[name] = N'Trắng';
 GO
 
+/* Gallery 5 ảnh / xe (3 ngoại + 2 nội thất) */
 INSERT INTO [dbo].[car_images] ([car_id], [sort_order], [image_url], [image_type])
 SELECT c.[id], src.[sort_order], src.[image_url], src.[image_type]
 FROM (

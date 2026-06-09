@@ -5,6 +5,8 @@ const catalog = JSON.parse(
   fs.readFileSync(path.join(__dirname, 'car-catalog.json'), 'utf8')
 );
 
+const EXPECTED_MODELS = 35;
+
 function sqlStr(s) {
   return `N'${String(s).replace(/'/g, "''")}'`;
 }
@@ -16,24 +18,34 @@ function galleryFor(entry) {
   return [{ type: 'EXTERIOR', url: entry.imageUrl }];
 }
 
-let n = 0;
+if (catalog.length !== EXPECTED_MODELS) {
+  throw new Error(`Expected ${EXPECTED_MODELS} models, got ${catalog.length}`);
+}
+
 const rows = [];
 const imageRows = [];
 
-for (const entry of catalog) {
+catalog.forEach((entry, idx) => {
+  const seq = idx + 1;
   const gallery = galleryFor(entry);
   const cover = gallery[0]?.url || entry.imageUrl;
-  for (const lt of ['RENT', 'SALE']) {
-    n += 1;
-    const plate = lt === 'RENT' ? `51R${String(n).padStart(4, '0')}` : `51S${String(n).padStart(4, '0')}`;
+  const year = entry.modelYear || 2023;
+  const seats = entry.seats || 5;
+  const trans = entry.transmission || 'AUTO';
+  const fuel = entry.fuelType || 'GASOLINE';
+  const rentKm = entry.rentKilometer ?? 10000 + seq * 500;
+  const saleKm = entry.saleKilometer ?? 0;
+
+  for (const [lt, plate, km] of [
+    ['RENT', `51R${String(seq).padStart(4, '0')}`, rentKm],
+    ['SALE', `51S${String(seq).padStart(4, '0')}`, saleKm],
+  ]) {
     const listing = lt === 'RENT' ? 'RENT_ONLY' : 'SALE_ONLY';
     const daily = lt === 'RENT' ? `${entry.dailyPrice}.0` : '0.0';
     const saleP = lt === 'SALE' ? `${entry.salePrice}.0` : 'NULL';
-    const saleSt = lt === 'SALE' ? 'AVAILABLE' : 'NULL';
-    const km = lt === 'RENT' ? 10000 + n * 100 : 0;
-    const img = sqlStr(cover);
+    const saleSt = lt === 'SALE' ? sqlStr('AVAILABLE') : 'NULL';
     rows.push(
-      `(${sqlStr(plate)}, 2023, 500, ${km}, ${daily}, ${sqlStr(listing)}, ${saleP}, ${saleSt === 'NULL' ? 'NULL' : sqlStr(saleSt)}, ${img}, ${sqlStr(entry.brand)}, ${sqlStr(entry.model)})`
+      `(${sqlStr(plate)}, ${year}, 500, ${km}, ${daily}, ${sqlStr(listing)}, ${saleP}, ${saleSt}, ${sqlStr(cover)}, ${seats}, ${sqlStr(trans)}, ${sqlStr(fuel)}, ${sqlStr(entry.brand)}, ${sqlStr(entry.model)})`
     );
     gallery.forEach((g, i) => {
       imageRows.push(
@@ -41,16 +53,63 @@ for (const entry of catalog) {
       );
     });
   }
-}
-
-// VF3 sale (row 2) — SOLD demo
-rows[1] = rows[1].replace(sqlStr('AVAILABLE'), sqlStr('SOLD'));
+});
 
 const carValues = rows.map((r) => '      ' + r).join(',\n');
-fs.writeFileSync(path.join(__dirname, '_car_values_indented.sql'), carValues, 'utf8');
-
 const imageValues = imageRows.map((r) => '      ' + r).join(',\n');
-const seedImagesSql = `-- Gallery 5 anh/xe (3 ngoai + 2 noi) — sinh tu car-catalog.json
+
+const carsBlock = `/* Danh mục xe thực tế: 35 model × (1 thuê + 1 bán) = 70 xe; không đơn/lịch demo. */
+DELETE FROM [dbo].[viewing_appointments];
+DELETE FROM [dbo].[reviews];
+DELETE FROM [dbo].[invoices];
+DELETE FROM [dbo].[rentals];
+DELETE FROM [dbo].[sale_orders];
+DELETE FROM [dbo].[car_images];
+DELETE FROM [dbo].[cars];
+DBCC CHECKIDENT ('[dbo].[cars]', RESEED, 0);
+
+INSERT INTO [dbo].[cars]
+([created_date], [model_year], [service_city], [plate], [min_findeks_rate], [kilometer], [daily_price], [listing_type], [sale_price], [sale_status], [image_path], [seats], [transmission], [fuel_type], [model_id], [color_id])
+SELECT
+    CAST(GETDATE() AS DATE),
+    src.model_year,
+    N'Hà Nội',
+    src.plate,
+    src.min_findeks_rate,
+    src.kilometer,
+    src.daily_price,
+    src.listing_type,
+    src.sale_price,
+    src.sale_status,
+    src.image_path,
+    src.seats,
+    src.transmission,
+    src.fuel_type,
+    m.id,
+    c.id
+FROM (
+VALUES
+${carValues}
+) AS src(plate, model_year, min_findeks_rate, kilometer, daily_price, listing_type, sale_price, sale_status, image_path, seats, transmission, fuel_type, brand_name, model_name)
+JOIN [dbo].[brands] b ON b.[name] = src.brand_name
+JOIN [dbo].[models] m ON m.[brand_id] = b.[id] AND m.[name] = src.model_name
+JOIN [dbo].[colors] c ON c.[name] = N'Trắng';
+GO
+
+/* Gallery 5 ảnh / xe (3 ngoại + 2 nội thất) */
+INSERT INTO [dbo].[car_images] ([car_id], [sort_order], [image_url], [image_type])
+SELECT c.[id], src.[sort_order], src.[image_url], src.[image_type]
+FROM (
+VALUES
+${imageValues}
+) AS src([plate], [sort_order], [image_url], [image_type])
+JOIN [dbo].[cars] c ON c.[plate] = src.[plate];
+GO
+`;
+
+fs.writeFileSync(path.join(__dirname, '_generated_cars_block.sql'), carsBlock, 'utf8');
+
+const seedImagesSql = `-- Gallery — sinh từ car-catalog.json
 DELETE FROM [dbo].[car_images];
 GO
 
@@ -65,23 +124,6 @@ GO
 `;
 fs.writeFileSync(path.join(__dirname, 'seed-car-images.sql'), seedImagesSql, 'utf8');
 
-const updates = [];
-let idx = 0;
-for (const entry of catalog) {
-  const gallery = galleryFor(entry);
-  const cover = gallery[0]?.url || entry.imageUrl;
-  for (const lt of ['RENT', 'SALE']) {
-    idx += 1;
-    const plate = lt === 'RENT' ? `51R${String(idx).padStart(4, '0')}` : `51S${String(idx).padStart(4, '0')}`;
-    const daily = lt === 'RENT' ? entry.dailyPrice : 0;
-    const saleP = lt === 'SALE' ? entry.salePrice : null;
-    updates.push(
-      `UPDATE [dbo].[cars] SET [image_path]=${sqlStr(cover)}, [daily_price]=${daily}.0, [sale_price]=${saleP == null ? 'NULL' : saleP + '.0'} WHERE [plate]=${sqlStr(plate)};`
-    );
-  }
-}
-const updateSql =
-  '-- Cap nhat anh bia + gia theo car-catalog.json\n' + updates.join('\n') + '\n\n' + seedImagesSql;
-fs.writeFileSync(path.join(__dirname, 'update-car-catalog.sql'), updateSql, 'utf8');
-
-console.log(`Generated ${rows.length} cars, ${imageRows.length} gallery rows, seed-car-images.sql`);
+console.log(
+  `Generated ${rows.length} cars (${EXPECTED_MODELS} thuê + ${EXPECTED_MODELS} bán), ${imageRows.length} gallery rows`
+);
