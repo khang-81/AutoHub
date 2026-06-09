@@ -159,10 +159,10 @@ const Footer = () => {
       </div>
 
       <div className="border-t border-navy-400/50 bg-black/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-gray-400">
-          <p>&copy; {new Date().getFullYear()} AutoHub. All rights reserved.</p>
-          <p className="text-xs text-gray-500">Thuê xe · Mua xe · Hỗ trợ 24/7</p>
-        </div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-sm text-gray-400">
+            <p>&copy; {new Date().getFullYear()} AutoHub. All rights reserved.</p>
+            
+          </div>
       </div>
     </footer>
   );

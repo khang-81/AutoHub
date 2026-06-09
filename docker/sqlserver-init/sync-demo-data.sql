@@ -414,18 +414,26 @@ GO
 /* user_documents (KYC mẫu) */
 IF NOT EXISTS (SELECT 1 FROM [dbo].[user_documents] ud INNER JOIN [dbo].[users] u ON ud.[user_id] = u.[id] WHERE u.[email] = N'user@autohub.id.vn' AND ud.[document_type] = N'CCCD')
     INSERT INTO [dbo].[user_documents] ([created_date], [document_type], [file_path], [status], [admin_note], [reviewed_at], [user_id])
-    SELECT CAST(GETDATE() AS DATE), N'CCCD', N'uploads/kyc/demo-cccd-user.pdf', N'APPROVED', NULL, SYSUTCDATETIME(), [id]
+    SELECT CAST(GETDATE() AS DATE), N'CCCD', N'kyc/demo-cccd-user.png', N'APPROVED', NULL, SYSUTCDATETIME(), [id]
     FROM [dbo].[users] WHERE [email] = N'user@autohub.id.vn';
 
 IF NOT EXISTS (SELECT 1 FROM [dbo].[user_documents] ud INNER JOIN [dbo].[users] u ON ud.[user_id] = u.[id] WHERE u.[email] = N'user@autohub.id.vn' AND ud.[document_type] = N'GPLX')
     INSERT INTO [dbo].[user_documents] ([created_date], [document_type], [file_path], [status], [admin_note], [reviewed_at], [user_id])
-    SELECT CAST(GETDATE() AS DATE), N'GPLX', N'uploads/kyc/demo-gplx-user.pdf', N'APPROVED', NULL, SYSUTCDATETIME(), [id]
+    SELECT CAST(GETDATE() AS DATE), N'GPLX', N'kyc/demo-gplx-user.png', N'APPROVED', NULL, SYSUTCDATETIME(), [id]
     FROM [dbo].[users] WHERE [email] = N'user@autohub.id.vn';
 
 IF NOT EXISTS (SELECT 1 FROM [dbo].[user_documents] ud INNER JOIN [dbo].[users] u ON ud.[user_id] = u.[id] WHERE u.[email] = N'corp@autohub.id.vn' AND ud.[document_type] = N'CCCD')
     INSERT INTO [dbo].[user_documents] ([created_date], [document_type], [file_path], [status], [admin_note], [reviewed_at], [user_id])
-    SELECT CAST(GETDATE() AS DATE), N'CCCD', N'uploads/kyc/demo-cccd-corp.pdf', N'APPROVED', NULL, SYSUTCDATETIME(), [id]
+    SELECT CAST(GETDATE() AS DATE), N'CCCD', N'kyc/demo-cccd-corp.png', N'APPROVED', NULL, SYSUTCDATETIME(), [id]
     FROM [dbo].[users] WHERE [email] = N'corp@autohub.id.vn';
+
+UPDATE [dbo].[user_documents]
+SET [file_path] = REPLACE([file_path], N'uploads/kyc/', N'kyc/')
+WHERE [file_path] LIKE N'uploads/kyc/%';
+
+UPDATE [dbo].[user_documents]
+SET [file_path] = REPLACE([file_path], N'.pdf', N'.png')
+WHERE [file_path] LIKE N'%demo-%.pdf';
 GO
 
 /* Đơn thuê + hóa đơn + đánh giá (một lần nếu chưa có rental) */
