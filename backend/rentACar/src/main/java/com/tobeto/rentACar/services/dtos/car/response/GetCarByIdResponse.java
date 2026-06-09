@@ -6,6 +6,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -25,6 +27,9 @@ public class GetCarByIdResponse {
     private String saleStatus;
 
     private String imagePath;
+
+    /** Gallery chi tiết: 3 ngoại thất + 2 nội thất (theo sortOrder). */
+    private List<CarImageResponse> images;
 
     /** Số chỗ ngồi (4/5/7/9...) */
     private Integer seats;

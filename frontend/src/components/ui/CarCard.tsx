@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
-import { Calendar, Gauge, Hash, Star, ArrowUpRight, KeyRound, Tag } from 'lucide-react';
+import { Calendar, Gauge, Hash, Star, ArrowUpRight, KeyRound, Tag, Cog } from 'lucide-react';
 import type { Car } from '../../types';
 import { formatCurrency, CAR_PLACEHOLDER } from '../../utils/helpers';
+import { formatPriceMillions, getTransmissionLabel, isSaleCarSold } from '../../utils/saleCarHelpers';
 
 /** Ngữ cảnh danh sách: thuê và mua tách giao diện; `all` dùng trang chủ / mixed. */
 export type CarCardListingVariant = 'rent' | 'sale' | 'all';
@@ -42,10 +43,9 @@ function resolveDisplay(car: Car, variant: CarCardListingVariant) {
       showSaleBadge: true,
       showRentPrice: false,
       showSalePrice: saleCapable && (car.salePrice ?? 0) > 0,
-      cta: 'Xem & đặt mua',
-      overlayClass:
-        'bg-gradient-to-t from-amber-950/88 via-navy-900/30 to-navy-900/10 opacity-[0.92]',
-      pricePanelClass: 'from-amber-50/90 to-orange-50/50 ring-amber-100/80',
+      cta: 'Xem chi tiết',
+      overlayClass: 'bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-80',
+      pricePanelClass: 'from-white to-white ring-gray-100',
     };
   }
   // all — theo loại xe thật: chỉ thuê / chỉ bán / cả hai
@@ -65,6 +65,81 @@ function resolveDisplay(car: Car, variant: CarCardListingVariant) {
 const CarCard = ({ car, variant = 'all' }: CarCardProps) => {
   const d = resolveDisplay(car, variant);
   const { saleOk } = listingFlags(car);
+  const isSaleCard = d.mode === 'sale';
+
+  if (isSaleCard) {
+    const trans = getTransmissionLabel(car.transmission);
+    const sold = isSaleCarSold(car);
+    const cardBody = (
+      <div className={`flex flex-col sm:flex-row ${sold ? 'cursor-not-allowed' : ''}`}>
+        <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden bg-gray-100 sm:aspect-auto sm:h-36 sm:w-44 md:h-40 md:w-48">
+          <img
+            src={car.imagePath || CAR_PLACEHOLDER}
+            alt=""
+            className={`h-full w-full object-cover transition duration-500 ${sold ? 'opacity-60 grayscale-[0.35]' : 'group-hover:scale-105'}`}
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = CAR_PLACEHOLDER;
+            }}
+          />
+          {sold ? (
+            <span className="absolute left-2 top-2 rounded bg-gray-800 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+              Đã bán
+            </span>
+          ) : (
+            car.kilometer < 100 && (
+              <span className="absolute left-2 top-2 rounded bg-orange-600 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+                Xe mới
+              </span>
+            )
+          )}
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col justify-between p-4">
+          <div>
+            <h3 className={`font-heading text-base font-bold leading-snug md:text-lg ${sold ? 'text-gray-500' : 'text-navy'}`}>
+              {car.modelYear} — {car.model?.brand?.name} {car.model?.name}
+            </h3>
+            <p className="mt-1 line-clamp-1 text-sm text-gray-500">
+              {car.color?.name}
+              {car.plate ? ` · ${car.plate}` : ''}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-600">
+              {car.kilometer > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1">
+                  <Gauge className="h-3 w-3" />
+                  {(car.kilometer / 1000).toFixed(0)}.000 km
+                </span>
+              )}
+              {trans !== '—' && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1">
+                  <Cog className="h-3 w-3" />
+                  {trans}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="mt-3 flex items-end justify-between gap-2 border-t border-gray-100 pt-3">
+            {d.showSalePrice && (
+              <span className={`text-xl font-extrabold md:text-2xl ${sold ? 'text-gray-400 line-through' : 'text-red-600'}`}>
+                {formatPriceMillions(car.salePrice!)}
+              </span>
+            )}
+            <span className={`text-sm font-semibold ${sold ? 'text-gray-500' : 'text-orange-700 group-hover:underline'}`}>
+              {sold ? 'Đã bán' : `${d.cta} →`}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+    return (
+      <article
+        className={`overflow-hidden rounded-xl border bg-white shadow-sm ${
+          sold ? 'border-gray-200 opacity-90' : 'border-gray-200 transition hover:border-orange-200 hover:shadow-md group'
+        }`}
+      >
+        {sold ? cardBody : <Link to={`/cars/${car.id}`}>{cardBody}</Link>}
+      </article>
+    );
+  }
 
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100/80 bg-white shadow-sm ring-1 ring-black/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-xl hover:ring-primary/10">
@@ -177,11 +252,7 @@ const CarCard = ({ car, variant = 'all' }: CarCardProps) => {
 
         <Link
           to={`/cars/${car.id}`}
-          className={`mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg ${
-            d.mode === 'sale'
-              ? 'bg-gradient-to-r from-amber-700 to-orange-700 hover:from-amber-600 hover:to-orange-600'
-              : 'bg-navy hover:bg-navy-400'
-          }`}
+          className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl bg-navy py-3 text-sm font-semibold text-white shadow-md transition-all hover:bg-navy-400 hover:shadow-lg"
         >
           {d.cta}
           <ArrowUpRight className="h-4 w-4 opacity-80 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -195,6 +266,66 @@ const CarCard = ({ car, variant = 'all' }: CarCardProps) => {
 export function CarListRow({ car, variant = 'all' }: CarCardProps) {
   const d = resolveDisplay(car, variant);
   const { rentCapable, saleCapable } = listingFlags(car);
+
+  if (d.mode === 'sale') {
+    const trans = getTransmissionLabel(car.transmission);
+    const sold = isSaleCarSold(car);
+    const rowBody = (
+      <div className={`flex gap-4 md:gap-5 ${sold ? 'cursor-not-allowed' : ''}`}>
+        <div className="relative h-28 w-40 shrink-0 overflow-hidden rounded-lg bg-gray-100 sm:h-32 sm:w-48">
+          <img
+            src={car.imagePath || CAR_PLACEHOLDER}
+            alt=""
+            className={`h-full w-full object-cover ${sold ? 'opacity-60 grayscale-[0.35]' : 'transition duration-500 group-hover:scale-105'}`}
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = CAR_PLACEHOLDER;
+            }}
+          />
+          {sold && (
+            <span className="absolute left-2 top-2 rounded bg-gray-800 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+              Đã bán
+            </span>
+          )}
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
+          <h3 className={`font-heading text-base font-bold md:text-lg ${sold ? 'text-gray-500' : 'text-navy'}`}>
+            {car.modelYear} — {car.model?.brand?.name} {car.model?.name}
+          </h3>
+          <p className="text-sm text-gray-500">
+            {car.color?.name}
+            {car.plate ? ` · ${car.plate}` : ''}
+          </p>
+          <div className="flex flex-wrap gap-3 text-xs text-gray-600">
+            {car.kilometer > 0 && <span>{(car.kilometer / 1000).toFixed(0)}.000 km</span>}
+            {trans !== '—' && <span>{trans}</span>}
+          </div>
+        </div>
+        <div className="hidden shrink-0 flex-col items-end justify-center gap-1 self-center sm:flex">
+          {d.showSalePrice && (
+            <span className={`text-2xl font-extrabold ${sold ? 'text-gray-400 line-through' : 'text-red-600'}`}>
+              {formatPriceMillions(car.salePrice!)}
+            </span>
+          )}
+          <span className={`text-sm font-semibold ${sold ? 'text-gray-500' : 'text-orange-700'}`}>
+            {sold ? 'Đã bán' : 'Chi tiết →'}
+          </span>
+        </div>
+      </div>
+    );
+    return (
+      <div
+        className={`rounded-xl border bg-white p-3 shadow-sm md:p-4 ${
+          sold ? 'border-gray-200 opacity-90' : 'border-gray-200 transition hover:border-orange-200 hover:shadow-md group'
+        }`}
+      >
+        {sold ? rowBody : (
+          <Link to={`/cars/${car.id}`} className="block">
+            {rowBody}
+          </Link>
+        )}
+      </div>
+    );
+  }
 
   return (
     <Link
@@ -214,11 +345,6 @@ export function CarListRow({ car, variant = 'all' }: CarCardProps) {
           {d.mode === 'rent' && (
             <span className="rounded-md bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
               Thuê
-            </span>
-          )}
-          {d.mode === 'sale' && (
-            <span className="rounded-md bg-orange-600 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
-              Bán
             </span>
           )}
           {d.mode === 'all' && rentCapable && (
@@ -262,7 +388,7 @@ export function CarListRow({ car, variant = 'all' }: CarCardProps) {
       <div className="hidden shrink-0 items-center self-center sm:flex">
         <span
           className={`rounded-full px-4 py-2 text-sm font-semibold text-white transition-colors ${
-            d.mode === 'sale'
+            d.showSalePrice && !d.showRentPrice
               ? 'bg-gradient-to-r from-amber-700 to-orange-700 group-hover:from-amber-600 group-hover:to-orange-600'
               : 'bg-navy group-hover:bg-primary group-hover:text-navy'
           }`}

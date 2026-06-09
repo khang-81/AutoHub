@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Data
@@ -13,5 +14,8 @@ import java.util.List;
 public class RegisterUserRequest {
     private String email;
     private String password;
+    private String fullName;
+    private String phone;
+    private LocalDate birthDate;
     List<String> roles;
 }

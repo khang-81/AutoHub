@@ -17,7 +17,7 @@ import { getMySaleOrdersApi } from '../../api/saleOrders';
 import { getProfileApi } from '../../api/users';
 import { useAuthStore } from '../../store/authStore';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import { formatCurrency, formatDate, CAR_PLACEHOLDER } from '../../utils/helpers';
+import { formatCurrency, formatDate, CAR_PLACEHOLDER, getRentalBadgeDisplay } from '../../utils/helpers';
 import type { RentalByUser, SaleOrder } from '../../types';
 
 const saleStatusLabel: Record<string, string> = {
@@ -108,7 +108,7 @@ const UserDashboard = () => {
             <div>
               <p className="font-semibold text-amber-900 text-sm">Hoàn tất xác minh GPLX</p>
               <p className="text-amber-800/90 text-xs mt-0.5">
-                Bạn cần được duyệt giấy tờ trước khi đặt xe.
+                Bạn cần được duyệt giấy tờ trước khi thuê xe.
               </p>
             </div>
           </div>
@@ -203,7 +203,9 @@ const UserDashboard = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {rentals.slice(0, 3).map((rental) => (
+            {rentals.slice(0, 3).map((rental) => {
+              const rentalBadge = getRentalBadgeDisplay(rental);
+              return (
               <div key={rental.id} className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
                 <img
                   src={rental.car?.imagePath || CAR_PLACEHOLDER}
@@ -221,16 +223,13 @@ const UserDashboard = () => {
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="font-semibold text-primary text-sm">{formatCurrency(rental.totalPrice)}</p>
-                  <span className={`badge text-xs ${
-                    rental.returnDate
-                      ? 'bg-gray-100 text-gray-500'
-                      : 'bg-green-100 text-green-700'
-                  }`}>
-                    {rental.returnDate ? 'Đã trả' : 'Đang thuê'}
+                  <span className={`badge text-xs ${rentalBadge.className}`}>
+                    {rentalBadge.label}
                   </span>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
         </div>

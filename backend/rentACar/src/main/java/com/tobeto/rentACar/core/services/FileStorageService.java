@@ -1,5 +1,6 @@
 package com.tobeto.rentACar.core.services;
 
+import com.tobeto.rentACar.core.exceptions.types.BusinessException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -17,7 +18,15 @@ public class FileStorageService {
     @Value("${app.upload.root:uploads}")
     private String uploadRoot;
 
+    public void assertKycImageExtension(MultipartFile file) {
+        String ext = extension(file.getOriginalFilename());
+        if (!".png".equals(ext) && !".jpg".equals(ext) && !".jpeg".equals(ext)) {
+            throw new BusinessException("Chỉ chấp nhận ảnh PNG hoặc JPG.");
+        }
+    }
+
     public String storeKycFile(int userId, MultipartFile file) throws IOException {
+        assertKycImageExtension(file);
         String ext = extension(file.getOriginalFilename());
         String relative = Paths.get("kyc", "user_" + userId, UUID.randomUUID() + ext).toString().replace('\\', '/');
         Path dest = Paths.get(uploadRoot).resolve(relative).normalize();

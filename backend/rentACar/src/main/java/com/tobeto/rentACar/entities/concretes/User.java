@@ -7,6 +7,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -22,6 +23,15 @@ public class User extends BaseEntity implements UserDetails {
 
     @Column(name="email")
     private String email;
+
+    @Column(name = "full_name", length = 255)
+    private String fullName;
+
+    @Column(name = "phone", length = 20)
+    private String phone;
+
+    @Column(name = "birth_date")
+    private LocalDate birthDate;
 
     @Column(name="password")
     private String password;

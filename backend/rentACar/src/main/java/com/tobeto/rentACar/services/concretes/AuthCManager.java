@@ -36,6 +36,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
@@ -77,8 +78,29 @@ public class AuthCManager implements AuthCService {
         if (email.isEmpty()) {
             throw new BusinessException("Vui lòng nhập email.");
         }
+        String fullName = registerUserRequest.getFullName() != null ? registerUserRequest.getFullName().trim() : "";
+        if (fullName.isEmpty()) {
+            throw new BusinessException("Vui lòng nhập họ tên.");
+        }
+        String phone = normalizePhone(registerUserRequest.getPhone());
+        if (phone.isEmpty()) {
+            throw new BusinessException("Vui lòng nhập số điện thoại.");
+        }
+        LocalDate birthDate = registerUserRequest.getBirthDate();
+        if (birthDate == null) {
+            throw new BusinessException("Vui lòng nhập ngày sinh.");
+        }
+        if (!birthDate.isBefore(LocalDate.now())) {
+            throw new BusinessException("Ngày sinh phải là ngày trong quá khứ.");
+        }
+        if (userRepository.findByPhone(phone).isPresent()) {
+            throw new BusinessException("Số điện thoại đã được đăng ký.");
+        }
         User user = User.builder()
                 .email(email)
+                .fullName(fullName)
+                .phone(phone)
+                .birthDate(birthDate)
                 .authorities(Set.of(userRole))
                 .password(passwordEncoder.encode(registerUserRequest.getPassword()))
                 .build();
@@ -214,6 +236,17 @@ public class AuthCManager implements AuthCService {
         user.setTokenVersion(user.getTokenVersion() + 1);
         userRepository.save(user);
         return new SuccessResult("Đặt lại mật khẩu thành công. Bạn có thể đăng nhập.");
+    }
+
+    private static String normalizePhone(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String digits = raw.replaceAll("\\D", "");
+        if (digits.startsWith("84") && digits.length() >= 11) {
+            digits = "0" + digits.substring(2);
+        }
+        return digits.length() >= 9 && digits.length() <= 11 ? digits : "";
     }
 
     private static String buildPasswordResetOtpEmailHtml(String otp, String resetPageUrl, int expireMinutes) {

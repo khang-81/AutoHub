@@ -99,8 +99,7 @@ public class UserManager implements UserService {
 
         userRepository.save(user);
 
-        return new GetUserByNameResponse(user.getId(), user.getEmail(),
-                user.getKycStatus(), user.getTokenVersion(), user.isEnabled());
+        return toProfileResponse(user);
     }
 
     @Override
@@ -207,5 +206,18 @@ public class UserManager implements UserService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         return userRepository.findByEmail(username).orElseThrow(() -> new UsernameNotFoundException("No user found!"));
+    }
+
+    private static GetUserByNameResponse toProfileResponse(User user) {
+        return new GetUserByNameResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getFullName(),
+                user.getPhone(),
+                user.getBirthDate(),
+                user.getKycStatus(),
+                user.getTokenVersion(),
+                user.isEnabled()
+        );
     }
 }

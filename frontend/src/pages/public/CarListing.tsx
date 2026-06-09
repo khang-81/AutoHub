@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useLocation } from 'react-router-dom';
-import { SlidersHorizontal, Search, X, ChevronLeft, ChevronRight, LayoutGrid, List, KeyRound, Tag } from 'lucide-react';
+import { SlidersHorizontal, Search, X, ChevronLeft, ChevronRight, LayoutGrid, List } from 'lucide-react';
 import { searchCarsApi } from '../../api/cars';
 import { getAllBrandsApi } from '../../api/brands';
 import { getAllColorsApi } from '../../api/colors';
@@ -43,7 +43,7 @@ function buildPageItems(current: number, total: number): (number | 'ellipsis')[]
 const CarListing = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -56,12 +56,6 @@ const CarListing = () => {
     maxPrice: '',
     minYear: '',
     search: '',
-    /** UC Tìm kiếm xe thuê — chỉ áp dụng khi listingMode === 'rent'. */
-    seats: '',
-    transmission: '',
-    fuelType: '',
-    availableFrom: '',
-    availableTo: '',
   });
 
   const [debouncedSearch, setDebouncedSearch] = useState(filters.search);
@@ -74,11 +68,6 @@ const CarListing = () => {
     const minP = filters.minPrice.trim() ? Number(filters.minPrice) : undefined;
     const maxP = filters.maxPrice.trim() ? Number(filters.maxPrice) : undefined;
     const y = filters.minYear.trim() ? Number(filters.minYear) : undefined;
-    const seatsNum = filters.seats.trim() ? Number(filters.seats) : undefined;
-    // Bảo đảm chỉ truyền availableFrom/To khi đủ cả 2 và from <= to.
-    const fromOk = !!filters.availableFrom;
-    const toOk = !!filters.availableTo;
-    const dateOk = fromOk && toOk && filters.availableFrom <= filters.availableTo;
     return {
       page,
       size: ITEMS_PER_PAGE,
@@ -89,16 +78,6 @@ const CarListing = () => {
       minYear: Number.isFinite(y) ? y : undefined,
       listing: listingMode,
       q: debouncedSearch.trim() || undefined,
-      // Các tham số dưới đây backend chỉ áp dụng cho listing=rent.
-      seats: listingMode === 'rent' && Number.isFinite(seatsNum) ? seatsNum : undefined,
-      transmission: listingMode === 'rent' && filters.transmission
-        ? (filters.transmission as 'AUTO' | 'MANUAL')
-        : undefined,
-      fuelType: listingMode === 'rent' && filters.fuelType
-        ? (filters.fuelType as 'GASOLINE' | 'DIESEL' | 'HYBRID' | 'ELECTRIC')
-        : undefined,
-      availableFrom: listingMode === 'rent' && dateOk ? filters.availableFrom : undefined,
-      availableTo: listingMode === 'rent' && dateOk ? filters.availableTo : undefined,
     };
   }, [page, filters, debouncedSearch, brandParam, listingMode]);
 
@@ -114,22 +93,6 @@ const CarListing = () => {
   const totalPages = data?.totalPages ?? 0;
   const totalElements = data?.totalElements ?? 0;
   const pageItems = totalPages > 0 ? buildPageItems(page, totalPages) : [];
-
-  const heroCopy = useMemo(() => {
-    const n = totalElements;
-    if (listingMode === 'sale') {
-      return {
-        kicker: 'Mua xe',
-        title: 'Xe ô tô niêm yết bán',
-        subtitle: isLoading ? 'Đang tải…' : `${n} xe đang mở bán — giá minh bạch, kiểm định rõ ràng`,
-      };
-    }
-    return {
-      kicker: 'Thuê xe',
-      title: 'Thuê xe theo ngày',
-      subtitle: isLoading ? 'Đang tải…' : `${n} xe sẵn sàng — đặt nhanh, nhận xe thuận tiện`,
-    };
-  }, [listingMode, isLoading, totalElements]);
 
   const setBrandFilter = (value: string) => {
     setPage(1);
@@ -151,11 +114,6 @@ const CarListing = () => {
       maxPrice: '',
       minYear: '',
       search: '',
-      seats: '',
-      transmission: '',
-      fuelType: '',
-      availableFrom: '',
-      availableTo: '',
     });
     setSearchParams(new URLSearchParams(), { replace: true });
     setPage(1);
@@ -168,57 +126,16 @@ const CarListing = () => {
     filters.maxPrice,
     filters.minYear,
     filters.search,
-    listingMode === 'rent' ? filters.seats : '',
-    listingMode === 'rent' ? filters.transmission : '',
-    listingMode === 'rent' ? filters.fuelType : '',
-    listingMode === 'rent' && filters.availableFrom && filters.availableTo ? '1' : '',
   ].filter(Boolean).length;
 
   const cardVariant = listingMode === 'sale' ? 'sale' : 'rent';
 
   return (
     <div
-      className="min-h-screen pad-top-nav"
+      className="min-h-screen bg-[#f4f6fa] pad-top-nav"
       style={{ ['--pad-nav-tail' as string]: '#f4f6fa' }}
     >
-      <header
-        className={`relative pb-14 pt-8 md:pb-16 md:pt-10 ${
-          listingMode === 'sale' ? 'listing-hero--sale' : 'listing-hero--rent'
-        }`}
-      >
-        <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:linear-gradient(rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.12)_1px,transparent_1px)] [background-size:48px_48px]" />
-        <div className="relative z-[1] mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-white/70">AutoHub</p>
-          <p
-            className={`mb-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${
-              listingMode === 'sale'
-                ? 'bg-orange-500/20 text-amber-100 ring-1 ring-orange-400/30'
-                : 'bg-emerald-500/20 text-emerald-100 ring-1 ring-emerald-400/25'
-            }`}
-          >
-            {listingMode === 'sale' ? (
-              <>
-                <Tag className="h-3.5 w-3.5" />
-                {heroCopy.kicker}
-              </>
-            ) : (
-              <>
-                <KeyRound className="h-3.5 w-3.5" />
-                {heroCopy.kicker}
-              </>
-            )}
-          </p>
-          <h1 className="mb-3 max-w-3xl font-heading text-3xl font-extrabold tracking-tight text-white md:text-4xl lg:text-[2.35rem] lg:leading-tight">
-            {heroCopy.title}
-          </h1>
-          <p className="mb-8 max-w-2xl text-base leading-relaxed text-gray-200/95 md:text-lg">
-            {heroCopy.subtitle}
-          </p>
-
-        </div>
-      </header>
-
-      <div className="relative z-[2] mx-auto -mt-8 max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
+      <div className="relative z-[2] mx-auto max-w-7xl px-4 pb-12 pt-6 sm:px-6 lg:px-8">
         <div className="listing-search-shell mb-8 flex flex-col gap-2 sm:flex-row sm:items-stretch">
           <div className="relative min-h-[52px] flex-1">
             <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
@@ -339,85 +256,6 @@ const CarListing = () => {
                   className="input-field text-sm"
                 />
               </div>
-
-              {/* Bộ lọc chỉ áp dụng cho thuê xe (UC Tìm kiếm xe thuê) */}
-              {listingMode === 'rent' && (
-                <>
-                  <div className="rounded-xl bg-emerald-50/50 border border-emerald-100 p-3 space-y-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                      Lọc xe thuê nâng cao
-                    </p>
-
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-gray-700">Số chỗ ngồi</label>
-                      <select
-                        value={filters.seats}
-                        onChange={(e) => updateFilter('seats', e.target.value)}
-                        className="input-field text-sm"
-                      >
-                        <option value="">Tất cả</option>
-                        <option value="4">4 chỗ</option>
-                        <option value="5">5 chỗ</option>
-                        <option value="7">7 chỗ</option>
-                        <option value="9">9 chỗ</option>
-                        <option value="16">16 chỗ</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-gray-700">Hộp số</label>
-                      <select
-                        value={filters.transmission}
-                        onChange={(e) => updateFilter('transmission', e.target.value)}
-                        className="input-field text-sm"
-                      >
-                        <option value="">Tất cả</option>
-                        <option value="AUTO">Tự động</option>
-                        <option value="MANUAL">Số sàn</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-gray-700">Nhiên liệu</label>
-                      <select
-                        value={filters.fuelType}
-                        onChange={(e) => updateFilter('fuelType', e.target.value)}
-                        className="input-field text-sm"
-                      >
-                        <option value="">Tất cả</option>
-                        <option value="GASOLINE">Xăng</option>
-                        <option value="DIESEL">Dầu</option>
-                        <option value="HYBRID">Hybrid</option>
-                        <option value="ELECTRIC">Điện</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <p className="mb-1 text-xs font-medium text-gray-700">Khoảng ngày cần thuê</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="date"
-                          value={filters.availableFrom}
-                          onChange={(e) => updateFilter('availableFrom', e.target.value)}
-                          className="input-field text-xs"
-                          placeholder="Từ"
-                        />
-                        <input
-                          type="date"
-                          value={filters.availableTo}
-                          min={filters.availableFrom || undefined}
-                          onChange={(e) => updateFilter('availableTo', e.target.value)}
-                          className="input-field text-xs"
-                          placeholder="Đến"
-                        />
-                      </div>
-                      <p className="mt-1 text-[11px] text-gray-400">
-                        Chọn cả 2 ngày để chỉ hiển thị xe rảnh trong khoảng này.
-                      </p>
-                    </div>
-                  </div>
-                </>
-              )}
             </div>
           </aside>
 
@@ -499,7 +337,13 @@ const CarListing = () => {
             ) : (
               <>
                 {viewMode === 'grid' ? (
-                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                  <div
+                    className={`grid gap-4 ${
+                      listingMode === 'sale'
+                        ? 'grid-cols-1 lg:grid-cols-2'
+                        : 'grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3'
+                    }`}
+                  >
                     {paginated.map((car) => (
                       <CarCard key={car.id} car={car} variant={cardVariant} />
                     ))}

@@ -4,7 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 src = (ROOT / "autohub-full-schema.sql").read_text(encoding="utf-8")
 lines = src.splitlines(keepends=True)
-seed = "".join(lines[291:597])
+seed = "".join(lines[307:781])
 
 header = """/*
   Dong bo demo data khop local (accounts + 30 xe + don mau).
@@ -34,23 +34,31 @@ if catalog_marker not in seed:
 seed = seed.replace(catalog_marker, catalog_open, 1)
 
 close_before_kyc = (
-    "JOIN [dbo].[colors] c ON c.[name] = N'Trắng';\n"
+    "JOIN [dbo].[cars] c ON c.[plate] = src.[plate];\n"
     "GO\n"
     "\n"
-    "/* user_documents"
+    "/* user_documents (KYC mẫu) */"
 )
 close_with_end = (
-    "JOIN [dbo].[colors] c ON c.[name] = N'Trắng';\n"
+    "JOIN [dbo].[cars] c ON c.[plate] = src.[plate];\n"
     "END\n"
     "GO\n"
     "\n"
-    "/* user_documents"
+    "/* user_documents (KYC mẫu) */"
 )
 
 pwd_updates = (
     "IF NOT EXISTS (SELECT 1 FROM [dbo].[users] WHERE [email] = N'corp@autohub.id.vn')\n"
     "    INSERT INTO [dbo].[users] ([created_date], [email], [password], [kyc_status])\n"
     "    VALUES (CAST(GETDATE() AS DATE), N'corp@autohub.id.vn', @pwd, N'APPROVED');\n"
+    "\n"
+    "UPDATE [dbo].[users]\n"
+    "SET [full_name] = N'Nguyễn Văn Minh', [phone] = N'0912345678', [birth_date] = DATEFROMPARTS(1995, 6, 15)\n"
+    "WHERE [email] = N'user@autohub.id.vn' AND ([full_name] IS NULL OR [full_name] = N'');\n"
+    "\n"
+    "UPDATE [dbo].[users]\n"
+    "SET [full_name] = N'Quản trị AutoHub', [phone] = N'0329248087'\n"
+    "WHERE [email] = N'admin@autohub.id.vn' AND ([full_name] IS NULL OR [full_name] = N'');\n"
     "GO\n"
 )
 pwd_updates_new = (
@@ -64,11 +72,35 @@ pwd_updates_new = (
     "    N'admin@autohub.local', N'user@autohub.local', N'corp@autohub.local',\n"
     "    N'admin@autohub.id.vn', N'user@autohub.id.vn', N'corp@autohub.id.vn'\n"
     ");\n"
+    "\n"
+    "UPDATE [dbo].[users]\n"
+    "SET [full_name] = N'Nguyễn Văn Minh', [phone] = N'0912345678', [birth_date] = DATEFROMPARTS(1995, 6, 15)\n"
+    "WHERE [email] = N'user@autohub.id.vn' AND ([full_name] IS NULL OR [full_name] = N'');\n"
+    "\n"
+    "UPDATE [dbo].[users]\n"
+    "SET [full_name] = N'Quản trị AutoHub', [phone] = N'0329248087'\n"
+    "WHERE [email] = N'admin@autohub.id.vn' AND ([full_name] IS NULL OR [full_name] = N'');\n"
     "GO\n"
 )
 if close_before_kyc not in seed:
     raise SystemExit("close_before_kyc not found")
 seed = seed.replace(close_before_kyc, close_with_end, 1)
+
+# GO giữa INSERT cars và gallery làm BEGIN/END catalog bị tách batch — bỏ GO đó.
+cars_gallery_split = (
+    "JOIN [dbo].[colors] c ON c.[name] = N'Trắng';\n"
+    "GO\n"
+    "\n"
+    "/* Gallery 5 anh / xe (3 ngoai + 2 noi that) */\n"
+)
+cars_gallery_joined = (
+    "JOIN [dbo].[colors] c ON c.[name] = N'Trắng';\n"
+    "\n"
+    "/* Gallery 5 anh / xe (3 ngoai + 2 noi that) */\n"
+)
+if cars_gallery_split not in seed:
+    raise SystemExit("cars_gallery_split not found")
+seed = seed.replace(cars_gallery_split, cars_gallery_joined, 1)
 
 if pwd_updates not in seed:
     raise SystemExit("pwd_updates block not found")
@@ -128,6 +160,26 @@ wrapped_view = (
     "GO\n"
 )
 seed = seed[:idx] + wrapped_view + seed[go_idx + len("\nGO\n") :]
+
+gallery_marker = "/* Gallery 5 anh / xe (3 ngoai + 2 noi that) */\n"
+gallery_tail = "JOIN [dbo].[cars] c ON c.[plate] = src.[plate];\n"
+gidx = seed.find(gallery_marker)
+if gidx == -1:
+    raise SystemExit("gallery_marker not found")
+gend = seed.find(gallery_tail, gidx)
+if gend == -1:
+    raise SystemExit("gallery_tail not found")
+gallery_sql = seed[gidx : gend + len(gallery_tail)]
+gallery_backfill = (
+    "/* Gallery backfill: DB cu da co 30 xe nhung chua co car_images */\n"
+    "IF NOT EXISTS (SELECT 1 FROM [dbo].[car_images])\n"
+    "   AND EXISTS (SELECT 1 FROM [dbo].[cars] WHERE [plate] = N'51R0001')\n"
+    "BEGIN\n"
+    + gallery_sql
+    + "END\n"
+    "GO\n"
+)
+seed = seed + "\n" + gallery_backfill
 
 footer = "\nSET NOCOUNT OFF;\nGO\n"
 (ROOT / "sync-demo-data.sql").write_text(header + seed + footer, encoding="utf-8")

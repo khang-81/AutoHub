@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { loginApi } from '../../api/auth';
-import { getUserRolesApi } from '../../api/users';
+import { getProfileApi, getUserRolesApi } from '../../api/users';
 import { useAuthStore } from '../../store/authStore';
 import { getUserIdFromToken, getEmailFromToken, getApiErrorMessage, getRoleFromToken } from '../../utils/helpers';
 import { useToast } from '../../components/ui/Toast';
@@ -77,7 +77,14 @@ const Login = () => {
           return;
         }
 
-        login(token, userId, email, roles);
+        let fullName: string | null = null;
+        try {
+          const profile = await getProfileApi();
+          fullName = profile.fullName?.trim() || null;
+        } catch {
+          /* profile optional at login */
+        }
+        login(token, userId, email, roles, fullName);
         localStorage.removeItem('autohub_admin_token');
         localStorage.removeItem('autohub_admin_user');
         showToast('Đăng nhập thành công!', 'success');

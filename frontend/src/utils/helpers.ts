@@ -140,3 +140,37 @@ export function getApiErrorMessage(err: unknown, fallback: string): string {
 }
 
 export const CAR_PLACEHOLDER = 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=800&q=80';
+
+/** Badge trạng thái đơn thuê trên lịch sử / dashboard khách. */
+export function getRentalBadgeDisplay(rental: {
+  returnDate?: string | null;
+  rentalStatus?: string | null;
+  paymentStatus?: string | null;
+}): { label: string; className: string } {
+  const status = (rental.rentalStatus ?? '').trim().toUpperCase();
+  const ps = (rental.paymentStatus ?? '').trim().toUpperCase();
+  const canReturnCar = !rental.returnDate && status === 'CONFIRMED';
+
+  if (rental.returnDate) {
+    return { label: '✓ Đã trả xe', className: 'bg-gray-100 text-gray-500' };
+  }
+  if (canReturnCar) {
+    return {
+      label: '🔑 Chờ xác nhận trả xe',
+      className: 'border border-emerald-300 bg-emerald-100 font-semibold text-emerald-900',
+    };
+  }
+  if (status === 'PENDING_ADMIN_CONFIRM' || ps === 'PENDING_CONFIRM') {
+    return { label: '⏳ Chờ xác nhận', className: 'bg-amber-100 text-amber-800 font-semibold' };
+  }
+  if (status === 'PENDING_PAYMENT' || ps === 'PENDING_TRANSFER') {
+    return { label: 'Chờ thanh toán', className: 'bg-blue-100 text-blue-700' };
+  }
+  if (status === 'CANCELLED') {
+    return { label: 'Đã hủy', className: 'bg-gray-100 text-gray-500' };
+  }
+  if (status === 'COMPLETED') {
+    return { label: '✓ Đã hoàn tất', className: 'bg-gray-100 text-gray-500' };
+  }
+  return { label: '🚗 Đang thuê', className: 'bg-green-100 text-green-700' };
+}

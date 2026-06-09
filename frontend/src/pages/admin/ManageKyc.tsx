@@ -13,11 +13,7 @@ import { getAllUsersApi } from '../../api/users';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { useToast } from '../../components/ui/Toast';
 import Modal from '../../components/ui/Modal';
-
-function isLikelyImageUrl(fileUrl: string): boolean {
-  const u = kycFileAbsoluteUrl(fileUrl).split('?')[0].toLowerCase();
-  return /\.(png|jpe?g|webp|gif|bmp)$/i.test(u);
-}
+import { isLikelyKycImageUrl } from '../../utils/kycFile';
 
 /** Gộp các giấy tờ PENDING theo một khách hàng (một dòng bảng). */
 function groupPendingByUserId(rows: UserDocumentDto[]): Map<number, UserDocumentDto[]> {
@@ -245,7 +241,7 @@ const ManageKyc = ({ embedded = false }: { embedded?: boolean }) => {
                           {doc.documentType}
                         </p>
                         <div className="min-h-[160px] flex items-center justify-center p-2">
-                          {isLikelyImageUrl(doc.fileUrl) ? (
+                          {isLikelyKycImageUrl(doc.fileUrl) ? (
                             <img
                               src={absUrl}
                               alt={doc.documentType}

@@ -7,7 +7,13 @@ import { getMyInvoicesApi } from '../../api/invoices';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
-import { formatCurrency, formatDate, CAR_PLACEHOLDER, getApiErrorMessage } from '../../utils/helpers';
+import {
+  formatCurrency,
+  formatDate,
+  CAR_PLACEHOLDER,
+  getApiErrorMessage,
+  getRentalBadgeDisplay,
+} from '../../utils/helpers';
 import { Link } from 'react-router-dom';
 import type { RentalByUser, Invoice } from '../../types';
 
@@ -200,6 +206,7 @@ const RentalHistory = () => {
               status === 'COMPLETED' && rental.hasReview !== true;
             const canReturnCar =
               !rental.returnDate && status === 'CONFIRMED';
+            const badge = getRentalBadgeDisplay(rental);
             return (
               <div
                 key={rental.id}
@@ -245,20 +252,8 @@ const RentalHistory = () => {
                         </h3>
                         <p className="text-gray-400 text-sm">#{rental.id}</p>
                       </div>
-                      <span
-                        className={`badge text-sm ${
-                          rental.returnDate
-                            ? 'bg-gray-100 text-gray-500'
-                            : canReturnCar
-                              ? 'border border-emerald-300 bg-emerald-100 font-semibold text-emerald-900'
-                              : 'bg-green-100 text-green-700'
-                        }`}
-                      >
-                        {rental.returnDate
-                          ? '✓ Đã trả xe'
-                          : canReturnCar
-                            ? '🔑 Chờ xác nhận trả xe'
-                            : '🚗 Đang thuê'}
+                      <span className={`badge text-sm ${badge.className}`}>
+                        {badge.label}
                       </span>
                     </div>
 

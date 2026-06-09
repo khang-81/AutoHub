@@ -30,8 +30,14 @@ $suffix = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 $testEmail = "kyc.test.$suffix@autohub.test"
 $testPass = 'Test123!@#'
 Write-Host "Register $testEmail"
+$phone = ('09{0}' -f ($suffix.ToString().Substring([Math]::Max(0, $suffix.ToString().Length - 9))))
 Invoke-Api -Method POST -Path '/api/auth/register' -Body @{
-  email = $testEmail; password = $testPass; firstName = 'Kyc'; lastName = 'Test'
+  email = $testEmail
+  password = $testPass
+  fullName = 'Kyc Test User'
+  phone = $phone
+  birthDate = '1992-03-10'
+  roles = @('user')
 } | Out-Null
 
 $userToken = Get-Token $testEmail $testPass 'USER'
