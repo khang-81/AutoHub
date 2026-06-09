@@ -60,7 +60,30 @@ public class FileStorageService {
         return name.substring(name.lastIndexOf('.')).toLowerCase(Locale.ROOT);
     }
 
+  /**
+   * Chuẩn hóa path lưu DB → tương đối so với {@code app.upload.root} (không prefix {@code uploads/}).
+   * Seed cũ dùng {@code uploads/kyc/...} gây URL {@code /files/uploads/kyc/...} → 403.
+   */
+    public static String normalizeRelativeStoredPath(String storedPath) {
+        if (storedPath == null || storedPath.isBlank()) {
+            return storedPath;
+        }
+        String rel = storedPath.replace('\\', '/').trim();
+        while (rel.startsWith("/")) {
+            rel = rel.substring(1);
+        }
+        if (rel.regionMatches(true, 0, "uploads/", 0, "uploads/".length())) {
+            rel = rel.substring("uploads/".length());
+        }
+        return rel;
+    }
+
+    public String publicFileUrl(String storedPath) {
+        String rel = normalizeRelativeStoredPath(storedPath);
+        return "/files/" + rel;
+    }
+
     public Path resolveStoredPath(String relativePath) {
-        return Paths.get(uploadRoot).resolve(relativePath).normalize();
+        return Paths.get(uploadRoot).resolve(normalizeRelativeStoredPath(relativePath)).normalize();
     }
 }

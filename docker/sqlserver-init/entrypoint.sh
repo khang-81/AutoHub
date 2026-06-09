@@ -215,6 +215,17 @@ else
       );
       CREATE INDEX [IX_car_images_car_id] ON [dbo].[car_images]([car_id], [sort_order]);
     END;
+
+  IF OBJECT_ID(N'dbo.user_documents', N'U') IS NOT NULL
+  BEGIN
+    UPDATE [dbo].[user_documents]
+    SET [file_path] = REPLACE([file_path], N'uploads/kyc/', N'kyc/')
+    WHERE [file_path] LIKE N'uploads/kyc/%';
+
+    UPDATE [dbo].[user_documents]
+    SET [file_path] = REPLACE([file_path], N'.pdf', N'.png')
+    WHERE [file_path] LIKE N'%demo-%.pdf';
+  END;
   "
   echo "Incremental migrations completed."
 

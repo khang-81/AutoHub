@@ -195,7 +195,7 @@ public class UserDocumentManager implements UserDocumentService {
         r.setId(d.getId());
         r.setUserId(d.getUser() != null ? d.getUser().getId() : null);
         r.setDocumentType(d.getDocumentType());
-        r.setFileUrl("/files/" + d.getFilePath().replace("\\", "/"));
+        r.setFileUrl(fileStorageService.publicFileUrl(d.getFilePath()));
         r.setStatus(d.getStatus());
         r.setAdminNote(d.getAdminNote());
         r.setReviewedAt(d.getReviewedAt());
