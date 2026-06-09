@@ -18,7 +18,15 @@ function Get-Token($Email, $Password, $Portal) {
 $suffix = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 $email = "kyc.reject.$suffix@autohub.test"
 $pass = 'Test123!@#'
-Invoke-Api -Method POST -Path '/api/auth/register' -Body @{ email = $email; password = $pass; firstName = 'R'; lastName = 'J' } | Out-Null
+$phone = ('09{0}' -f ($suffix.ToString().Substring([Math]::Max(0, $suffix.ToString().Length - 9))))
+Invoke-Api -Method POST -Path '/api/auth/register' -Body @{
+  email = $email
+  password = $pass
+  fullName = 'Reject Test'
+  phone = $phone
+  birthDate = '1991-08-20'
+  roles = @('user')
+} | Out-Null
 $userToken = Get-Token $email $pass 'USER'
 $hdr = @{ Authorization = "Bearer $userToken" }
 $profile = Invoke-Api -Path '/api/users/getProfile' -Headers $hdr
@@ -31,6 +39,11 @@ foreach ($t in @('CCCD','GPLX')) {
 }
 
 $p = Invoke-Api -Path '/api/users/getProfile' -Headers $hdr
+if ($p.kycStatus -eq 'APPROVED') {
+  Write-Host 'SKIP: APP_KYC_AUTO_APPROVE=true — reject flow can only run with auto-approve disabled'
+  Remove-Item $png -ErrorAction SilentlyContinue
+  exit 0
+}
 if ($p.kycStatus -ne 'PENDING') { throw "Expected PENDING, got $($p.kycStatus)" }
 
 $adminToken = Get-Token 'admin@autohub.id.vn' 'admin123@' 'ADMIN'

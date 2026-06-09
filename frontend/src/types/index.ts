@@ -9,6 +9,9 @@ export interface LoginRequest {
 export interface RegisterRequest {
   email: string;
   password: string;
+  fullName: string;
+  phone: string;
+  birthDate: string;
   roles: string[];
 }
 
@@ -54,6 +57,14 @@ export type ListingType = 'RENT_ONLY' | 'SALE_ONLY';
 export type Transmission = 'AUTO' | 'MANUAL';
 export type FuelType = 'GASOLINE' | 'DIESEL' | 'HYBRID' | 'ELECTRIC';
 
+export type CarImageType = 'EXTERIOR' | 'INTERIOR';
+
+export interface CarImageItem {
+  imageUrl: string;
+  imageType: CarImageType | string;
+  sortOrder: number;
+}
+
 export interface Car {
   id: number;
   modelYear: number;
@@ -68,6 +79,8 @@ export interface Car {
   salePrice?: number | null;
   saleStatus?: string | null;
   imagePath: string;
+  /** Gallery chi tiết từ API getById — 5 ảnh (3 ngoại + 2 nội). */
+  images?: CarImageItem[];
   seats?: number | null;
   transmission?: Transmission | string | null;
   fuelType?: FuelType | string | null;
@@ -357,10 +370,12 @@ export interface AuthState {
   token: string | null;
   userId: number | null;
   email: string | null;
+  fullName: string | null;
   roles: string[];
   isAuthenticated: boolean;
   isAdmin: boolean;
-  login: (token: string, userId: number, email: string, roles: string[]) => void;
+  login: (token: string, userId: number, email: string, roles: string[], fullName?: string | null) => void;
+  setFullName: (fullName: string | null) => void;
   logout: () => void;
 }
 

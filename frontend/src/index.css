@@ -66,6 +66,115 @@
     @apply rounded-2xl border border-gray-100/90 bg-white p-2 shadow-[0_20px_50px_-12px_rgba(27,42,74,0.18)] md:p-2.5;
   }
 
+  /* Trang chi tiết mua xe — marketplace (oto.com.vn) */
+  .sale-detail-page {
+    --sale-price: #c0392b;
+    --sale-accent: #e67e22;
+  }
+  .sale-breadcrumb {
+    @apply border-b border-gray-200 bg-white;
+  }
+  .sale-panel {
+    @apply rounded border border-gray-200 bg-white p-4 sm:p-5;
+  }
+  .sale-panel-title {
+    @apply font-heading text-[15px] font-bold text-navy mb-3;
+  }
+  .sale-section-title {
+    @apply mb-3 border-b border-gray-200 pb-2 font-heading text-[17px] font-bold text-navy;
+  }
+  .sale-spec-list {
+    @apply m-0 list-none space-y-0 p-0;
+  }
+  .sale-spec-list__row {
+    @apply flex items-start justify-between gap-4 border-b border-gray-100 py-2.5 text-sm last:border-0;
+  }
+  .sale-spec-list__label {
+    @apply shrink-0 text-gray-500;
+  }
+  .sale-spec-list__value {
+    @apply text-right font-semibold text-gray-800;
+  }
+  .sale-field-label {
+    @apply mb-1 block text-xs font-medium text-gray-500;
+  }
+  .sale-field-input {
+    @apply w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-navy transition focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500;
+  }
+  .sale-sidebar-sticky {
+    @apply lg:sticky lg:top-[5.5rem] lg:self-start;
+  }
+  .sale-gallery {
+    @apply relative overflow-hidden rounded border border-gray-200 bg-white;
+  }
+  .sale-gallery__img {
+    @apply aspect-[16/10] w-full object-cover;
+  }
+  .sale-gallery__badge {
+    @apply absolute left-3 top-3 rounded bg-orange-600 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white;
+  }
+  .sale-gallery__type-badge {
+    @apply absolute left-3 top-3 rounded bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white;
+  }
+  .sale-gallery__counter {
+    @apply absolute bottom-3 right-3 rounded-full bg-black/55 px-3 py-1 text-xs font-medium text-white;
+  }
+  .sale-gallery__thumbs {
+    @apply flex gap-2 overflow-x-auto border-t border-gray-100 p-3;
+  }
+  .sale-gallery__thumb {
+    @apply relative h-20 w-28 shrink-0 overflow-hidden rounded-lg border-2 border-transparent opacity-85 transition hover:opacity-100;
+  }
+  .sale-gallery__thumb--active {
+    @apply border-orange-500 opacity-100 ring-2 ring-orange-200;
+  }
+  .sale-gallery__thumb img {
+    @apply h-full w-full object-cover;
+  }
+  .sale-gallery__thumb-label {
+    @apply absolute bottom-0 left-0 right-0 bg-black/55 px-1 py-0.5 text-center text-[9px] font-medium text-white;
+  }
+  .sale-price-row {
+    @apply flex flex-wrap items-baseline gap-x-2 gap-y-1;
+  }
+  .sale-price-main {
+    @apply text-[26px] font-extrabold leading-none text-[var(--sale-price)];
+  }
+  .sale-price-divider {
+    @apply text-gray-300;
+  }
+  .sale-price-onroad {
+    @apply text-sm text-gray-600;
+  }
+  .sale-price-onroad strong {
+    @apply font-bold text-navy;
+  }
+  .sale-btn-primary {
+    @apply rounded bg-[var(--sale-price)] py-3 text-[15px] font-bold text-white transition hover:brightness-110;
+  }
+  .sale-disclaimer {
+    @apply mt-4 border-t border-gray-100 pt-3 text-xs italic leading-relaxed text-gray-400;
+  }
+  .sale-dealer-card {
+    @apply rounded border border-gray-200 bg-white p-4 sm:p-5;
+    border-top: 3px solid var(--sale-accent);
+  }
+  .sale-dealer-card__header {
+    @apply flex items-center gap-3;
+  }
+  .sale-dealer-card__avatar {
+    @apply flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-navy;
+  }
+  .sale-dealer-card__contact {
+    @apply mt-4 grid grid-cols-2 gap-2;
+  }
+  .sale-dealer-card__phone {
+    @apply flex items-center justify-center gap-2 rounded border border-gray-300 bg-white py-3 text-[15px] font-bold text-navy transition hover:border-orange-400 hover:bg-orange-50;
+  }
+  .sale-dealer-card__zalo {
+    @apply flex items-center justify-center gap-2 rounded bg-[#0068FF] py-3 text-[15px] font-bold text-white transition hover:bg-[#0056d6];
+  }
+
   /**
    * Bù chiều cao navbar fixed — nền navy 7rem liền với header,
    * sau đó chuyển sang màu trang (--pad-nav-tail, mặc định gray-50) để không còn khe sáng.

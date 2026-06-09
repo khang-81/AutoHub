@@ -21,7 +21,6 @@ import com.tobeto.rentACar.services.dtos.invoice.request.AddInvoiceRequest;
 import com.tobeto.rentACar.services.dtos.saleorder.request.AddSaleOrderRequest;
 import com.tobeto.rentACar.services.dtos.saleorder.response.AddSaleOrderResponse;
 import com.tobeto.rentACar.services.dtos.saleorder.response.GetAllSaleOrdersResponse;
-import com.tobeto.rentACar.services.rules.RentalBusinessRule;
 import com.tobeto.rentACar.services.rules.SaleBusinessRule;
 import lombok.AllArgsConstructor;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -41,7 +40,6 @@ public class SaleOrderManager implements SaleOrderService {
     private final UserRepository userRepository;
     private final ModelMapperService modelMapperService;
     private final InvoiceService invoiceService;
-    private final RentalBusinessRule rentalBusinessRule;
     private final SaleBusinessRule saleBusinessRule;
     private final BusinessMailNotificationSender businessMailNotificationSender;
     private final com.tobeto.rentACar.services.abstracts.PromotionService promotionService;
@@ -53,8 +51,6 @@ public class SaleOrderManager implements SaleOrderService {
         if (!userRepository.existsById(userId)) {
             throw new BusinessException(messageService.getMessage(Messages.User.getUserNotFoundMessage));
         }
-        rentalBusinessRule.checkUserKycApproved(userId);
-
         Car car = carRepository.findById(request.getCarId()).orElseThrow(
                 () -> new BusinessException(messageService.getMessage(Messages.Car.getCarNotFoundMessage)));
 

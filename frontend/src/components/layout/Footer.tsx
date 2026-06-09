@@ -2,10 +2,9 @@ import { Link } from 'react-router-dom';
 import { Phone, Mail, MapPin } from 'lucide-react';
 import BrandLogo from '../ui/BrandLogo';
 
-// Các component SVG được tối ưu để đồng bộ hoàn toàn với style của lucide-react
 const FacebookIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
   </svg>
 );
 
@@ -25,61 +24,71 @@ const LinkedInIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const SITE_ADDRESS = 'Phúc Am, Ngọc Hồi, Hà Nội';
+const MAP_EMBED_SRC = `https://maps.google.com/maps?q=${encodeURIComponent(
+  SITE_ADDRESS
+)}&hl=vi&z=16&output=embed`;
+const MAP_LINK = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(SITE_ADDRESS)}`;
+
+const QUICK_LINKS = [
+  { label: 'Thuê xe', to: '/cars' },
+  { label: 'Mua xe', to: '/cars/mua' },
+  { label: 'Giới thiệu', to: '/about' },
+  { label: 'Liên hệ', to: '/contact' },
+  { label: 'Điều khoản dịch vụ', to: '/terms' },
+  { label: 'Chính sách bảo mật', to: '/privacy' },
+] as const;
+
+function FooterHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-6 w-fit">
+      <h4 className="font-heading font-semibold text-white text-lg tracking-wide">{children}</h4>
+      <span className="mt-2 block h-0.5 w-full rounded-full bg-primary" aria-hidden />
+    </div>
+  );
+}
+
 const Footer = () => {
   return (
     <footer className="bg-navy text-gray-300">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8">
-          
-          {/* 1. Brand Info */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
+          {/* Brand */}
           <div className="space-y-6">
             <BrandLogo to="/" size="lg" variant="light" />
             <p className="text-sm leading-relaxed text-gray-400">
-              AutoHub – Nền tảng thuê và mua bán ô tô uy tín hàng đầu Việt Nam. 
+              AutoHub – Nền tảng thuê và mua bán ô tô uy tín hàng đầu Việt Nam.
               Chúng tôi mang đến trải nghiệm lái xe tuyệt vời với giá cả minh bạch.
             </p>
-            <div className="flex gap-4">
-              <a
-                href="https://www.facebook.com/"
-                className="w-10 h-10 bg-navy-400/50 rounded-full flex items-center justify-center hover:bg-primary hover:-translate-y-1 transition-all duration-300 group"
-                aria-label="Facebook"
-              >
-                <FacebookIcon className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
-              </a>
-              <a
-                href="https://www.instagram.com/"
-                className="w-10 h-10 bg-navy-400/50 rounded-full flex items-center justify-center hover:bg-primary hover:-translate-y-1 transition-all duration-300 group"
-                aria-label="Instagram"
-              >
-                <InstagramIcon className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
-              </a>
-              <a
-                href="https://www.linkedin.com/"
-                className="w-10 h-10 bg-navy-400/50 rounded-full flex items-center justify-center hover:bg-primary hover:-translate-y-1 transition-all duration-300 group"
-                aria-label="LinkedIn"
-              >
-                <LinkedInIcon className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
-              </a>
+            <div className="flex gap-3">
+              {[
+                { href: 'https://www.facebook.com/', label: 'Facebook', Icon: FacebookIcon },
+                { href: 'https://www.instagram.com/', label: 'Instagram', Icon: InstagramIcon },
+                { href: 'https://www.linkedin.com/', label: 'LinkedIn', Icon: LinkedInIcon },
+              ].map(({ href, label, Icon }) => (
+                <a
+                  key={label}
+                  href={href}
+                  className="w-10 h-10 bg-navy-400/40 border border-white/5 rounded-full flex items-center justify-center hover:bg-primary hover:border-primary hover:-translate-y-0.5 transition-all duration-300 group"
+                  aria-label={label}
+                >
+                  <Icon className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
+                </a>
+              ))}
             </div>
           </div>
 
-          {/* 2. Quick Links */}
+          {/* Quick links */}
           <div>
-            <h4 className="font-heading font-semibold text-white mb-6 text-lg tracking-wide">Trang chủ</h4>
+            <FooterHeading>Trang chủ</FooterHeading>
             <ul className="space-y-3 text-sm">
-              {[
-                { label: 'Thuê xe', to: '/cars' },
-                { label: 'Mua xe', to: '/cars/mua' },
-                { label: 'Giới thiệu', to: '/about' },
-                { label: 'Liên hệ', to: '/contact' },
-                { label: 'Điều khoản dịch vụ', to: '/terms' },
-                { label: 'Chính sách bảo mật', to: '/privacy' },
-              ].map((link) => (
+              {QUICK_LINKS.map((link) => (
                 <li key={link.to}>
-                  <Link 
-                    to={link.to} 
-                    className="inline-block text-gray-400 hover:text-primary hover:translate-x-1 transition-all duration-300"
+                  <Link
+                    to={link.to}
+                    className="inline-flex items-center gap-2 text-gray-400 hover:text-primary hover:translate-x-1 transition-all duration-300"
                   >
+                    <span className="w-1 h-1 rounded-full bg-primary/60 flex-shrink-0" aria-hidden />
                     {link.label}
                   </Link>
                 </li>
@@ -87,51 +96,72 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* 3. Services */}
-          <div>
-            <h4 className="font-heading font-semibold text-white mb-6 text-lg tracking-wide">Dịch vụ</h4>
-            <ul className="space-y-3 text-sm">
-              {[
-                'Thuê xe tự lái',
-                'Thuê xe có tài xế',
-                'Thuê xe dài ngày',
-                'Xe đón sân bay',
-                'Du lịch theo tour',
-              ].map((service) => (
-                <li key={service} className="flex items-center gap-3 text-gray-400 group cursor-default">
-                  <span className="w-1.5 h-1.5 bg-primary rounded-full flex-shrink-0 group-hover:scale-150 transition-transform duration-300" />
-                  <span className="group-hover:text-white transition-colors duration-300">{service}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          
 
-          {/* 4. Contact */}
+          {/* Contact */}
           <div>
-            <h4 className="font-heading font-semibold text-white mb-6 text-lg tracking-wide">Liên hệ</h4>
+            <FooterHeading>Liên hệ</FooterHeading>
             <ul className="space-y-4 text-sm text-gray-400">
               <li className="flex items-start gap-3 group">
                 <MapPin className="w-5 h-5 text-primary flex-shrink-0 mt-0.5 group-hover:scale-110 transition-transform duration-300" />
-                <span className="group-hover:text-white transition-colors duration-300">Phúc Am, Ngọc Hồi, Hà Nội</span>
+                <span className="group-hover:text-white transition-colors duration-300 leading-relaxed">
+                  {SITE_ADDRESS}
+                </span>
               </li>
               <li className="flex items-center gap-3 group">
                 <Phone className="w-5 h-5 text-primary flex-shrink-0 group-hover:scale-110 transition-transform duration-300" />
-                <a href="tel:0329248087" className="group-hover:text-primary transition-colors duration-300">032 924 8087</a>
+                <a
+                  href="tel:0329248087"
+                  className="group-hover:text-primary transition-colors duration-300"
+                >
+                  032 924 8087
+                </a>
               </li>
               <li className="flex items-center gap-3 group">
                 <Mail className="w-5 h-5 text-primary flex-shrink-0 group-hover:scale-110 transition-transform duration-300" />
-                <a href="mailto:khang08012k4@gmail.com" className="group-hover:text-primary transition-colors duration-300">khang08012k4@gmail.com</a>
+                <a
+                  href="mailto:khang08012k4@gmail.com"
+                  className="group-hover:text-primary transition-colors duration-300 break-all"
+                >
+                  khang08012k4@gmail.com
+                </a>
               </li>
             </ul>
+            
           </div>
 
+          {/* Google Maps */}
+          <div>
+            <FooterHeading>Địa chỉ</FooterHeading>
+            
+            <div className="rounded-xl overflow-hidden border border-navy-400/60 shadow-lg shadow-black/20 bg-navy-400/20">
+              <iframe
+                title={`Bản đồ AutoHub — ${SITE_ADDRESS}`}
+                src={MAP_EMBED_SRC}
+                className="w-full h-40 border-0"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                allowFullScreen
+              />
+              <div className="px-4 py-3 bg-black/20 border-t border-white/5">
+                <a
+                  href={MAP_LINK}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-medium text-primary hover:text-primary/80 hover:underline transition-colors"
+                >
+                  Mở chỉ đường trên Google Maps
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Bottom bar */}
       <div className="border-t border-navy-400/50 bg-black/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-center text-sm text-gray-400">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-gray-400">
           <p>&copy; {new Date().getFullYear()} AutoHub. All rights reserved.</p>
+          <p className="text-xs text-gray-500">Thuê xe · Mua xe · Hỗ trợ 24/7</p>
         </div>
       </div>
     </footer>

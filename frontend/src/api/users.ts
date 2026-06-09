@@ -3,6 +3,9 @@ import axiosInstance from './axiosInstance';
 export interface ProfileResponse {
   id: number;
   email: string;
+  fullName?: string | null;
+  phone?: string | null;
+  birthDate?: string | null;
   password?: string;
   kycStatus?: string;
 }

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ShieldCheck, Upload, Loader2 } from 'lucide-react';
 import { getMyKycDocumentsApi, uploadKycDocumentApi, kycFileAbsoluteUrl } from '../../api/kyc';
+import { isAllowedKycImage, isLikelyKycImageUrl } from '../../utils/kycFile';
 import { getProfileApi } from '../../api/users';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { useToast } from '../../components/ui/Toast';
@@ -49,8 +50,8 @@ const KycVerification = () => {
       showToast('Dung lượng tối đa 5MB.', 'error');
       return;
     }
-    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-      showToast('Chỉ chấp nhận ảnh hoặc PDF', 'error');
+    if (!isAllowedKycImage(file)) {
+      showToast('Chỉ chấp nhận ảnh PNG hoặc JPG', 'error');
       return;
     }
     uploadMutation.mutate({ type, file });
@@ -64,7 +65,7 @@ const KycVerification = () => {
 
   const kycBanner =
     kyc === 'APPROVED'
-      ? { text: 'Tài khoản đã xác minh đầy đủ. Bạn có thể đặt xe.', c: 'bg-green-50 border-green-200 text-green-800' }
+      ? { text: 'Tài khoản đã xác minh đầy đủ. Bạn có thể thuê xe.', c: 'bg-green-50 border-green-200 text-green-800' }
       : kyc === 'REJECTED'
         ? {
             text: 'Giấy tờ bị từ chối. Vui lòng tải lên bản rõ nét hơn.',
@@ -77,7 +78,7 @@ const KycVerification = () => {
             }
           : kyc === 'PENDING'
             ? { text: 'Đã nhận đủ giấy tờ. Đang chờ admin duyệt.', c: 'bg-amber-50 border-amber-200 text-amber-900' }
-            : { text: 'Vui lòng tải CCCD và GPLX để đặt xe.', c: 'bg-blue-50 border-blue-200 text-blue-900' };
+            : { text: 'Vui lòng tải CCCD và GPLX để thuê xe.', c: 'bg-blue-50 border-blue-200 text-blue-900' };
 
   if (profileLoading || docsLoading) {
     return (
@@ -95,7 +96,7 @@ const KycVerification = () => {
           <h1 className="font-heading font-bold text-xl text-navy">Xác minh GPLX</h1>
         </div>
         <p className="text-gray-500 text-sm">
-          Tải ảnh CCCD và GPLX. Sau khi admin duyệt, bạn có thể đặt xe.
+          Tải ảnh CCCD và GPLX (PNG/JPG). Sau khi admin duyệt, bạn có thể thuê xe.
         </p>
         <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${kycBanner.c}`}>{kycBanner.text}</div>
       </div>
@@ -117,14 +118,14 @@ const KycVerification = () => {
                   rel="noreferrer"
                   className="block mb-4 rounded-lg overflow-hidden border bg-gray-50 max-h-48"
                 >
-                  {doc.fileUrl.toLowerCase().endsWith('.pdf') ? (
-                    <div className="p-8 text-center text-gray-500 text-sm">File PDF — bấm để mở</div>
-                  ) : (
+                  {isLikelyKycImageUrl(doc.fileUrl) ? (
                     <img
                       src={kycFileAbsoluteUrl(doc.fileUrl)}
                       alt={type}
                       className="w-full h-full object-contain max-h-48"
                     />
+                  ) : (
+                    <div className="p-8 text-center text-gray-500 text-sm">Bấm để mở file</div>
                   )}
                 </a>
               )}
@@ -134,7 +135,7 @@ const KycVerification = () => {
               <label className="btn-primary inline-flex items-center gap-2 cursor-pointer">
                 {uploadMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                 {doc ? 'Tải lại' : 'Tải lên'}
-                <input type="file" accept="image/*,.pdf" className="hidden" onChange={onPickFile(type)} />
+                <input type="file" accept=".png,.jpg,.jpeg" className="hidden" onChange={onPickFile(type)} />
               </label>
             </div>
           );

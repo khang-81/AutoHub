@@ -51,7 +51,6 @@ import ManageReports from './pages/admin/ManageReports';
 import ManageReviews from './pages/admin/ManageReviews';
 import ManageViewingAppointments from './pages/admin/ManageViewingAppointments';
 import MyViewingAppointments from './pages/user/MyViewingAppointments';
-import MyInvoices from './pages/user/MyInvoices';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -113,7 +112,6 @@ function RoutesWithChatbot() {
           <Route path="change-password" element={<ChangePassword />} />
           <Route path="kyc" element={<KycVerification />} />
           <Route path="viewing-appointments" element={<MyViewingAppointments />} />
-          <Route path="invoices" element={<MyInvoices />} />
         </Route>
 
         {/* Admin routes — splat `/admin/*` khớp React Router 7 + mọi đường dẫn con */}

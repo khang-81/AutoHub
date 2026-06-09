@@ -7,7 +7,7 @@ const valsPath = path.join(__dirname, '_car_values_indented.sql');
 let s = fs.readFileSync(schemaPath, 'utf8');
 const vals = fs.readFileSync(valsPath, 'utf8').trim();
 
-const start = '/* Xe mẫu reset đầy đủ:';
+const start = '/* Xe mẫu:';
 const markerEnd = '/* user_documents (KYC mẫu) */';
 const i = s.indexOf(start);
 const j = s.indexOf(markerEnd);

@@ -3,17 +3,26 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, User, Phone, Calendar } from 'lucide-react';
 import { registerApi } from '../../api/auth';
 import { useToast } from '../../components/ui/Toast';
 
 const schema = z.object({
+  fullName: z.string().min(2, 'Vui lòng nhập họ tên').max(255, 'Họ tên quá dài'),
+  phone: z.string().min(9, 'Số điện thoại không hợp lệ').max(15, 'Số điện thoại không hợp lệ'),
+  birthDate: z.string().min(1, 'Vui lòng nhập ngày sinh'),
   email: z.string().email('Email không hợp lệ'),
   password: z.string().min(6, 'Mật khẩu tối thiểu 6 ký tự'),
   confirmPassword: z.string(),
 }).refine((d) => d.password === d.confirmPassword, {
   message: 'Mật khẩu xác nhận không khớp',
   path: ['confirmPassword'],
+}).refine((d) => {
+  const bd = new Date(d.birthDate);
+  return !Number.isNaN(bd.getTime()) && bd < new Date();
+}, {
+  message: 'Ngày sinh phải là ngày trong quá khứ',
+  path: ['birthDate'],
 });
 
 type FormData = z.infer<typeof schema>;
@@ -36,6 +45,9 @@ const Register = () => {
     setLoading(true);
     try {
       const res = await registerApi({
+        fullName: data.fullName.trim(),
+        phone: data.phone.trim(),
+        birthDate: data.birthDate,
         email: data.email,
         password: data.password,
         roles: ['user'],
@@ -67,6 +79,50 @@ const Register = () => {
           <h1 className="font-heading font-bold text-2xl text-navy mb-6">Đăng ký</h1>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            {/* Full name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Họ và tên</label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  {...register('fullName')}
+                  type="text"
+                  placeholder="Nguyễn Văn A"
+                  className="input-field pl-10"
+                />
+              </div>
+              {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName.message}</p>}
+            </div>
+
+            {/* Phone */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Số điện thoại</label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  {...register('phone')}
+                  type="tel"
+                  placeholder="032 924 8087"
+                  className="input-field pl-10"
+                />
+              </div>
+              {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
+            </div>
+
+            {/* Birth date */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Ngày sinh</label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  {...register('birthDate')}
+                  type="date"
+                  className="input-field pl-10"
+                />
+              </div>
+              {errors.birthDate && <p className="text-red-500 text-xs mt-1">{errors.birthDate.message}</p>}
+            </div>
+
             {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>

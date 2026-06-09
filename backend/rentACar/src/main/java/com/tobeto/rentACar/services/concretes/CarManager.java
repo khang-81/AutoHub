@@ -7,6 +7,7 @@ import com.tobeto.rentACar.core.utilities.mappers.ModelMapperService;
 import com.tobeto.rentACar.core.utilities.results.Result;
 import com.tobeto.rentACar.core.utilities.results.SuccessResult;
 import com.tobeto.rentACar.entities.concretes.Car;
+import com.tobeto.rentACar.repositories.CarImageRepository;
 import com.tobeto.rentACar.repositories.CarRepository;
 import com.tobeto.rentACar.repositories.CarSpecifications;
 import com.tobeto.rentACar.repositories.RentalRepository;
@@ -17,6 +18,7 @@ import com.tobeto.rentACar.services.constants.Messages;
 import com.tobeto.rentACar.services.dtos.car.request.AddCarRequest;
 import com.tobeto.rentACar.services.dtos.car.request.DeleteCarRequest;
 import com.tobeto.rentACar.services.dtos.car.request.UpdateCarRequest;
+import com.tobeto.rentACar.services.dtos.car.response.CarImageResponse;
 import com.tobeto.rentACar.services.dtos.car.response.GetAllCarsResponse;
 import com.tobeto.rentACar.services.dtos.car.response.GetCarByIdResponse;
 import com.tobeto.rentACar.services.dtos.car.response.PagedCarsResponse;
@@ -44,6 +46,7 @@ import java.util.Set;
 @AllArgsConstructor
 public class CarManager implements CarService {
     private final CarRepository carRepository;
+    private final CarImageRepository carImageRepository;
     private final RentalRepository rentalRepository;
     private final SaleOrderRepository saleOrderRepository;
     private final ReviewRepository reviewRepository;
@@ -120,6 +123,9 @@ public class CarManager implements CarService {
         Map<Integer, double[]> ratingByCar = buildRatingStatsMap();
         applyRatingStats(r, id, ratingByCar);
         applyListingDefaults(r);
+        r.setImages(carImageRepository.findByCar_IdOrderBySortOrderAsc(id).stream()
+                .map(img -> new CarImageResponse(img.getImageUrl(), img.getImageType(), img.getSortOrder()))
+                .toList());
         return r;
     }
 

@@ -17,7 +17,7 @@ import { getMySaleOrdersApi } from '../../api/saleOrders';
 import { getProfileApi } from '../../api/users';
 import { useAuthStore } from '../../store/authStore';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import { formatCurrency, formatDate, CAR_PLACEHOLDER } from '../../utils/helpers';
+import { formatCurrency, formatDate, CAR_PLACEHOLDER, getRentalBadgeDisplay } from '../../utils/helpers';
 import type { RentalByUser, SaleOrder } from '../../types';
 
 const saleStatusLabel: Record<string, string> = {
@@ -108,7 +108,7 @@ const UserDashboard = () => {
             <div>
               <p className="font-semibold text-amber-900 text-sm">Hoàn tất xác minh GPLX</p>
               <p className="text-amber-800/90 text-xs mt-0.5">
-                Bạn cần được duyệt giấy tờ trước khi đặt xe.
+                Bạn cần được duyệt giấy tờ trước khi thuê xe.
               </p>
             </div>
           </div>
@@ -183,119 +183,117 @@ const UserDashboard = () => {
       {/* Recent activity */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div className="bg-white rounded-2xl shadow-sm p-6">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-heading font-semibold text-navy">Lần thuê gần đây</h2>
-          <Link
-            to="/dashboard/rentals"
-            className="text-primary text-sm font-medium flex items-center gap-1 hover:gap-2 transition-all"
-          >
-            Xem tất cả <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="font-heading font-semibold text-navy">Lần thuê gần đây</h2>
+            <Link
+              to="/dashboard/rentals"
+              className="text-primary text-sm font-medium flex items-center gap-1 hover:gap-2 transition-all"
+            >
+              Xem tất cả <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
 
-        {isLoading ? (
-          <LoadingSpinner />
-        ) : rentals.length === 0 ? (
-          <div className="text-center py-12">
-            <Car className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-400">Bạn chưa thuê xe nào</p>
-            <Link to="/cars" className="btn-primary mt-4 inline-block text-sm">Thuê xe ngay</Link>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {rentals.slice(0, 3).map((rental) => (
-              <div key={rental.id} className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
-                <img
-                  src={rental.car?.imagePath || CAR_PLACEHOLDER}
-                  alt="car"
-                  className="w-16 h-12 object-cover rounded-lg flex-shrink-0"
-                  onError={(e) => { (e.target as HTMLImageElement).src = CAR_PLACEHOLDER; }}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-navy text-sm truncate">
-                    {rental.car?.model?.brand?.name} {rental.car?.model?.name}
-                  </p>
-                  <p className="text-gray-400 text-xs">
-                    {formatDate(rental.startDate)} → {formatDate(rental.endDate)}
-                  </p>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="font-semibold text-primary text-sm">{formatCurrency(rental.totalPrice)}</p>
-                  <span className={`badge text-xs ${
-                    rental.returnDate
-                      ? 'bg-gray-100 text-gray-500'
-                      : 'bg-green-100 text-green-700'
-                  }`}>
-                    {rental.returnDate ? 'Đã trả' : 'Đang thuê'}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+          {isLoading ? (
+            <LoadingSpinner />
+          ) : rentals.length === 0 ? (
+            <div className="text-center py-12">
+              <Car className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-400">Bạn chưa thuê xe nào</p>
+              <Link to="/cars" className="btn-primary mt-4 inline-block text-sm">Thuê xe ngay</Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {rentals.slice(0, 3).map((rental) => {
+                const rentalBadge = getRentalBadgeDisplay(rental);
+                return (
+                  <div key={rental.id} className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <img
+                      src={rental.car?.imagePath || CAR_PLACEHOLDER}
+                      alt="car"
+                      className="w-16 h-12 object-cover rounded-lg flex-shrink-0"
+                      onError={(e) => { (e.target as HTMLImageElement).src = CAR_PLACEHOLDER; }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-navy text-sm truncate">
+                        {rental.car?.model?.brand?.name} {rental.car?.model?.name}
+                      </p>
+                      <p className="text-gray-400 text-xs">
+                        {formatDate(rental.startDate)} → {formatDate(rental.endDate)}
+                      </p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-semibold text-primary text-sm">{formatCurrency(rental.totalPrice)}</p>
+                      <span className={`badge text-xs ${rentalBadge.className}`}>
+                        {rentalBadge.label}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm p-6">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-heading font-semibold text-navy">Đơn mua gần đây</h2>
-          <Link
-            to="/dashboard/sale-orders"
-            className="text-primary text-sm font-medium flex items-center gap-1 hover:gap-2 transition-all"
-          >
-            Xem tất cả <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-
-        {isLoading ? (
-          <LoadingSpinner />
-        ) : recentSales.length === 0 ? (
-          <div className="text-center py-12">
-            <ShoppingBag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-400">Bạn chưa có đơn mua xe</p>
-            <Link to="/cars/mua" className="btn-primary mt-4 inline-block text-sm">
-              Xem xe đang bán
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="font-heading font-semibold text-navy">Đơn mua gần đây</h2>
+            <Link
+              to="/dashboard/sale-orders"
+              className="text-primary text-sm font-medium flex items-center gap-1 hover:gap-2 transition-all"
+            >
+              Xem tất cả <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {recentSales.map((order) => (
-              <div
-                key={order.id}
-                className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
-              >
-                <img
-                  src={order.car?.imagePath || CAR_PLACEHOLDER}
-                  alt=""
-                  className="w-16 h-12 object-cover rounded-lg flex-shrink-0"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = CAR_PLACEHOLDER;
-                  }}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-navy text-sm truncate">
-                    {order.car?.model?.brand?.name} {order.car?.model?.name}
-                  </p>
-                  <p className="text-gray-400 text-xs">Đơn #{order.id}</p>
+
+          {isLoading ? (
+            <LoadingSpinner />
+          ) : recentSales.length === 0 ? (
+            <div className="text-center py-12">
+              <ShoppingBag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-400">Bạn chưa có đơn mua xe</p>
+              <Link to="/cars/mua" className="btn-primary mt-4 inline-block text-sm">
+                Xem xe đang bán
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentSales.map((order) => (
+                <div
+                  key={order.id}
+                  className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
+                >
+                  <img
+                    src={order.car?.imagePath || CAR_PLACEHOLDER}
+                    alt=""
+                    className="w-16 h-12 object-cover rounded-lg flex-shrink-0"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = CAR_PLACEHOLDER;
+                    }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-navy text-sm truncate">
+                      {order.car?.model?.brand?.name} {order.car?.model?.name}
+                    </p>
+                    <p className="text-gray-400 text-xs">Đơn #{order.id}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0 max-w-[42%]">
+                    <p className="font-semibold text-primary text-sm">{formatCurrency(order.totalPrice)}</p>
+                    <span
+                      className={`badge text-xs mt-0.5 inline-block max-w-full truncate ${order.orderStatus === 'COMPLETED'
+                          ? 'bg-green-100 text-green-800'
+                          : order.orderStatus === 'CANCELLED'
+                            ? 'bg-gray-100 text-gray-600'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}
+                      title={saleStatusLabel[order.orderStatus || ''] || order.orderStatus}
+                    >
+                      {saleStatusLabel[order.orderStatus || ''] || order.orderStatus}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-right flex-shrink-0 max-w-[42%]">
-                  <p className="font-semibold text-primary text-sm">{formatCurrency(order.totalPrice)}</p>
-                  <span
-                    className={`badge text-xs mt-0.5 inline-block max-w-full truncate ${
-                      order.orderStatus === 'COMPLETED'
-                        ? 'bg-green-100 text-green-800'
-                        : order.orderStatus === 'CANCELLED'
-                          ? 'bg-gray-100 text-gray-600'
-                          : 'bg-amber-100 text-amber-800'
-                    }`}
-                    title={saleStatusLabel[order.orderStatus || ''] || order.orderStatus}
-                  >
-                    {saleStatusLabel[order.orderStatus || ''] || order.orderStatus}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

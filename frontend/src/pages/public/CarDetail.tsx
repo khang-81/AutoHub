@@ -17,13 +17,15 @@ import { getReviewsByCarIdApi } from '../../api/reviews';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../components/ui/Toast';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import SaleCarDetailView from '../../components/sale/SaleCarDetailView';
+import CarGallery from '../../components/ui/CarGallery';
+import { searchCarsApi } from '../../api/cars';
 import {
   formatCurrency,
   calculateRentalDays,
   formatDateForApi,
   formatDateTimeForApi,
   formatDate,
-  CAR_PLACEHOLDER,
   getUserIdFromToken,
 } from '../../utils/helpers';
 import { HANOI_DISTRICTS } from '../../data/hanoiDistricts';
@@ -88,6 +90,19 @@ const CarDetail = () => {
     queryFn: () => getReviewsByCarIdApi(Number(id)),
     enabled: !!id,
   });
+
+  const { data: relatedSaleData } = useQuery({
+    queryKey: ['cars', 'related-sale', car?.model?.brand?.id, id],
+    queryFn: () =>
+      searchCarsApi({
+        page: 1,
+        size: 4,
+        listing: 'sale',
+        brandId: car!.model!.brand!.id,
+      }),
+    enabled: !!car && (car.listingType || '').toUpperCase() === 'SALE_ONLY' && !!car.model?.brand?.id,
+  });
+  const relatedCars = (relatedSaleData?.content ?? []).filter((c) => c.id !== car?.id).slice(0, 3);
 
   const bookedRanges = busyRangeRows.map((r) => ({
     start: new Date(`${r.startDate}T00:00:00`),
@@ -230,11 +245,6 @@ const CarDetail = () => {
       showToast('Đang kiểm tra hồ sơ...', 'info');
       return;
     }
-    if (profile?.kycStatus !== 'APPROVED') {
-      showToast('Vui lòng xác minh CCCD + GPLX trước khi đặt lịch xem xe.', 'info');
-      navigate('/dashboard/kyc');
-      return;
-    }
     if (!viewingDate) {
       showToast('Chọn ngày giờ xem xe', 'info');
       return;
@@ -371,11 +381,6 @@ const CarDetail = () => {
       showToast('Đang kiểm tra hồ sơ...', 'info');
       return;
     }
-    if (profile?.kycStatus !== 'APPROVED') {
-      showToast('Vui lòng xác minh CCCD + GPLX trước khi đặt mua.', 'info');
-      navigate('/dashboard/kyc');
-      return;
-    }
     saleMutation.mutate(salePaymentMethod);
   };
 
@@ -393,6 +398,37 @@ const CarDetail = () => {
       </div>
     </div>
   );
+
+  if (listingType === 'SALE_ONLY') {
+    const forcedSaleMode =
+      forcedBookingMode === 'buy' ? 'buy' : forcedBookingMode === 'view' ? 'view' : null;
+    return (
+      <div className="pad-top-nav" style={{ ['--pad-nav-tail' as string]: '#f0f2f5' }}>
+        <SaleCarDetailView
+          car={car}
+          reviews={reviews}
+          reviewsLoading={reviewsLoading}
+          relatedCars={relatedCars}
+          isAuthenticated={isAuthenticated}
+          salePaymentMethod={salePaymentMethod}
+          setSalePaymentMethod={setSalePaymentMethod}
+          onBuy={handleBuySale}
+          buyPending={saleMutation.isPending}
+          viewingDate={viewingDate}
+          setViewingDate={setViewingDate}
+          viewingPhone={viewingPhone}
+          setViewingPhone={setViewingPhone}
+          viewingNote={viewingNote}
+          setViewingNote={setViewingNote}
+          onViewingBook={handleViewingBook}
+          viewingPending={viewingMutation.isPending}
+          canBuy={canBuy}
+          canScheduleViewing={canScheduleViewing}
+          forcedMode={forcedSaleMode}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pad-top-nav">
@@ -413,30 +449,12 @@ const CarDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left: Car info */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Image */}
-            <div className="card overflow-hidden">
-              <div className="relative h-80 md:h-96 bg-gray-100">
-                <img
-                  src={car.imagePath || CAR_PLACEHOLDER}
-                  alt={`${car.model?.brand?.name} ${car.model?.name}`}
-                  className="w-full h-full object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).src = CAR_PLACEHOLDER; }}
-                />
-                <div className="absolute top-4 left-4">
-                  <span className="badge bg-navy text-white">{car.model?.brand?.name}</span>
-                </div>
-                <div className="absolute top-4 right-4 flex items-center gap-1 bg-white/90 rounded-full px-3 py-1">
-                  <Star className="w-4 h-4 text-primary fill-primary" />
-                  <span className="text-sm font-semibold">
-                    {car.reviewCount != null && car.reviewCount > 0 && car.averageRating != null
-                      ? car.averageRating.toFixed(1)
-                      : '—'}
-                  </span>
-                  {car.reviewCount != null && car.reviewCount > 0 && (
-                    <span className="text-xs text-gray-500">({car.reviewCount})</span>
-                  )}
-                </div>
-              </div>
+            {/* Gallery */}
+            <div className="card overflow-hidden p-3">
+              <CarGallery
+                car={car}
+                title={`${car.model?.brand?.name} ${car.model?.name}`}
+              />
             </div>
 
             {/* Car name & price */}
@@ -660,7 +678,7 @@ const CarDetail = () => {
               {isAuthenticated && !profileLoading && profile?.kycStatus !== 'APPROVED' && (
                 <div className="mb-5 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm">
                   <p className="font-medium mb-1">Cần xác minh GPLX</p>
-                  <p className="text-gray-700 mb-2">Tải CCCD và GPLX để đặt xe.</p>
+                  <p className="text-gray-700 mb-2">Tải CCCD và GPLX để thuê xe.</p>
                   <Link to="/dashboard/kyc" className="text-primary font-semibold hover:underline">
                     Đi tới xác minh →
                   </Link>
@@ -1077,13 +1095,6 @@ const CarDetail = () => {
                 <p className="text-sm text-gray-500">
                   Giá niêm yết <span className="font-bold text-amber-700">{formatCurrency(car.salePrice!)}</span>
                 </p>
-                {isAuthenticated && !profileLoading && profile?.kycStatus !== 'APPROVED' && (
-                  <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm">
-                    <Link to="/dashboard/kyc" className="text-primary font-semibold hover:underline">
-                      Xác minh GPLX để đặt mua →
-                    </Link>
-                  </div>
-                )}
                 <label className="block text-sm font-medium text-gray-700 mb-2">Thanh toán</label>
                 <select
                   value={salePaymentMethod}

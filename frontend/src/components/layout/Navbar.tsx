@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, ChevronDown, User, LogOut, LayoutDashboard } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { getProfileApi } from '../../api/users';
 import { hasValidAdminSession } from '../../utils/adminSession';
 import BrandLogo from '../ui/BrandLogo';
 
@@ -9,7 +10,9 @@ const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
-    const { isAuthenticated, isAdmin, email, logout } = useAuthStore();
+    const profileMenuRef = useRef<HTMLDivElement>(null);
+    const { isAuthenticated, isAdmin, email, fullName, setFullName, logout } = useAuthStore();
+    const displayName = fullName?.trim() || email || '';
     const adminPortalActive = hasValidAdminSession();
     const navigate = useNavigate();
     const location = useLocation();
@@ -17,10 +20,36 @@ const Navbar = () => {
     const isHomePage = location.pathname === '/';
 
     useEffect(() => {
+        if (!isAuthenticated || fullName) return;
+        let cancelled = false;
+        getProfileApi()
+            .then((p) => {
+                if (!cancelled && p.fullName?.trim()) setFullName(p.fullName.trim());
+            })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, [isAuthenticated, fullName, setFullName]);
+
+    useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
+
+    useEffect(() => {
+        setProfileOpen(false);
+    }, [location.pathname]);
+
+    useEffect(() => {
+        if (!profileOpen) return;
+        const onPointerDown = (e: MouseEvent) => {
+            if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+                setProfileOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', onPointerDown);
+        return () => document.removeEventListener('mousedown', onPointerDown);
+    }, [profileOpen]);
 
     const handleLogout = () => {
         logout();
@@ -77,7 +106,7 @@ const Navbar = () => {
                     {/* Desktop auth */}
                     <div className="hidden md:flex items-center gap-4">
                         {isAuthenticated ? (
-                            <div className="relative">
+                            <div className="relative" ref={profileMenuRef}>
                                 <button
                                     type="button"
                                     onClick={() => setProfileOpen(!profileOpen)}
@@ -93,10 +122,12 @@ const Navbar = () => {
 
                                 {profileOpen && (
                                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
-                                        {email ? (
-                                            <p className="px-4 py-2 text-xs text-gray-500 border-b border-gray-100 truncate" title={email}>
-                                                {email}
-                                            </p>
+                                        {displayName ? (
+                                            <div className="px-4 py-2.5 border-b border-gray-100">
+                                                <p className="text-sm font-semibold text-navy truncate" title={displayName}>
+                                                    {displayName}
+                                                </p>
+                                            </div>
                                         ) : null}
                                         {isAdmin ? (
                                             <Link
@@ -108,24 +139,14 @@ const Navbar = () => {
                                                 Admin Dashboard
                                             </Link>
                                         ) : (
-                                            <>
-                                                <Link
-                                                    to="/dashboard"
-                                                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
-                                                    onClick={() => setProfileOpen(false)}
-                                                >
-                                                    <LayoutDashboard className="w-4 h-4" />
-                                                    Dashboard
-                                                </Link>
-                                                <Link
-                                                    to="/dashboard/profile"
-                                                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
-                                                    onClick={() => setProfileOpen(false)}
-                                                >
-                                                    <User className="w-4 h-4" />
-                                                    Hồ sơ của tôi
-                                                </Link>
-                                            </>
+                                            <Link
+                                                to="/dashboard/profile"
+                                                className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
+                                                onClick={() => setProfileOpen(false)}
+                                            >
+                                                <User className="w-4 h-4" />
+                                                Hồ sơ của tôi
+                                            </Link>
                                         )}
                                         <hr className="my-1 border-gray-100" />
                                         <button
@@ -193,11 +214,11 @@ const Navbar = () => {
                         {isAuthenticated ? (
                             <>
                                 <Link
-                                    to={isAdmin ? '/admin' : '/dashboard'}
+                                    to={isAdmin ? '/admin' : '/dashboard/profile'}
                                     className="btn-outline !py-2 text-center"
                                     onClick={() => setIsOpen(false)}
                                 >
-                                    Dashboard
+                                    {isAdmin ? 'Admin' : 'Hồ sơ của tôi'}
                                 </Link>
                                 <button onClick={handleLogout} className="btn-secondary !py-2 text-center">
                                     Đăng xuất

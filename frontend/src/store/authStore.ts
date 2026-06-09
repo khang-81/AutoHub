@@ -19,11 +19,12 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       userId: null,
       email: null,
+      fullName: null,
       roles: [],
       isAuthenticated: false,
       isAdmin: false,
 
-      login: (token: string, userId: number, email: string, roles: string[]) => {
+      login: (token: string, userId: number, email: string, roles: string[], fullName?: string | null) => {
         try {
           localStorage.setItem(TOKEN_STORAGE_KEY, token);
         } catch {
@@ -33,10 +34,15 @@ export const useAuthStore = create<AuthState>()(
           token,
           userId,
           email,
+          fullName: fullName?.trim() || null,
           roles,
           isAuthenticated: true,
           isAdmin: roles.some((r) => r.toLowerCase().includes('admin')),
         });
+      },
+
+      setFullName: (fullName: string | null) => {
+        set({ fullName: fullName?.trim() || null });
       },
 
       logout: () => {
@@ -51,6 +57,7 @@ export const useAuthStore = create<AuthState>()(
           token: null,
           userId: null,
           email: null,
+          fullName: null,
           roles: [],
           isAuthenticated: false,
           isAdmin: false,
