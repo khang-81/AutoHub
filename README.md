@@ -40,24 +40,18 @@ cp docker-compose.env.example .env
 docker compose up --build -d
 ```
 
-- **Frontend:** http://localhost:3000
-- **Backend:** http://localhost:8088
+- **Web:** http://localhost:3000
+- **API:** http://localhost:8088
 
-
-## Open:
-
-- Web: `http://localhost:3000`
-- API: `http://localhost:8081`
-
-## Default Accounts 
+## Default Accounts
 
 - Admin: `admin@autohub.id.vn` / `admin123@`
 - User: `user@autohub.id.vn` / `admin123@`
 
-## Local Development (Without Docker)
-
-**Backend:**
+## Regenerate car seed (optional)
 
 ```bash
-bash deploy/scripts/backup-db.sh
+python scripts/build_car_catalog_35.py
+node scripts/gen-car-seed.js
+python scripts/patch_autohub_schema_cars.py
 ```

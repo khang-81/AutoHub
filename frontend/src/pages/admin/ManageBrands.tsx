@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, Tag, Cpu, ChevronDown } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -13,7 +13,9 @@ import {
 import { useToast } from '../../components/ui/Toast';
 import Modal from '../../components/ui/Modal';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import type { Brand, CarModel } from '../../types';
+import { getAllCarsApi } from '../../api/cars';
+import type { Brand, Car, CarModel } from '../../types';
+import { filterModelsWithCars } from '../../utils/catalogFilters';
 
 const nameSchema = z.object({ name: z.string().min(1, 'Tên không được trống') });
 const modelSchema = z.object({
@@ -41,6 +43,13 @@ const ManageBrands = () => {
 
   const { data: brands = [], isLoading: brandsLoading } = useQuery<Brand[]>({ queryKey: ['brands'], queryFn: getAllBrandsApi });
   const { data: models = [], isLoading: modelsLoading } = useQuery<CarModel[]>({ queryKey: ['models'], queryFn: getAllModelsApi });
+  const { data: cars = [] } = useQuery<Car[]>({ queryKey: ['cars'], queryFn: getAllCarsApi });
+
+  const modelsWithCars = useMemo(() => filterModelsWithCars(models, cars), [models, cars]);
+  const brandsWithCars = useMemo(() => {
+    const brandIds = new Set(modelsWithCars.map((m) => m.brand?.id).filter((id): id is number => id != null));
+    return brands.filter((b) => brandIds.has(b.id));
+  }, [brands, modelsWithCars]);
 
   const brandForm = useForm<NameForm>({ resolver: zodResolver(nameSchema) });
   const modelForm = useForm<ModelForm>({ resolver: zodResolver(modelSchema) });
@@ -101,7 +110,7 @@ const ManageBrands = () => {
         <div>
           <h1 className="font-heading font-bold text-2xl text-navy">Thương hiệu & Model</h1>
           <p className="text-gray-400 text-sm mt-1">
-            Mỗi thương hiệu mở rộng để xem và quản lý model — {brands.length} thương hiệu · {models.length} model
+            Chỉ hiển thị hãng/model đã có xe trong kho — {brandsWithCars.length} thương hiệu · {modelsWithCars.length} model
           </p>
         </div>
         <button
@@ -116,9 +125,9 @@ const ManageBrands = () => {
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {loading ? <LoadingSpinner /> : (
           <div className="divide-y divide-gray-100">
-            {brands.map((brand) => {
+            {brandsWithCars.map((brand) => {
               const open = expandedBrandIds.has(brand.id);
-              const brandModels = models.filter((m) => m.brand?.id === brand.id);
+              const brandModels = modelsWithCars.filter((m) => m.brand?.id === brand.id);
               return (
                 <div key={brand.id}>
                   <div className="flex items-center justify-between px-4 sm:px-5 py-3 gap-2 bg-gray-50/50">
@@ -199,7 +208,7 @@ const ManageBrands = () => {
                 </div>
               );
             })}
-            {brands.length === 0 && <p className="text-center text-gray-400 py-12">Chưa có thương hiệu</p>}
+            {brandsWithCars.length === 0 && <p className="text-center text-gray-400 py-12">Chưa có thương hiệu có xe trong kho</p>}
           </div>
         )}
       </div>

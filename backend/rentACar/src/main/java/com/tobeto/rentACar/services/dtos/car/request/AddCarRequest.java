@@ -1,10 +1,13 @@
 package com.tobeto.rentACar.services.dtos.car.request;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.validator.constraints.Length;
+
+import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -58,5 +61,9 @@ public class AddCarRequest {
 
     /** GASOLINE | DIESEL | HYBRID | ELECTRIC */
     private String fuelType;
+
+    /** Gallery chi tiết: 5 ảnh (3 EXTERIOR + 2 INTERIOR) — admin bắt buộc gửi đủ. */
+    @Valid
+    private List<CarImageRequest> images;
 
 }

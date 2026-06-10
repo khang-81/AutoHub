@@ -44,6 +44,17 @@ public class FileStorageService {
         return "/files/" + relative;
     }
 
+    public String storeCarImage(MultipartFile file, Integer carId) throws IOException {
+        assertKycImageExtension(file);
+        String ext = extension(file.getOriginalFilename());
+        String folder = carId != null ? "cars/car_" + carId : "cars/uploads";
+        String relative = Paths.get(folder, UUID.randomUUID() + ext).toString().replace('\\', '/');
+        Path dest = Paths.get(uploadRoot).resolve(relative).normalize();
+        Files.createDirectories(dest.getParent());
+        file.transferTo(dest.toFile());
+        return relative;
+    }
+
     public String storeRentalDamageEvidence(MultipartFile file) throws IOException {
         String ext = extension(file.getOriginalFilename());
         String relative = Paths.get("rental-damage", UUID.randomUUID() + ext).toString().replace('\\', '/');

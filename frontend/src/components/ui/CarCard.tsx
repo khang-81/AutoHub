@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
-import { Calendar, Gauge, Hash, Star, ArrowUpRight, KeyRound, Tag, Cog } from 'lucide-react';
+import { Calendar, Gauge, Hash, Star, ArrowUpRight, KeyRound, Tag } from 'lucide-react';
 import type { Car } from '../../types';
-import { formatCurrency, CAR_PLACEHOLDER } from '../../utils/helpers';
+import { formatCurrency, CAR_PLACEHOLDER, resolveMediaUrl } from '../../utils/helpers';
 import { formatPriceMillions, getTransmissionLabel, isSaleCarSold } from '../../utils/saleCarHelpers';
 
 /** Ngữ cảnh danh sách: thuê và mua tách giao diện; `all` dùng trang chủ / mixed. */
@@ -44,8 +44,9 @@ function resolveDisplay(car: Car, variant: CarCardListingVariant) {
       showRentPrice: false,
       showSalePrice: saleCapable && (car.salePrice ?? 0) > 0,
       cta: 'Xem chi tiết',
-      overlayClass: 'bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-80',
-      pricePanelClass: 'from-white to-white ring-gray-100',
+      overlayClass:
+        'bg-gradient-to-t from-navy-900/90 via-navy-900/25 to-navy-900/5 opacity-[0.92]',
+      pricePanelClass: 'from-primary/10 to-navy-50/90 ring-primary/20',
     };
   }
   // all — theo loại xe thật: chỉ thuê / chỉ bán / cả hai
@@ -65,89 +66,24 @@ function resolveDisplay(car: Car, variant: CarCardListingVariant) {
 const CarCard = ({ car, variant = 'all' }: CarCardProps) => {
   const d = resolveDisplay(car, variant);
   const { saleOk } = listingFlags(car);
-  const isSaleCard = d.mode === 'sale';
-
-  if (isSaleCard) {
-    const trans = getTransmissionLabel(car.transmission);
-    const sold = isSaleCarSold(car);
-    const cardBody = (
-      <div className={`flex flex-col sm:flex-row ${sold ? 'cursor-not-allowed' : ''}`}>
-        <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden bg-gray-100 sm:aspect-auto sm:h-36 sm:w-44 md:h-40 md:w-48">
-          <img
-            src={car.imagePath || CAR_PLACEHOLDER}
-            alt=""
-            className={`h-full w-full object-cover transition duration-500 ${sold ? 'opacity-60 grayscale-[0.35]' : 'group-hover:scale-105'}`}
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = CAR_PLACEHOLDER;
-            }}
-          />
-          {sold ? (
-            <span className="absolute left-2 top-2 rounded bg-gray-800 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
-              Đã bán
-            </span>
-          ) : (
-            car.kilometer < 100 && (
-              <span className="absolute left-2 top-2 rounded bg-orange-600 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
-                Xe mới
-              </span>
-            )
-          )}
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col justify-between p-4">
-          <div>
-            <h3 className={`font-heading text-base font-bold leading-snug md:text-lg ${sold ? 'text-gray-500' : 'text-navy'}`}>
-              {car.modelYear} — {car.model?.brand?.name} {car.model?.name}
-            </h3>
-            <p className="mt-1 line-clamp-1 text-sm text-gray-500">
-              {car.color?.name}
-              {car.plate ? ` · ${car.plate}` : ''}
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-600">
-              {car.kilometer > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1">
-                  <Gauge className="h-3 w-3" />
-                  {(car.kilometer / 1000).toFixed(0)}.000 km
-                </span>
-              )}
-              {trans !== '—' && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1">
-                  <Cog className="h-3 w-3" />
-                  {trans}
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="mt-3 flex items-end justify-between gap-2 border-t border-gray-100 pt-3">
-            {d.showSalePrice && (
-              <span className={`text-xl font-extrabold md:text-2xl ${sold ? 'text-gray-400 line-through' : 'text-red-600'}`}>
-                {formatPriceMillions(car.salePrice!)}
-              </span>
-            )}
-            <span className={`text-sm font-semibold ${sold ? 'text-gray-500' : 'text-orange-700 group-hover:underline'}`}>
-              {sold ? 'Đã bán' : `${d.cta} →`}
-            </span>
-          </div>
-        </div>
-      </div>
-    );
-    return (
-      <article
-        className={`overflow-hidden rounded-xl border bg-white shadow-sm ${
-          sold ? 'border-gray-200 opacity-90' : 'border-gray-200 transition hover:border-orange-200 hover:shadow-md group'
-        }`}
-      >
-        {sold ? cardBody : <Link to={`/cars/${car.id}`}>{cardBody}</Link>}
-      </article>
-    );
-  }
+  const sold = d.mode === 'sale' && isSaleCarSold(car);
+  const ctaClass = 'bg-navy hover:bg-primary hover:text-navy';
 
   return (
-    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100/80 bg-white shadow-sm ring-1 ring-black/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-xl hover:ring-primary/10">
+    <article
+      className={`group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100/80 bg-white shadow-sm ring-1 ring-black/[0.03] transition-all duration-300 ${
+        sold
+          ? 'opacity-90'
+          : 'hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-xl hover:ring-primary/10'
+      }`}
+    >
       <div className="relative aspect-[16/10] overflow-hidden bg-gradient-to-br from-navy-100 to-gray-100">
         <img
-          src={car.imagePath || CAR_PLACEHOLDER}
+          src={resolveMediaUrl(car.imagePath) || CAR_PLACEHOLDER}
           alt={`${car.model?.brand?.name} ${car.model?.name}`}
-          className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+          className={`h-full w-full object-cover transition-transform duration-700 ease-out ${
+            sold ? 'opacity-60 grayscale-[0.35]' : 'group-hover:scale-[1.04]'
+          }`}
           onError={(e) => {
             (e.target as HTMLImageElement).src = CAR_PLACEHOLDER;
           }}
@@ -168,8 +104,8 @@ const CarCard = ({ car, variant = 'all' }: CarCardProps) => {
                 car.saleStatus === 'SOLD'
                   ? 'bg-gray-600/95'
                   : saleOk
-                    ? 'bg-orange-600/95'
-                    : 'bg-amber-800/90'
+                    ? 'bg-navy/95'
+                    : 'bg-navy-400/95'
               }`}
             >
               {car.saleStatus === 'SOLD' ? 'Đã bán' : 'Niêm yết bán'}
@@ -240,23 +176,29 @@ const CarCard = ({ car, variant = 'all' }: CarCardProps) => {
               className={`flex items-end justify-between gap-2 ${d.showRentPrice ? 'border-t border-navy-100/80 pt-2' : ''}`}
             >
               <span className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-                <Tag className="h-3 w-3 text-orange-600" />
+                <Tag className="h-3 w-3 text-primary" />
                 Giá mua
               </span>
-              <span className="font-heading text-lg font-bold text-orange-700 md:text-xl">
-                {formatCurrency(car.salePrice!)}
+              <span className={`font-heading text-lg font-bold md:text-xl ${sold ? 'text-gray-400 line-through' : 'text-primary'}`}>
+                {d.mode === 'sale' ? formatPriceMillions(car.salePrice!) : formatCurrency(car.salePrice!)}
               </span>
             </div>
           )}
         </div>
 
-        <Link
-          to={`/cars/${car.id}`}
-          className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl bg-navy py-3 text-sm font-semibold text-white shadow-md transition-all hover:bg-navy-400 hover:shadow-lg"
-        >
-          {d.cta}
-          <ArrowUpRight className="h-4 w-4 opacity-80 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-        </Link>
+        {sold ? (
+          <span className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-200 py-3 text-sm font-semibold text-gray-500">
+            Đã bán
+          </span>
+        ) : (
+          <Link
+            to={`/cars/${car.id}`}
+            className={`mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg ${ctaClass}`}
+          >
+            {d.cta}
+            <ArrowUpRight className="h-4 w-4 opacity-80 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </Link>
+        )}
       </div>
     </article>
   );
@@ -274,7 +216,7 @@ export function CarListRow({ car, variant = 'all' }: CarCardProps) {
       <div className={`flex gap-4 md:gap-5 ${sold ? 'cursor-not-allowed' : ''}`}>
         <div className="relative h-28 w-40 shrink-0 overflow-hidden rounded-lg bg-gray-100 sm:h-32 sm:w-48">
           <img
-            src={car.imagePath || CAR_PLACEHOLDER}
+            src={resolveMediaUrl(car.imagePath) || CAR_PLACEHOLDER}
             alt=""
             className={`h-full w-full object-cover ${sold ? 'opacity-60 grayscale-[0.35]' : 'transition duration-500 group-hover:scale-105'}`}
             onError={(e) => {
@@ -302,11 +244,11 @@ export function CarListRow({ car, variant = 'all' }: CarCardProps) {
         </div>
         <div className="hidden shrink-0 flex-col items-end justify-center gap-1 self-center sm:flex">
           {d.showSalePrice && (
-            <span className={`text-2xl font-extrabold ${sold ? 'text-gray-400 line-through' : 'text-red-600'}`}>
+            <span className={`text-2xl font-extrabold ${sold ? 'text-gray-400 line-through' : 'text-primary'}`}>
               {formatPriceMillions(car.salePrice!)}
             </span>
           )}
-          <span className={`text-sm font-semibold ${sold ? 'text-gray-500' : 'text-orange-700'}`}>
+          <span className={`text-sm font-semibold ${sold ? 'text-gray-500' : 'text-navy'}`}>
             {sold ? 'Đã bán' : 'Chi tiết →'}
           </span>
         </div>
@@ -315,7 +257,7 @@ export function CarListRow({ car, variant = 'all' }: CarCardProps) {
     return (
       <div
         className={`rounded-xl border bg-white p-3 shadow-sm md:p-4 ${
-          sold ? 'border-gray-200 opacity-90' : 'border-gray-200 transition hover:border-orange-200 hover:shadow-md group'
+          sold ? 'border-gray-200 opacity-90' : 'border-gray-200 transition hover:border-primary/30 hover:shadow-md group'
         }`}
       >
         {sold ? rowBody : (
@@ -334,7 +276,7 @@ export function CarListRow({ car, variant = 'all' }: CarCardProps) {
     >
       <div className="relative h-28 w-36 shrink-0 overflow-hidden rounded-xl bg-gray-100 sm:h-32 sm:w-44">
         <img
-          src={car.imagePath || CAR_PLACEHOLDER}
+          src={resolveMediaUrl(car.imagePath) || CAR_PLACEHOLDER}
           alt=""
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           onError={(e) => {
@@ -353,7 +295,7 @@ export function CarListRow({ car, variant = 'all' }: CarCardProps) {
             </span>
           )}
           {d.mode === 'all' && saleCapable && (
-            <span className="rounded-md bg-orange-600 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+            <span className="rounded-md bg-navy px-2 py-0.5 text-[10px] font-bold uppercase text-white">
               Bán
             </span>
           )}
@@ -380,19 +322,13 @@ export function CarListRow({ car, variant = 'all' }: CarCardProps) {
           {d.showSalePrice && (
             <span>
               <span className="text-gray-400">Mua </span>
-              <span className="font-semibold text-orange-700">{formatCurrency(car.salePrice!)}</span>
+              <span className="font-semibold text-primary">{formatCurrency(car.salePrice!)}</span>
             </span>
           )}
         </div>
       </div>
       <div className="hidden shrink-0 items-center self-center sm:flex">
-        <span
-          className={`rounded-full px-4 py-2 text-sm font-semibold text-white transition-colors ${
-            d.showSalePrice && !d.showRentPrice
-              ? 'bg-gradient-to-r from-amber-700 to-orange-700 group-hover:from-amber-600 group-hover:to-orange-600'
-              : 'bg-navy group-hover:bg-primary group-hover:text-navy'
-          }`}
-        >
+        <span className="rounded-full bg-navy px-4 py-2 text-sm font-semibold text-white transition-colors group-hover:bg-primary group-hover:text-navy">
           Chi tiết
         </span>
       </div>

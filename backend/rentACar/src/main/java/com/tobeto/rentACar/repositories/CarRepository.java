@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface CarRepository extends JpaRepository<Car, Integer>, JpaSpecificationExecutor<Car> {
 
     boolean existsCarByPlate(String plate);
+
+    boolean existsByPlateAndIdNot(String plate, int id);
 }

@@ -109,21 +109,6 @@ GO
 
 fs.writeFileSync(path.join(__dirname, '_generated_cars_block.sql'), carsBlock, 'utf8');
 
-const seedImagesSql = `-- Gallery — sinh từ car-catalog.json
-DELETE FROM [dbo].[car_images];
-GO
-
-INSERT INTO [dbo].[car_images] ([car_id], [sort_order], [image_url], [image_type])
-SELECT c.[id], src.[sort_order], src.[image_url], src.[image_type]
-FROM (
-VALUES
-${imageValues}
-) AS src([plate], [sort_order], [image_url], [image_type])
-JOIN [dbo].[cars] c ON c.[plate] = src.[plate];
-GO
-`;
-fs.writeFileSync(path.join(__dirname, 'seed-car-images.sql'), seedImagesSql, 'utf8');
-
 console.log(
   `Generated ${rows.length} cars (${EXPECTED_MODELS} thuê + ${EXPECTED_MODELS} bán), ${imageRows.length} gallery rows`
 );

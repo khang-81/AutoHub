@@ -1,5 +1,7 @@
 package com.tobeto.rentACar.controllers;
 
+import com.tobeto.rentACar.core.exceptions.types.BusinessException;
+import com.tobeto.rentACar.core.services.FileStorageService;
 import com.tobeto.rentACar.core.utilities.results.Result;
 import com.tobeto.rentACar.services.abstracts.CarService;
 import com.tobeto.rentACar.services.dtos.car.request.AddCarRequest;
@@ -11,11 +13,15 @@ import com.tobeto.rentACar.services.dtos.car.response.PagedCarsResponse;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/cars")
@@ -23,6 +29,7 @@ import java.util.List;
 @CrossOrigin
 public class CarsController {
     private final CarService carService;
+    private final FileStorageService fileStorageService;
 
     @PreAuthorize("hasRole('admin')")
     @PostMapping("/add")
@@ -80,5 +87,18 @@ public class CarsController {
     @GetMapping("/getById/{id}")
     public GetCarByIdResponse getById(@PathVariable int id) {
         return carService.getById(id);
+    }
+
+    /** Admin upload ảnh xe — trả URL `/files/...` dùng trong gallery hoặc imagePath. */
+    @PreAuthorize("hasRole('admin')")
+    @PostMapping(value = "/admin/upload-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Map<String, String> uploadImage(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(required = false) Integer carId) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("Vui lòng chọn ảnh.");
+        }
+        String relative = fileStorageService.storeCarImage(file, carId);
+        return Map.of("url", fileStorageService.publicFileUrl(relative));
     }
 }

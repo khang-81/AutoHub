@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Car, CarImageItem } from '../../types';
-import { CAR_PLACEHOLDER } from '../../utils/helpers';
+import { CAR_PLACEHOLDER, resolveMediaUrl } from '../../utils/helpers';
 
 export function getCarGallery(car: Car): CarImageItem[] {
   if (car.images?.length) {
@@ -32,7 +32,7 @@ const CarGallery = ({ car, title, className = '' }: CarGalleryProps) => {
     <div className={`sale-gallery ${className}`}>
       <div className="relative">
         <img
-          src={current?.imageUrl || CAR_PLACEHOLDER}
+          src={resolveMediaUrl(current?.imageUrl || '') || CAR_PLACEHOLDER}
           alt={title ?? 'Ảnh xe'}
           className="sale-gallery__img"
           onError={(e) => {
@@ -61,7 +61,7 @@ const CarGallery = ({ car, title, className = '' }: CarGalleryProps) => {
               title={typeLabel[img.imageType] ?? img.imageType}
             >
               <img
-                src={img.imageUrl}
+                src={resolveMediaUrl(img.imageUrl)}
                 alt=""
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = CAR_PLACEHOLDER;

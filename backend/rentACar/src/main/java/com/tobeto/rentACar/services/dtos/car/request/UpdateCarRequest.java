@@ -1,10 +1,13 @@
 package com.tobeto.rentACar.services.dtos.car.request;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.validator.constraints.Length;
+
+import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -56,5 +59,8 @@ public class UpdateCarRequest {
     private String transmission;
 
     private String fuelType;
+
+    @Valid
+    private List<CarImageRequest> images;
 
 }

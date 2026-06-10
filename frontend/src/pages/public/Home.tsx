@@ -11,6 +11,7 @@ import { getAllBrandsApi } from '../../api/brands';
 import CarCard from '../../components/ui/CarCard';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import type { Car as CarType, Brand } from '../../types';
+import { filterBrandsWithCars } from '../../utils/catalogFilters';
 
 const heroImages = [
   'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1920&q=85',
@@ -84,6 +85,11 @@ const Home = () => {
     queryFn: getAllBrandsApi,
   });
 
+  const brandsWithCars = useMemo(
+    () => filterBrandsWithCars(brands, cars, 'rent'),
+    [brands, cars]
+  );
+
   const featuredCars = useMemo(() => {
     return cars
       .filter((c) => {
@@ -137,10 +143,14 @@ const Home = () => {
                 onChange={(e) => setSearchBrand(e.target.value)}
                 className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary bg-gray-50"
               >
-                <option value="" hidden={!searchBrand}>
-                  Tất cả thương hiệu
-                </option>
-                {brands.map((b) => (
+                {searchBrand ? (
+                  <option value="">Tất cả thương hiệu</option>
+                ) : (
+                  <option value="" hidden>
+                    Tất cả thương hiệu
+                  </option>
+                )}
+                {brandsWithCars.map((b) => (
                   <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
               </select>
