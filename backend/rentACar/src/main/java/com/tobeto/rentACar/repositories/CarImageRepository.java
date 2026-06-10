@@ -8,4 +8,6 @@ import java.util.List;
 public interface CarImageRepository extends JpaRepository<CarImage, Integer> {
 
     List<CarImage> findByCar_IdOrderBySortOrderAsc(int carId);
+
+    void deleteByCar_Id(int carId);
 }

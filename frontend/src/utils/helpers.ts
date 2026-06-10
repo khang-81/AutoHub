@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { format, differenceInDays, parseISO } from 'date-fns';
+import { API_BASE_URL } from '../config/api';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -140,6 +141,16 @@ export function getApiErrorMessage(err: unknown, fallback: string): string {
 }
 
 export const CAR_PLACEHOLDER = 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=800&q=80';
+
+/** URL hiển thị ảnh: https trực tiếp hoặc `/files/...` trên cùng origin API. */
+export function resolveMediaUrl(url: string): string {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  const base = API_BASE_URL.replace(/\/+$/, '');
+  const path = url.startsWith('/') ? url : `/${url}`;
+  if (!base) return path;
+  return `${base}${path}`;
+}
 
 /** Badge trạng thái đơn thuê trên lịch sử / dashboard khách. */
 export function getRentalBadgeDisplay(rental: {

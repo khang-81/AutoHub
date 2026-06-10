@@ -3,6 +3,7 @@ package com.tobeto.rentACar.services.rules;
 import com.tobeto.rentACar.core.exceptions.types.BusinessException;
 import com.tobeto.rentACar.core.utilities.messages.MessageService;
 import com.tobeto.rentACar.repositories.CarRepository;
+import com.tobeto.rentACar.services.constants.Messages;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -46,5 +47,20 @@ public class CarBusinessRuleTest {
         assertThrows(BusinessException.class, () -> carBusinessRule.existsCarByPlate(plate));
         verify(carRepository).existsCarByPlate(plate);
 
+    }
+
+    @Test
+    void updateShouldAllowSamePlateForSameCar() {
+        String plate = "51R0001";
+        when(carRepository.existsByPlateAndIdNot(plate, 1)).thenReturn(false);
+        assertDoesNotThrow(() -> carBusinessRule.assertPlateNotUsedByOtherCar(1, plate));
+    }
+
+    @Test
+    void updateShouldRejectPlateUsedByAnotherCar() {
+        String plate = "51R0002";
+        when(carRepository.existsByPlateAndIdNot(plate, 1)).thenReturn(true);
+        when(messageService.getMessage(Messages.Car.getSameCarPlateMessage)).thenReturn("duplicate");
+        assertThrows(BusinessException.class, () -> carBusinessRule.assertPlateNotUsedByOtherCar(1, plate));
     }
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, Search, Car } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -8,7 +8,8 @@ import { useLocation, useSearchParams } from 'react-router-dom';
 import ManageRentals from './ManageRentals';
 import ManageSaleOrders from './ManageSaleOrders';
 import ManageKyc from './ManageKyc';
-import { getAllCarsApi, addCarApi, updateCarApi, deleteCarApi } from '../../api/cars';
+import { getAllCarsApi, getCarByIdApi, addCarApi, updateCarApi, deleteCarApi } from '../../api/cars';
+import CarGalleryEditor, { DEFAULT_CAR_GALLERY } from '../../components/admin/CarGalleryEditor';
 import { getAllRentalsApi } from '../../api/rentals';
 import { getAllModelsApi } from '../../api/models';
 import { getAllColorsApi } from '../../api/colors';
@@ -17,7 +18,8 @@ import Modal from '../../components/ui/Modal';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { formatCurrency, CAR_PLACEHOLDER } from '../../utils/helpers';
 import { MIN_MODEL_YEAR, getMaxModelYear } from '../../config/vehicleYears';
-import type { Car as CarType, CarModel, Color, Rental } from '../../types';
+import { filterModelsWithCars } from '../../utils/catalogFilters';
+import type { Car as CarType, CarImageItem, CarModel, Color, Rental } from '../../types';
 
 const schema = z
   .object({
@@ -30,7 +32,6 @@ const schema = z
     modelId: z.number().min(1, 'Chọn model'),
     colorId: z.number().min(1, 'Chọn màu'),
     minFindeksRate: z.number().min(0),
-    imagePath: z.string().min(1, 'Nhập URL ảnh'),
     seats: z.number().int().min(2).max(16).optional().nullable(),
     transmission: z.enum(['', 'AUTO', 'MANUAL']).optional(),
     fuelType: z.enum(['', 'GASOLINE', 'DIESEL', 'HYBRID', 'ELECTRIC']).optional(),
@@ -59,12 +60,26 @@ const ManageCars = () => {
   const [editCar, setEditCar] = useState<CarType | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
+  const [gallery, setGallery] = useState<CarImageItem[]>(DEFAULT_CAR_GALLERY);
+  const [galleryError, setGalleryError] = useState<string | null>(null);
+  const [loadingEdit, setLoadingEdit] = useState(false);
   const isSaleModule = location.pathname.startsWith('/admin/cars/sale');
 
   const { data: cars = [], isLoading } = useQuery<CarType[]>({ queryKey: ['cars'], queryFn: getAllCarsApi });
   const { data: rentals = [] } = useQuery<Rental[]>({ queryKey: ['rentals-for-cars'], queryFn: getAllRentalsApi });
   const { data: models = [] } = useQuery<CarModel[]>({ queryKey: ['models'], queryFn: getAllModelsApi });
   const { data: colors = [] } = useQuery<Color[]>({ queryKey: ['colors'], queryFn: getAllColorsApi });
+
+  const listingMode = isSaleModule ? 'sale' : 'rent';
+  const modelsWithCars = useMemo(() => {
+    const filtered = filterModelsWithCars(models, cars, listingMode);
+    const editModelId = editCar?.model?.id;
+    if (editModelId != null && !filtered.some((m) => m.id === editModelId)) {
+      const current = models.find((m) => m.id === editModelId);
+      if (current) return [current, ...filtered];
+    }
+    return filtered;
+  }, [models, cars, listingMode, editCar]);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -86,7 +101,10 @@ const ManageCars = () => {
       setModalOpen(false);
       reset();
     },
-    onError: () => showToast('Có lỗi khi thêm xe', 'error'),
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { message?: string } } };
+      showToast(e?.response?.data?.message || 'Có lỗi khi thêm xe', 'error');
+    },
   });
 
   const updateMutation = useMutation({
@@ -98,7 +116,16 @@ const ManageCars = () => {
       setEditCar(null);
       reset();
     },
-    onError: () => showToast('Có lỗi khi cập nhật', 'error'),
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { message?: string; [key: string]: unknown } } };
+      const data = e?.response?.data;
+      const msg =
+        (typeof data?.message === 'string' && data.message) ||
+        (data && typeof data === 'object'
+          ? Object.values(data).find((v) => typeof v === 'string') as string | undefined
+          : undefined);
+      showToast(msg || 'Có lỗi khi cập nhật', 'error');
+    },
   });
 
   const deleteMutation = useMutation({
@@ -113,6 +140,8 @@ const ManageCars = () => {
 
   const openAdd = () => {
     setEditCar(null);
+    setGallery(DEFAULT_CAR_GALLERY.map((g) => ({ ...g })));
+    setGalleryError(null);
     reset({
       modelYear: 2023,
       kilometer: 0,
@@ -129,34 +158,67 @@ const ManageCars = () => {
     setModalOpen(true);
   };
 
-  const openEdit = (car: CarType) => {
+  const openEdit = async (car: CarType) => {
     setEditCar(car);
-    const lt = (car.listingType || 'RENT_ONLY').toUpperCase() as 'RENT_ONLY' | 'SALE_ONLY';
-    const trans = (car.transmission ?? '').toString().toUpperCase();
-    const fuel = (car.fuelType ?? '').toString().toUpperCase();
-    reset({
-      plate: car.plate,
-      modelYear: car.modelYear,
-      kilometer: car.kilometer,
-      dailyPrice: car.dailyPrice,
-      salePrice: car.salePrice ?? undefined,
-      listingType: lt === 'SALE_ONLY' || lt === 'RENT_ONLY' ? lt : 'RENT_ONLY',
-      modelId: car.model?.id,
-      colorId: car.color?.id,
-      minFindeksRate: car.minFindeksRate,
-      imagePath: car.imagePath,
-      seats: car.seats ?? undefined,
-      transmission: trans === 'AUTO' || trans === 'MANUAL' ? trans : '',
-      fuelType:
-        fuel === 'GASOLINE' || fuel === 'DIESEL' || fuel === 'HYBRID' || fuel === 'ELECTRIC' ? fuel : '',
-    });
+    setGalleryError(null);
+    setLoadingEdit(true);
     setModalOpen(true);
+    try {
+      const full = await getCarByIdApi(car.id);
+      const lt = (full.listingType || 'RENT_ONLY').toUpperCase() as 'RENT_ONLY' | 'SALE_ONLY';
+      const trans = (full.transmission ?? '').toString().toUpperCase();
+      const fuel = (full.fuelType ?? '').toString().toUpperCase();
+      if (full.images?.length === 5) {
+        setGallery(
+          [...full.images].sort((a, b) => a.sortOrder - b.sortOrder).map((img) => ({ ...img }))
+        );
+      } else if (full.imagePath) {
+        const seeded = DEFAULT_CAR_GALLERY.map((g) => ({ ...g }));
+        seeded[0] = { ...seeded[0], imageUrl: full.imagePath };
+        setGallery(seeded);
+      } else {
+        setGallery(DEFAULT_CAR_GALLERY.map((g) => ({ ...g })));
+      }
+      reset({
+        plate: full.plate,
+        modelYear: full.modelYear,
+        kilometer: full.kilometer,
+        dailyPrice: full.dailyPrice,
+        salePrice: full.salePrice ?? undefined,
+        listingType: lt === 'SALE_ONLY' || lt === 'RENT_ONLY' ? lt : 'RENT_ONLY',
+        modelId: full.model?.id,
+        colorId: full.color?.id,
+        minFindeksRate: full.minFindeksRate,
+        seats: full.seats ?? undefined,
+        transmission: trans === 'AUTO' || trans === 'MANUAL' ? trans : '',
+        fuelType:
+          fuel === 'GASOLINE' || fuel === 'DIESEL' || fuel === 'HYBRID' || fuel === 'ELECTRIC' ? fuel : '',
+      });
+    } catch {
+      showToast('Không tải được gallery xe', 'error');
+      setModalOpen(false);
+      setEditCar(null);
+    } finally {
+      setLoadingEdit(false);
+    }
   };
 
   const onSubmit = (data: FormData) => {
-    // Empty enum string nghĩa là "không khai báo" → gửi null cho backend.
+    const missing = gallery.find((g) => !g.imageUrl?.trim());
+    if (missing) {
+      setGalleryError('Vui lòng đủ 5 ảnh (tải lên hoặc dán URL).');
+      return;
+    }
+    setGalleryError(null);
+    const cover = gallery.find((g) => g.sortOrder === 1)?.imageUrl?.trim() || gallery[0].imageUrl.trim();
     const payload = {
       ...data,
+      imagePath: cover,
+      images: gallery.map((g) => ({
+        imageUrl: g.imageUrl.trim(),
+        imageType: String(g.imageType).toUpperCase() as 'EXTERIOR' | 'INTERIOR',
+        sortOrder: g.sortOrder,
+      })),
       transmission: data.transmission ? data.transmission : null,
       fuelType: data.fuelType ? data.fuelType : null,
       seats: data.seats ?? null,
@@ -428,10 +490,13 @@ const ManageCars = () => {
       {/* Add/Edit Modal */}
       <Modal
         isOpen={modalOpen}
-        onClose={() => { setModalOpen(false); setEditCar(null); reset(); }}
+        onClose={() => { setModalOpen(false); setEditCar(null); reset(); setGalleryError(null); }}
         title={editCar ? 'Chỉnh sửa xe' : isSaleModule ? 'Thêm xe bán' : 'Thêm xe thuê'}
         size="xl"
       >
+        {loadingEdit ? (
+          <LoadingSpinner />
+        ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -460,7 +525,7 @@ const ManageCars = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">Model *</label>
               <select {...register('modelId', { valueAsNumber: true })} className="input-field">
                 <option value={0}>Chọn model</option>
-                {models.map((m) => (
+                {modelsWithCars.map((m) => (
                   <option key={m.id} value={m.id}>{m.brand?.name} – {m.name}</option>
                 ))}
               </select>
@@ -551,11 +616,14 @@ const ManageCars = () => {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">URL ảnh xe *</label>
-            <input {...register('imagePath')} className="input-field" placeholder="https://..." />
-            {errors.imagePath && <p className="text-red-500 text-xs mt-1">{errors.imagePath.message}</p>}
-          </div>
+          <CarGalleryEditor
+            value={gallery}
+            onChange={setGallery}
+            carId={editCar?.id}
+            disabled={isSaving}
+            onUploadError={(msg) => showToast(msg, 'error')}
+          />
+          {galleryError && <p className="text-red-500 text-xs">{galleryError}</p>}
 
           <div className="flex gap-3 pt-2">
             <button type="submit" disabled={isSaving} className="btn-primary flex items-center gap-2 disabled:opacity-60">
@@ -567,6 +635,7 @@ const ManageCars = () => {
             </button>
           </div>
         </form>
+        )}
       </Modal>
 
       {/* Delete confirm */}

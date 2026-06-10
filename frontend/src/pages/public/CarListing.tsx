@@ -2,13 +2,14 @@ import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { SlidersHorizontal, Search, X, ChevronLeft, ChevronRight, LayoutGrid, List } from 'lucide-react';
-import { searchCarsApi } from '../../api/cars';
+import { getAllCarsApi, searchCarsApi } from '../../api/cars';
 import { getAllBrandsApi } from '../../api/brands';
 import { getAllColorsApi } from '../../api/colors';
 import CarCard, { CarListRow } from '../../components/ui/CarCard';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import type { Brand, Color, PagedCarsResponse } from '../../types';
+import type { Brand, Car, Color, PagedCarsResponse } from '../../types';
 import { MIN_MODEL_YEAR, getMaxModelYear } from '../../config/vehicleYears';
+import { filterBrandsWithCars, filterColorsWithCars } from '../../utils/catalogFilters';
 
 const ITEMS_PER_PAGE = 9;
 
@@ -88,6 +89,16 @@ const CarListing = () => {
 
   const { data: brands = [] } = useQuery<Brand[]>({ queryKey: ['brands'], queryFn: getAllBrandsApi });
   const { data: colors = [] } = useQuery<Color[]>({ queryKey: ['colors'], queryFn: getAllColorsApi });
+  const { data: allCars = [] } = useQuery<Car[]>({ queryKey: ['cars'], queryFn: getAllCarsApi });
+
+  const brandsWithCars = useMemo(
+    () => filterBrandsWithCars(brands, allCars, listingMode),
+    [brands, allCars, listingMode]
+  );
+  const colorsWithCars = useMemo(
+    () => filterColorsWithCars(colors, allCars, listingMode),
+    [colors, allCars, listingMode]
+  );
 
   const paginated = data?.content ?? [];
   const totalPages = data?.totalPages ?? 0;
@@ -101,6 +112,18 @@ const CarListing = () => {
     else next.delete('brand');
     setSearchParams(next, { replace: true });
   };
+
+  useEffect(() => {
+    if (brandParam && !brandsWithCars.some((b) => String(b.id) === brandParam)) {
+      setBrandFilter('');
+    }
+  }, [brandParam, brandsWithCars]);
+
+  useEffect(() => {
+    if (filters.colorId && !colorsWithCars.some((c) => String(c.id) === filters.colorId)) {
+      setFilters((prev) => ({ ...prev, colorId: '' }));
+    }
+  }, [filters.colorId, colorsWithCars]);
 
   const updateFilter = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -197,8 +220,14 @@ const CarListing = () => {
                   onChange={(e) => setBrandFilter(e.target.value)}
                   className="input-field text-sm"
                 >
-                  <option value="">Tất cả</option>
-                  {brands.map((b) => (
+                  {brandParam ? (
+                    <option value="">Tất cả</option>
+                  ) : (
+                    <option value="" hidden>
+                      Tất cả
+                    </option>
+                  )}
+                  {brandsWithCars.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.name}
                     </option>
@@ -213,8 +242,14 @@ const CarListing = () => {
                   onChange={(e) => updateFilter('colorId', e.target.value)}
                   className="input-field text-sm"
                 >
-                  <option value="">Tất cả</option>
-                  {colors.map((c) => (
+                  {filters.colorId ? (
+                    <option value="">Tất cả</option>
+                  ) : (
+                    <option value="" hidden>
+                      Tất cả
+                    </option>
+                  )}
+                  {colorsWithCars.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>

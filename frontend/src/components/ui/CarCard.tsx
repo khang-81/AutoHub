@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Calendar, Gauge, Hash, Star, ArrowUpRight, KeyRound, Tag, Cog } from 'lucide-react';
 import type { Car } from '../../types';
-import { formatCurrency, CAR_PLACEHOLDER } from '../../utils/helpers';
+import { formatCurrency, CAR_PLACEHOLDER, resolveMediaUrl } from '../../utils/helpers';
 import { formatPriceMillions, getTransmissionLabel, isSaleCarSold } from '../../utils/saleCarHelpers';
 
 /** Ngữ cảnh danh sách: thuê và mua tách giao diện; `all` dùng trang chủ / mixed. */
@@ -74,7 +74,7 @@ const CarCard = ({ car, variant = 'all' }: CarCardProps) => {
       <div className={`flex flex-col sm:flex-row ${sold ? 'cursor-not-allowed' : ''}`}>
         <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden bg-gray-100 sm:aspect-auto sm:h-36 sm:w-44 md:h-40 md:w-48">
           <img
-            src={car.imagePath || CAR_PLACEHOLDER}
+            src={resolveMediaUrl(car.imagePath) || CAR_PLACEHOLDER}
             alt=""
             className={`h-full w-full object-cover transition duration-500 ${sold ? 'opacity-60 grayscale-[0.35]' : 'group-hover:scale-105'}`}
             onError={(e) => {
@@ -145,7 +145,7 @@ const CarCard = ({ car, variant = 'all' }: CarCardProps) => {
     <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100/80 bg-white shadow-sm ring-1 ring-black/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-xl hover:ring-primary/10">
       <div className="relative aspect-[16/10] overflow-hidden bg-gradient-to-br from-navy-100 to-gray-100">
         <img
-          src={car.imagePath || CAR_PLACEHOLDER}
+          src={resolveMediaUrl(car.imagePath) || CAR_PLACEHOLDER}
           alt={`${car.model?.brand?.name} ${car.model?.name}`}
           className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
           onError={(e) => {
@@ -274,7 +274,7 @@ export function CarListRow({ car, variant = 'all' }: CarCardProps) {
       <div className={`flex gap-4 md:gap-5 ${sold ? 'cursor-not-allowed' : ''}`}>
         <div className="relative h-28 w-40 shrink-0 overflow-hidden rounded-lg bg-gray-100 sm:h-32 sm:w-48">
           <img
-            src={car.imagePath || CAR_PLACEHOLDER}
+            src={resolveMediaUrl(car.imagePath) || CAR_PLACEHOLDER}
             alt=""
             className={`h-full w-full object-cover ${sold ? 'opacity-60 grayscale-[0.35]' : 'transition duration-500 group-hover:scale-105'}`}
             onError={(e) => {
@@ -334,7 +334,7 @@ export function CarListRow({ car, variant = 'all' }: CarCardProps) {
     >
       <div className="relative h-28 w-36 shrink-0 overflow-hidden rounded-xl bg-gray-100 sm:h-32 sm:w-44">
         <img
-          src={car.imagePath || CAR_PLACEHOLDER}
+          src={resolveMediaUrl(car.imagePath) || CAR_PLACEHOLDER}
           alt=""
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           onError={(e) => {

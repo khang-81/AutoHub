@@ -7,6 +7,7 @@ import com.tobeto.rentACar.core.utilities.mappers.ModelMapperService;
 import com.tobeto.rentACar.core.utilities.results.Result;
 import com.tobeto.rentACar.core.utilities.results.SuccessResult;
 import com.tobeto.rentACar.entities.concretes.Car;
+import com.tobeto.rentACar.entities.concretes.CarImage;
 import com.tobeto.rentACar.repositories.CarImageRepository;
 import com.tobeto.rentACar.repositories.CarRepository;
 import com.tobeto.rentACar.repositories.CarSpecifications;
@@ -16,6 +17,7 @@ import com.tobeto.rentACar.repositories.SaleOrderRepository;
 import com.tobeto.rentACar.services.abstracts.CarService;
 import com.tobeto.rentACar.services.constants.Messages;
 import com.tobeto.rentACar.services.dtos.car.request.AddCarRequest;
+import com.tobeto.rentACar.services.dtos.car.request.CarImageRequest;
 import com.tobeto.rentACar.services.dtos.car.request.DeleteCarRequest;
 import com.tobeto.rentACar.services.dtos.car.request.UpdateCarRequest;
 import com.tobeto.rentACar.services.dtos.car.response.CarImageResponse;
@@ -33,8 +35,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -261,7 +265,61 @@ public class CarManager implements CarService {
         }
     }
 
+    private static void validateCarImages(List<CarImageRequest> images) {
+        if (images == null || images.isEmpty()) {
+            throw new BusinessException("Cần đủ 5 ảnh gallery (3 ngoại thất + 2 nội thất).");
+        }
+        if (images.size() != 5) {
+            throw new BusinessException("Cần đúng 5 ảnh gallery (3 ngoại + 2 nội).");
+        }
+        long exterior = images.stream()
+                .filter(i -> "EXTERIOR".equalsIgnoreCase(i.getImageType()))
+                .count();
+        long interior = images.stream()
+                .filter(i -> "INTERIOR".equalsIgnoreCase(i.getImageType()))
+                .count();
+        if (exterior != 3 || interior != 2) {
+            throw new BusinessException("Gallery phải có 3 ảnh EXTERIOR và 2 ảnh INTERIOR.");
+        }
+        for (CarImageRequest img : images) {
+            if (img.getImageUrl() == null || img.getImageUrl().isBlank()) {
+                throw new BusinessException("Mỗi ảnh gallery cần URL hoặc file đã upload.");
+            }
+            if (img.getSortOrder() == null || img.getSortOrder() < 1 || img.getSortOrder() > 5) {
+                throw new BusinessException("sortOrder gallery phải từ 1 đến 5.");
+            }
+        }
+    }
+
+    private static String resolveCoverImagePath(List<CarImageRequest> images) {
+        if (images == null || images.isEmpty()) {
+            return null;
+        }
+        return images.stream()
+                .min(Comparator.comparing(CarImageRequest::getSortOrder))
+                .map(CarImageRequest::getImageUrl)
+                .filter(url -> url != null && !url.isBlank())
+                .map(String::trim)
+                .orElse(null);
+    }
+
+    private void persistCarImages(Car car, List<CarImageRequest> images) {
+        validateCarImages(images);
+        carImageRepository.deleteByCar_Id(car.getId());
+        images.stream()
+                .sorted(Comparator.comparing(CarImageRequest::getSortOrder))
+                .forEach(req -> {
+                    CarImage row = new CarImage();
+                    row.setCar(car);
+                    row.setImageUrl(req.getImageUrl().trim());
+                    row.setSortOrder(req.getSortOrder().shortValue());
+                    row.setImageType(req.getImageType().trim().toUpperCase(Locale.ROOT));
+                    carImageRepository.save(row);
+                });
+    }
+
     @Override
+    @Transactional
     public Result add(AddCarRequest request) {
 
         //The input is converted as compatible with the database
@@ -280,12 +338,21 @@ public class CarManager implements CarService {
         applySaleStatusOnCar(car);
         normalizeAndValidateRentalSpecs(car);
 
+        String cover = resolveCoverImagePath(request.getImages());
+        if (cover != null) {
+            car.setImagePath(cover);
+        }
+
         carRepository.save(car);
+        if (request.getImages() != null && !request.getImages().isEmpty()) {
+            persistCarImages(car, request.getImages());
+        }
 
         return new SuccessResult(messageService.getMessage(Messages.Car.carAddSuccess));
     }
 
     @Override
+    @Transactional
     public Result update(UpdateCarRequest request) {
 
         //The input is converted as compatible with the database
@@ -296,11 +363,12 @@ public class CarManager implements CarService {
 
         validateListingUpdate(request);
 
-        carBusinessRule.existsCarByPlate(request.getPlate());
+        carBusinessRule.assertPlateNotUsedByOtherCar(request.getId(), request.getPlate());
         modelBusinessRule.existsModelById(request.getModelId());
         colorBusinessRule.existsColorById(request.getColorId());
 
         Car car = this.modelMapperService.forRequest().map(request, Car.class);
+        car.setVersion(existing.getVersion());
         if (ListingConstants.SALE_SOLD.equalsIgnoreCase(existing.getSaleStatus())) {
             car.setSaleStatus(ListingConstants.SALE_SOLD);
             if (car.getSalePrice() == null || car.getSalePrice() <= 0) {
@@ -313,7 +381,15 @@ public class CarManager implements CarService {
         }
         normalizeAndValidateRentalSpecs(car);
 
+        String cover = resolveCoverImagePath(request.getImages());
+        if (cover != null) {
+            car.setImagePath(cover);
+        }
+
         carRepository.save(car);
+        if (request.getImages() != null && !request.getImages().isEmpty()) {
+            persistCarImages(car, request.getImages());
+        }
 
         return new SuccessResult(messageService.getMessage(Messages.Car.carUpdateSuccess));
 

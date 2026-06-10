@@ -13,9 +13,17 @@ public class CarBusinessRule {
     private final CarRepository carRepository;
     private final MessageService messageService;
 
-    public void existsCarByPlate (String plate){
-        if (carRepository.existsCarByPlate(plate))
+    public void existsCarByPlate(String plate) {
+        if (carRepository.existsCarByPlate(plate)) {
             throw new BusinessException(messageService.getMessage(Messages.Car.getSameCarPlateMessage));
+        }
+    }
+
+    /** Khi sửa xe: cho phép giữ biển số hiện tại, chỉ chặn trùng xe khác. */
+    public void assertPlateNotUsedByOtherCar(int carId, String plate) {
+        if (carRepository.existsByPlateAndIdNot(plate, carId)) {
+            throw new BusinessException(messageService.getMessage(Messages.Car.getSameCarPlateMessage));
+        }
     }
     public void existsCarById(int id) {
         if (!carRepository.existsById(id)) {

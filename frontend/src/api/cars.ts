@@ -67,3 +67,15 @@ export const deleteCarApi = async (id: number) => {
   const res = await axiosInstance.delete('/api/cars/delete', { data: { id } });
   return res.data;
 };
+
+/** Admin upload ảnh xe — trả URL `/files/...` cho gallery. */
+export const uploadCarImageApi = async (
+  file: File,
+  carId?: number
+): Promise<{ url: string }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const qs = carId != null ? `?carId=${carId}` : '';
+  const res = await axiosInstance.post(`/api/cars/admin/upload-image${qs}`, formData);
+  return res.data;
+};

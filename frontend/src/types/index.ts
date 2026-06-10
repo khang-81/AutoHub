@@ -96,6 +96,12 @@ export interface PagedCarsResponse {
   size: number;
 }
 
+export interface CarImageInput {
+  imageUrl: string;
+  imageType: CarImageType | string;
+  sortOrder: number;
+}
+
 export interface AddCarRequest {
   kilometer: number;
   plate: string;
@@ -107,6 +113,7 @@ export interface AddCarRequest {
   colorId: number;
   minFindeksRate: number;
   imagePath: string;
+  images?: CarImageInput[];
   seats?: number | null;
   transmission?: Transmission | string | null;
   fuelType?: FuelType | string | null;
