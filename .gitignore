@@ -28,10 +28,12 @@ Desktop.ini
 *.orig
 *.rej
 
-# Script temp / generated seed fragments (regenerate via gen-car-seed.js)
+# Script temp / generated seed fragments (regenerate via build_car_catalog_35.py + gen-car-seed.js)
 scripts/_v.txt
 scripts/_v_ind.txt
 scripts/car-values.txt
 scripts/car-values-utf8.txt
 scripts/_models.sql
 scripts/_car_values_indented.sql
+scripts/_generated_*.sql
+scripts/seed-car-images.sql

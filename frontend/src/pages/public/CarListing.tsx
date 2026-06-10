@@ -300,7 +300,7 @@ const CarListing = () => {
                 <span
                   className={`inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${
                     listingMode === 'sale'
-                      ? 'bg-orange-100 text-orange-900'
+                      ? 'bg-primary/15 text-navy ring-1 ring-primary/25'
                       : 'bg-emerald-100 text-emerald-900'
                   }`}
                 >
@@ -372,13 +372,7 @@ const CarListing = () => {
             ) : (
               <>
                 {viewMode === 'grid' ? (
-                  <div
-                    className={`grid gap-4 ${
-                      listingMode === 'sale'
-                        ? 'grid-cols-1 lg:grid-cols-2'
-                        : 'grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3'
-                    }`}
-                  >
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
                     {paginated.map((car) => (
                       <CarCard key={car.id} car={car} variant={cardVariant} />
                     ))}
