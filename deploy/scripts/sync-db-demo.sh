@@ -8,8 +8,8 @@ cd "${REPO_DIR}"
 echo "==> Rebuild db-init image (sync-demo-data.sql)"
 docker compose build db-init
 
-echo "==> Run one-shot sync (SQL Server must be up)"
-docker compose run --rm --no-deps db-init
+echo "==> Run one-shot sync (SQL Server must be up; FORCE_CATALOG_SYNC=1 replaces stale 70-car catalog)"
+FORCE_CATALOG_SYNC=1 docker compose run --rm --no-deps -e FORCE_CATALOG_SYNC=1 db-init
 
 echo "==> Restart API to refresh connections"
 docker compose restart api

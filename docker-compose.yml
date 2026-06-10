@@ -37,6 +37,8 @@ services:
     environment:
       DB_HOST: sqlserver
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      # Dat 1 lan tren VPS khi can ep thay 70 xe + gallery: FORCE_CATALOG_SYNC=1
+      FORCE_CATALOG_SYNC: ${FORCE_CATALOG_SYNC:-0}
     restart: "no"
 
   api:

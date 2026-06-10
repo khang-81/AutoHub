@@ -242,9 +242,15 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[corporate_customers] cc INNER JOIN [dbo].[us
     FROM [dbo].[users] WHERE [email] = N'corp@autohub.id.vn';
 GO
 
-/* Catalog: reset khi chua dung 70 xe (51R0001..51S0035) */
+/* Catalog: reset khi DB chua khop seed 70 xe moi (trim + gallery) */
 IF (SELECT COUNT(*) FROM [dbo].[cars]) <> 70
    OR NOT EXISTS (SELECT 1 FROM [dbo].[cars] WHERE [plate] = N'51R0035')
+   OR NOT EXISTS (
+        SELECT 1 FROM [dbo].[cars] c
+        INNER JOIN [dbo].[models] m ON m.[id] = c.[model_id]
+        WHERE c.[plate] = N'51R0001' AND m.[name] = N'Camry 2.5Q'
+      )
+   OR (SELECT COUNT(*) FROM [dbo].[car_images]) <> 350
 BEGIN
 DELETE FROM [dbo].[viewing_appointments];
 DELETE FROM [dbo].[reviews];

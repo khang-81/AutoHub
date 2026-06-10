@@ -26,9 +26,15 @@ catalog_marker = (
     "DELETE FROM [dbo].[viewing_appointments];"
 )
 catalog_open = (
-    "/* Catalog: reset khi chua dung 70 xe (51R0001..51S0035) */\n"
+    "/* Catalog: reset khi DB chua khop seed 70 xe moi (trim + gallery) */\n"
     "IF (SELECT COUNT(*) FROM [dbo].[cars]) <> 70\n"
     "   OR NOT EXISTS (SELECT 1 FROM [dbo].[cars] WHERE [plate] = N'51R0035')\n"
+    "   OR NOT EXISTS (\n"
+    "        SELECT 1 FROM [dbo].[cars] c\n"
+    "        INNER JOIN [dbo].[models] m ON m.[id] = c.[model_id]\n"
+    "        WHERE c.[plate] = N'51R0001' AND m.[name] = N'Camry 2.5Q'\n"
+    "      )\n"
+    "   OR (SELECT COUNT(*) FROM [dbo].[car_images]) <> 350\n"
     "BEGIN\n"
     "DELETE FROM [dbo].[viewing_appointments];"
 )

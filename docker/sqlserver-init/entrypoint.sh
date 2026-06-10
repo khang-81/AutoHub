@@ -273,6 +273,21 @@ else
   "
   echo "Incremental migrations completed."
 
+  if [ "${FORCE_CATALOG_SYNC:-0}" = "1" ]; then
+    echo "FORCE_CATALOG_SYNC=1 — xoa catalog cu truoc khi sync..."
+    run_master -b -Q "
+      USE [autohub];
+      DELETE FROM [dbo].[viewing_appointments];
+      DELETE FROM [dbo].[reviews];
+      DELETE FROM [dbo].[invoices];
+      DELETE FROM [dbo].[rentals];
+      DELETE FROM [dbo].[sale_orders];
+      DELETE FROM [dbo].[car_images];
+      DELETE FROM [dbo].[cars];
+      DBCC CHECKIDENT ('[dbo].[cars]', RESEED, 0);
+    "
+  fi
+
   if [ -f /sync-demo-data.sql ]; then
     echo "Applying sync-demo-data.sql (accounts + catalog demo, idempotent)..."
     ok_sync=0
