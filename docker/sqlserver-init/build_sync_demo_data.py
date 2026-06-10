@@ -182,6 +182,10 @@ gallery_backfill = (
 )
 seed = seed + "\n" + gallery_backfill
 
+# Loại GO trùng (vd. sau block Models) — sqlcmd tách batch sai.
+while "\nGO\n\nGO\n" in seed:
+    seed = seed.replace("\nGO\n\nGO\n", "\nGO\n", 1)
+
 footer = "\nSET NOCOUNT OFF;\nGO\n"
 (ROOT / "sync-demo-data.sql").write_text(header + seed + footer, encoding="utf-8")
 print("OK ->", ROOT / "sync-demo-data.sql")

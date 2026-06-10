@@ -116,11 +116,6 @@ else
     BEGIN
       ALTER TABLE dbo.reviews DROP CONSTRAINT CK_reviews_rental_xor_sale_order;
     END;
-    EXEC('ALTER TABLE dbo.reviews WITH NOCHECK
-      ADD CONSTRAINT CK_reviews_rental_xor_sale_order CHECK (
-        (rental_id IS NOT NULL AND sale_order_id IS NULL)
-        OR (rental_id IS NULL AND sale_order_id IS NOT NULL)
-      )');
 
     IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_reviews_rental_id_not_null' AND object_id = OBJECT_ID('dbo.reviews'))
     BEGIN
@@ -136,6 +131,19 @@ else
     BEGIN
       ALTER TABLE dbo.users ADD password_reset_token NVARCHAR(64) NULL;
     END;
+
+    IF COL_LENGTH('dbo.users', 'full_name') IS NULL
+      ALTER TABLE dbo.users ADD full_name NVARCHAR(255) NULL;
+    IF COL_LENGTH('dbo.users', 'phone') IS NULL
+      ALTER TABLE dbo.users ADD phone NVARCHAR(20) NULL;
+    IF COL_LENGTH('dbo.users', 'birth_date') IS NULL
+      ALTER TABLE dbo.users ADD birth_date DATE NULL;
+    IF COL_LENGTH('dbo.users', 'token_version') IS NULL
+      ALTER TABLE dbo.users ADD token_version INT NOT NULL CONSTRAINT DF_users_token_version DEFAULT 0;
+    IF COL_LENGTH('dbo.users', 'enabled') IS NULL
+      ALTER TABLE dbo.users ADD enabled BIT NOT NULL CONSTRAINT DF_users_enabled DEFAULT 1;
+    IF COL_LENGTH('dbo.users', 'password_reset_last_sent_at') IS NULL
+      ALTER TABLE dbo.users ADD password_reset_last_sent_at DATETIMEOFFSET(6) NULL;
 
     IF COL_LENGTH('dbo.rentals', 'late_fee_amount') IS NULL
     BEGIN
@@ -216,6 +224,42 @@ else
       CREATE INDEX [IX_car_images_car_id] ON [dbo].[car_images]([car_id], [sort_order]);
     END;
 
+    IF COL_LENGTH('dbo.cars', 'seats') IS NULL
+      ALTER TABLE dbo.cars ADD seats INT NULL;
+    IF COL_LENGTH('dbo.cars', 'transmission') IS NULL
+      ALTER TABLE dbo.cars ADD transmission NVARCHAR(16) NULL;
+    IF COL_LENGTH('dbo.cars', 'fuel_type') IS NULL
+      ALTER TABLE dbo.cars ADD fuel_type NVARCHAR(16) NULL;
+    IF COL_LENGTH('dbo.cars', 'average_rating') IS NULL
+      ALTER TABLE dbo.cars ADD average_rating FLOAT NULL;
+    IF COL_LENGTH('dbo.cars', 'version') IS NULL
+      ALTER TABLE dbo.cars ADD version BIGINT NOT NULL CONSTRAINT DF_cars_version DEFAULT 0;
+    IF COL_LENGTH('dbo.cars', 'review_count') IS NULL
+      ALTER TABLE dbo.cars ADD review_count INT NOT NULL CONSTRAINT DF_cars_review_count DEFAULT 0;
+    IF COL_LENGTH('dbo.cars', 'version') IS NOT NULL
+       AND NOT EXISTS (
+         SELECT 1 FROM sys.default_constraints dc
+         INNER JOIN sys.columns c ON dc.parent_object_id = c.object_id AND dc.parent_column_id = c.column_id
+         WHERE c.object_id = OBJECT_ID(N'dbo.cars') AND c.name = N'version'
+       )
+      ALTER TABLE dbo.cars ADD CONSTRAINT DF_cars_version DEFAULT 0 FOR version;
+    IF COL_LENGTH('dbo.cars', 'review_count') IS NOT NULL
+       AND NOT EXISTS (
+         SELECT 1 FROM sys.default_constraints dc
+         INNER JOIN sys.columns c ON dc.parent_object_id = c.object_id AND dc.parent_column_id = c.column_id
+         WHERE c.object_id = OBJECT_ID(N'dbo.cars') AND c.name = N'review_count'
+       )
+      ALTER TABLE dbo.cars ADD CONSTRAINT DF_cars_review_count DEFAULT 0 FOR review_count;
+
+    IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_reviews_rental_xor_sale_order')
+    BEGIN
+      EXEC('ALTER TABLE dbo.reviews WITH NOCHECK
+        ADD CONSTRAINT CK_reviews_rental_xor_sale_order CHECK (
+          (rental_id IS NOT NULL AND sale_order_id IS NULL)
+          OR (rental_id IS NULL AND sale_order_id IS NOT NULL)
+        )');
+    END;
+
   IF OBJECT_ID(N'dbo.user_documents', N'U') IS NOT NULL
   BEGIN
     UPDATE [dbo].[user_documents]
@@ -241,7 +285,8 @@ else
       sleep 2
     done
     if [ "$ok_sync" -ne 1 ]; then
-      echo "WARNING: sync-demo-data.sql failed — DB may still be on old seed. Re-run: docker compose run --rm db-init"
+      echo "ERROR: sync-demo-data.sql failed after retries."
+      echo "Check SQL errors above, then run: docker compose run --rm --no-deps db-init"
       exit 1
     fi
     echo "Demo data sync completed."
