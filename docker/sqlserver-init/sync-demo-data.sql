@@ -144,8 +144,6 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[models] m INNER JOIN [dbo].[brands] b ON m.[
     SELECT CAST(GETDATE() AS DATE), N'S 450 L', [id] FROM [dbo].[brands] WHERE [name] = N'Mercedes-Benz';
 GO
 
-GO
-
 /* Colors */
 IF NOT EXISTS (SELECT 1 FROM [dbo].[colors] WHERE [name] = N'Trắng')
     INSERT INTO [dbo].[colors] ([created_date], [name], [code]) VALUES (CAST(GETDATE() AS DATE), N'Trắng', N'#FFFFFF');
