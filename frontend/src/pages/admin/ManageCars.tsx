@@ -21,14 +21,20 @@ import { MIN_MODEL_YEAR, getMaxModelYear } from '../../config/vehicleYears';
 import { filterModelsWithCars } from '../../utils/catalogFilters';
 import type { Car as CarType, CarImageItem, CarModel, Color, Rental } from '../../types';
 
+const priceInputValue = (v: unknown) => {
+  if (v === '' || v == null) return undefined;
+  const n = Number(v);
+  return Number.isNaN(n) ? undefined : n;
+};
+
 const schema = z
   .object({
     plate: z.string().min(1, 'Nhập biển số'),
     modelYear: z.number().min(MIN_MODEL_YEAR).max(getMaxModelYear()),
     kilometer: z.number().min(0),
     listingType: z.enum(['RENT_ONLY', 'SALE_ONLY']),
-    dailyPrice: z.number().min(0),
-    salePrice: z.number().optional().nullable(),
+    dailyPrice: z.number().min(0).optional(),
+    salePrice: z.number().min(0).optional(),
     modelId: z.number().min(1, 'Chọn model'),
     colorId: z.number().min(1, 'Chọn màu'),
     minFindeksRate: z.number().min(0),
@@ -211,8 +217,11 @@ const ManageCars = () => {
     }
     setGalleryError(null);
     const cover = gallery.find((g) => g.sortOrder === 1)?.imageUrl?.trim() || gallery[0].imageUrl.trim();
+    const isRent = data.listingType === 'RENT_ONLY';
     const payload = {
       ...data,
+      dailyPrice: isRent ? data.dailyPrice : 0,
+      salePrice: isRent ? null : data.salePrice,
       imagePath: cover,
       images: gallery.map((g) => ({
         imageUrl: g.imageUrl.trim(),
@@ -558,17 +567,33 @@ const ManageCars = () => {
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Giá thuê/ngày (VNĐ)</label>
-              <input {...register('dailyPrice', { valueAsNumber: true })} type="number" className="input-field" placeholder="500000" />
-              {errors.dailyPrice && <p className="text-red-500 text-xs mt-1">{errors.dailyPrice.message}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Giá bán (VNĐ)</label>
-              <input {...register('salePrice', { valueAsNumber: true })} type="number" className="input-field" placeholder="VD: 450000000" />
-              {errors.salePrice && <p className="text-red-500 text-xs mt-1">{String(errors.salePrice.message)}</p>}
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {!isSaleModule && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Giá thuê/ngày (VNĐ) *</label>
+                <input
+                  {...register('dailyPrice', { setValueAs: priceInputValue })}
+                  type="number"
+                  min={1}
+                  className="input-field"
+                  placeholder="500000"
+                />
+                {errors.dailyPrice && <p className="text-red-500 text-xs mt-1">{errors.dailyPrice.message}</p>}
+              </div>
+            )}
+            {isSaleModule && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Giá bán (VNĐ) *</label>
+                <input
+                  {...register('salePrice', { setValueAs: priceInputValue })}
+                  type="number"
+                  min={1}
+                  className="input-field"
+                  placeholder="VD: 450000000"
+                />
+                {errors.salePrice && <p className="text-red-500 text-xs mt-1">{String(errors.salePrice.message)}</p>}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
