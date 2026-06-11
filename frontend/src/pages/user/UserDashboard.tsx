@@ -146,7 +146,7 @@ const UserDashboard = () => {
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-emerald-800">Trả xe</p>
               <p className="font-heading text-sm font-semibold text-navy sm:text-base">
-                Bạn có đơn đang thuê đã xác nhận — nhớ xác nhận trả xe (ngày và km).
+                Bạn có đơn đang thuê — gửi yêu cầu trả xe (ngày và km), admin sẽ xác nhận.
               </p>
             </div>
           </div>

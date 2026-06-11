@@ -14,14 +14,14 @@ import java.time.LocalDate;
 public class AddCustomerRequest {
     @NotBlank(message = "Registration is not possible without a username!")
     @Length(max = 30, message = "The name cannot exceed 30 characters!")
-    @Pattern(regexp = "^[A-Za-z\\s]*$",
-            message = "Please use capital letters only, and avoid special characters!")
+    @Pattern(regexp = "^[\\p{L}\\s'.-]+$",
+            message = "Họ không hợp lệ.")
     private String firstName;
 
     @NotBlank
     @Length(max = 40, message = "The surname cannot exceed 40 characters!")
-    @Pattern(regexp = "^[A-Za-z\\s]*$",
-            message = "Please use capital letters only, and avoid special characters!")
+    @Pattern(regexp = "^[\\p{L}\\s'.-]+$",
+            message = "Tên không hợp lệ.")
     private String lastName;
 
     @NotNull(message = "Birthdate cannot be null!")

@@ -165,9 +165,15 @@ export function getRentalBadgeDisplay(rental: {
   if (rental.returnDate) {
     return { label: '✓ Đã trả xe', className: 'bg-gray-100 text-gray-500' };
   }
+  if (status === 'PENDING_RETURN') {
+    return {
+      label: '⏳ Chờ admin xác nhận trả xe',
+      className: 'border border-amber-300 bg-amber-100 font-semibold text-amber-900',
+    };
+  }
   if (canReturnCar) {
     return {
-      label: '🔑 Chờ xác nhận trả xe',
+      label: '🚗 Đang thuê — có thể trả xe',
       className: 'border border-emerald-300 bg-emerald-100 font-semibold text-emerald-900',
     };
   }

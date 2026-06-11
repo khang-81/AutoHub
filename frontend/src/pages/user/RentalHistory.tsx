@@ -68,7 +68,7 @@ const RentalHistory = () => {
       });
     },
     onSuccess: (data: { message?: string }) => {
-      showToast(data?.message || 'Đã xác nhận trả xe', 'success');
+      showToast(data?.message || 'Đã gửi yêu cầu trả xe', 'success');
       queryClient.invalidateQueries({ queryKey: ['myRentals'] });
       queryClient.invalidateQueries({ queryKey: ['rentals'] });
       queryClient.invalidateQueries({ queryKey: ['cars'] });
@@ -149,6 +149,7 @@ const RentalHistory = () => {
     if (status === 'PENDING_ADMIN_CONFIRM') return 'Chờ admin xác nhận';
     if (status === 'PENDING_PAYMENT') return 'Chờ khách thanh toán';
     if (status === 'CONFIRMED') return 'Đã xác nhận';
+    if (status === 'PENDING_RETURN') return 'Chờ admin xác nhận trả xe';
     if (status === 'COMPLETED') return 'Đã hoàn tất';
     if (status === 'CANCELLED') return 'Đã hủy';
     return 'Đang xử lý';
@@ -201,6 +202,7 @@ const RentalHistory = () => {
             const canCancel =
               status !== 'CANCELLED' &&
               status !== 'COMPLETED' &&
+              status !== 'PENDING_RETURN' &&
               !rental.returnDate;
             const canReview =
               status === 'COMPLETED' && rental.hasReview !== true;
@@ -223,7 +225,7 @@ const RentalHistory = () => {
                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
                         <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-600" />
                       </span>
-                      Đơn này đang thuê — xác nhận trả xe tại đây
+                      Đơn này đang thuê — gửi yêu cầu trả xe tại đây
                     </span>
                     <span className="hidden rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white sm:inline">
                       Ưu tiên
@@ -397,7 +399,7 @@ const RentalHistory = () => {
           setReturnDateStr('');
           setReturnIncidentals('');
         }}
-        title="Xác nhận trả xe"
+        title="Gửi yêu cầu trả xe"
         size="sm"
       >
         {returnTarget && (
@@ -407,7 +409,7 @@ const RentalHistory = () => {
               {returnTarget.car?.model?.brand?.name} {returnTarget.car?.model?.name}
             </p>
             <p className="text-xs text-gray-500">
-              Chỉ khả dụng khi đơn đã được admin xác nhận. Hệ thống sẽ tính phí trễ (nếu trả sau ngày hẹn) và số tiền còn phải trả (giá chuyến − cọc + phát sinh).
+              Sau khi gửi, admin sẽ đối chiếu km, xăng và phí phát sinh trước khi hoàn tất trả xe.
             </p>
             <div className="rounded-lg border border-dashed border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-950">
               <p className="font-semibold text-amber-900">Quyết toán khi trả xe</p>
@@ -468,7 +470,7 @@ const RentalHistory = () => {
                 disabled={returnUserMutation.isPending}
                 className="btn-primary flex-1"
               >
-                {returnUserMutation.isPending ? 'Đang gửi...' : 'Xác nhận trả xe'}
+                {returnUserMutation.isPending ? 'Đang gửi...' : 'Gửi yêu cầu trả xe'}
               </button>
               <button
                 type="button"
