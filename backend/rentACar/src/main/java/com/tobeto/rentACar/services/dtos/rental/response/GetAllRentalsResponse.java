@@ -24,6 +24,8 @@ public class GetAllRentalsResponse {
 
     private int startKilometer;
 
+    private Long endKilometer;
+
     private double totalPrice;
 
     private String paymentMethod;

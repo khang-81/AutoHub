@@ -112,12 +112,15 @@ const ManageRentals = () => {
     setReturnRental(rental);
     const startKm = rental.startKilometer ?? rental.car?.kilometer ?? 0;
     const today = new Date().toISOString().slice(0, 10);
+    const pendingReturn = rental.rentalStatus === 'PENDING_RETURN';
     setReturnForm({
-      endKilometer: String(startKm),
-      actualFuelLevel: '100',
-      additionalIncidentalFees: '0',
-      damageNotes: '',
-      damagePhotoUrls: '',
+      endKilometer: String(
+        pendingReturn && rental.endKilometer != null ? rental.endKilometer : startKm
+      ),
+      actualFuelLevel: String(rental.actualFuelLevel ?? 100),
+      additionalIncidentalFees: String(rental.returnAdditionalFees ?? 0),
+      damageNotes: rental.damageNotes ?? '',
+      damagePhotoUrls: rental.damagePhotoUrls ?? '',
       returnDate: today,
     });
   };
@@ -183,6 +186,7 @@ const ManageRentals = () => {
       (filterStatus === 'pending' && (
         r.rentalStatus === 'PENDING_PAYMENT' ||
         r.rentalStatus === 'PENDING_ADMIN_CONFIRM' ||
+        r.rentalStatus === 'PENDING_RETURN' ||
         (!r.returnDate && !r.rentalStatus)
       )) ||
       (filterStatus === 'confirmed' && r.rentalStatus === 'CONFIRMED') ||
@@ -311,6 +315,8 @@ const ManageRentals = () => {
                         <span className="badge text-xs bg-blue-100 text-blue-700">Chờ khách chuyển khoản</span>
                       ) : rental.rentalStatus === 'PENDING_ADMIN_CONFIRM' ? (
                         <span className="badge text-xs bg-amber-100 text-amber-700">Chờ admin xác nhận</span>
+                      ) : rental.rentalStatus === 'PENDING_RETURN' ? (
+                        <span className="badge text-xs bg-amber-100 text-amber-800 font-semibold">Chờ xác nhận trả</span>
                       ) : rental.rentalStatus === 'CONFIRMED' ? (
                         <span className="badge text-xs bg-green-100 text-green-700">Đã xác nhận</span>
                       ) : (
@@ -330,11 +336,22 @@ const ManageRentals = () => {
                             <CheckCircle className="w-4 h-4" />
                           </button>
                         )}
-                        {!rental.returnDate && (rental.rentalStatus === 'CONFIRMED' || rental.rentalStatus === 'DISPUTE') && (
+                        {!rental.returnDate &&
+                          (rental.rentalStatus === 'CONFIRMED' ||
+                            rental.rentalStatus === 'DISPUTE' ||
+                            rental.rentalStatus === 'PENDING_RETURN') && (
                           <button
                             onClick={() => openReturnModal(rental)}
-                            className="p-2 rounded-lg text-green-600 hover:bg-green-50 transition-colors"
-                            title="Đối chiếu trả xe"
+                            className={`p-2 rounded-lg transition-colors ${
+                              rental.rentalStatus === 'PENDING_RETURN'
+                                ? 'text-amber-700 bg-amber-50 hover:bg-amber-100 ring-1 ring-amber-200'
+                                : 'text-green-600 hover:bg-green-50'
+                            }`}
+                            title={
+                              rental.rentalStatus === 'PENDING_RETURN'
+                                ? 'Xác nhận trả xe (khách đã gửi yêu cầu)'
+                                : 'Đối chiếu trả xe'
+                            }
                           >
                             <CheckCircle className="w-4 h-4" />
                           </button>

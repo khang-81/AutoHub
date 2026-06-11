@@ -291,8 +291,12 @@ public class RentalManager implements RentalService {
         Rental rental = rentalRepository.findById(rentalId).orElseThrow(
                 () -> new NotFoundException(messageService.getMessage(Messages.Rental.getRentalNotFoundMessage)));
 
-        if ("CANCELLED".equals(rental.getRentalStatus()) || "COMPLETED".equals(rental.getRentalStatus())) {
+        String cancelStatus = normRentalToken(rental.getRentalStatus());
+        if ("CANCELLED".equals(cancelStatus) || "COMPLETED".equals(cancelStatus)) {
             throw new BusinessException("Không thể hủy đơn ở trạng thái này.");
+        }
+        if ("PENDING_RETURN".equals(cancelStatus)) {
+            throw new BusinessException("Đơn đang chờ admin xác nhận trả xe — không thể hủy.");
         }
         if (!isAdmin && (rental.getUser() == null || rental.getUser().getId() != actorUserId)) {
             throw new BusinessException("Bạn không có quyền hủy đơn này.");
@@ -456,11 +460,18 @@ public class RentalManager implements RentalService {
         if ("CANCELLED".equals(rs)) {
             throw new BusinessException("Đơn đã hủy, không thể trả xe.");
         }
-        // Cho phép admin đối chiếu cả khi đơn đang DISPUTE (resolve tranh chấp).
-        if (!"CONFIRMED".equals(rs) && !(isAdmin && "DISPUTE".equals(rs))) {
+        if (!isAdmin && "PENDING_RETURN".equals(rs)) {
+            throw new BusinessException("Yêu cầu trả xe đang chờ admin xác nhận.");
+        }
+        if (!isAdmin) {
+            if (!"CONFIRMED".equals(rs)) {
+                throw new BusinessException(
+                        "Chỉ có thể gửi yêu cầu trả xe khi đơn đã được admin xác nhận (đang thuê). Trạng thái hiện tại: "
+                                + (rs.isBlank() ? "—" : rs) + ".");
+            }
+        } else if (!"CONFIRMED".equals(rs) && !"DISPUTE".equals(rs) && !"PENDING_RETURN".equals(rs)) {
             throw new BusinessException(
-                    "Chỉ có thể trả xe khi đơn đã được admin xác nhận (đang thuê). Trạng thái hiện tại: "
-                            + (rs.isBlank() ? "—" : rs) + ".");
+                    "Không thể đối chiếu trả xe. Trạng thái hiện tại: " + (rs.isBlank() ? "—" : rs) + ".");
         }
         if (body.getEndKilometer() == null) {
             throw new BusinessException("Vui lòng nhập số km đồng hồ khi trả xe.");
@@ -516,6 +527,13 @@ public class RentalManager implements RentalService {
         rental.setReturnAdditionalFees(incidentals);
         rental.setBalanceDueAtReturn(balanceDue);
         rental.setEndKilometer(endKm);
+
+        if (!isAdmin) {
+            rental.setRentalStatus("PENDING_RETURN");
+            rentalRepository.save(rental);
+            return new SuccessResult(
+                    "Đã gửi yêu cầu trả xe. Admin sẽ đối chiếu và xác nhận hoàn tất trong thời gian sớm nhất.");
+        }
 
         boolean dispute = isAdmin && Boolean.TRUE.equals(body.getMarkDispute());
         if (dispute) {

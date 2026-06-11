@@ -162,6 +162,7 @@ export interface Rental {
   endDate: string;
   returnDate: string | null;
   startKilometer: number;
+  endKilometer?: number | null;
   totalPrice: number;
   paymentMethod?: 'CASH' | 'BANK_TRANSFER';
   paymentStatus?:
@@ -173,7 +174,14 @@ export interface Rental {
     | 'UNPAID'
     | 'FAILED'
     | 'CANCELLED';
-  rentalStatus?: 'PENDING_PAYMENT' | 'PENDING_ADMIN_CONFIRM' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'DISPUTE';
+  rentalStatus?:
+    | 'PENDING_PAYMENT'
+    | 'PENDING_ADMIN_CONFIRM'
+    | 'CONFIRMED'
+    | 'PENDING_RETURN'
+    | 'COMPLETED'
+    | 'CANCELLED'
+    | 'DISPUTE';
   depositAmount?: number;
   depositStatus?: string;
   insuranceCode?: string;
@@ -235,7 +243,14 @@ export interface RentalByUser {
     | 'UNPAID'
     | 'FAILED'
     | 'CANCELLED';
-  rentalStatus?: 'PENDING_PAYMENT' | 'PENDING_ADMIN_CONFIRM' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'DISPUTE';
+  rentalStatus?:
+    | 'PENDING_PAYMENT'
+    | 'PENDING_ADMIN_CONFIRM'
+    | 'CONFIRMED'
+    | 'PENDING_RETURN'
+    | 'COMPLETED'
+    | 'CANCELLED'
+    | 'DISPUTE';
   car: Car;
   depositAmount?: number;
   depositStatus?: string;

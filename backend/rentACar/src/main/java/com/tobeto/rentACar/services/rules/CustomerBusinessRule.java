@@ -15,7 +15,8 @@ public class CustomerBusinessRule {
     private final MessageService messageService;
 
     public void checkCustomerAge(Customer customer) {
-        if(customer.getAge(customer.getBirthdate())< 18){
+        Integer age = customer.getAge(customer.getBirthdate());
+        if (age != null && age < 18) {
             throw new BusinessException(messageService.getMessage(Messages.Customer.getCustomerAgeNotValidMessage));
         }
     }
