@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   BarChart,
@@ -8,36 +8,26 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  AreaChart,
-  Area,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
 } from 'recharts';
-import {
-  TrendingUp,
-  Car,
-  FileText,
-  Users,
-  Download,
-  ShoppingBag,
-  Wallet,
-  PieChart as PieChartIcon,
-} from 'lucide-react';
+import { TrendingUp, Download, FileText, Car, ShoppingBag, Wallet } from 'lucide-react';
 import { getAllRentalsApi } from '../../api/rentals';
-import { getAllCarsApi } from '../../api/cars';
-import { getAllUsersApi } from '../../api/users';
-import { getAllBrandsApi } from '../../api/brands';
 import { getAllSaleOrdersApi } from '../../api/saleOrders';
 import axiosInstance from '../../api/axiosInstance';
-import { formatCurrency } from '../../utils/helpers';
-import type { Rental, Car as CarType, SaleOrder } from '../../types';
-import { format, parseISO, startOfMonth, eachDayOfInterval, endOfMonth } from 'date-fns';
+import { formatCurrency, formatDate, getRentalBadgeDisplay } from '../../utils/helpers';
+import {
+  buildDailyRevenueRows,
+  computeRevenueForMonth,
+  computeRevenueTotals,
+  filterRentalsInMonth,
+  filterSalesInMonth,
+  getSaleRevenueDayKey,
+} from '../../utils/revenueStats';
+import type { DailyRevenueRow } from '../../utils/revenueStats';
+import type { Rental, SaleOrder } from '../../types';
+import { format, parseISO, eachDayOfInterval, endOfMonth } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
-const COLORS = ['#C9A227', '#1B2A4A', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 const RENT_COLOR = '#C9A227';
 const SALE_COLOR = '#1B2A4A';
 
@@ -47,27 +37,129 @@ function csvCell(v: unknown): string {
   return s;
 }
 
-function isRentalCancelled(r: Rental): boolean {
-  return (r.rentalStatus || '').toUpperCase() === 'CANCELLED';
+function formatYAxis(value: number) {
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(0)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K`;
+  return String(value);
 }
 
-function isSaleCancelled(o: SaleOrder): boolean {
-  if (o.cancelledAt) return true;
-  return (o.orderStatus || '').toUpperCase() === 'CANCELLED';
+const tooltipMoney = (value: unknown) => formatCurrency(Number(value));
+
+function paymentMethodLabel(method?: string | null) {
+  if (method === 'CASH') return 'Tiền mặt';
+  if (method === 'BANK_TRANSFER') return 'Chuyển khoản';
+  return method || '—';
 }
 
-type MonthRow = {
-  monthKey: string;
-  month: string;
-  rentalRevenue: number;
-  saleRevenue: number;
-  totalRevenue: number;
-  rentalCount: number;
-  saleCount: number;
+function saleOrderStatusLabel(status?: string | null) {
+  const s = (status || '').toUpperCase();
+  const map: Record<string, string> = {
+    COMPLETED: 'Hoàn tất',
+    PENDING_ADMIN_CONFIRM: 'Chờ xác nhận',
+    PENDING_PAYMENT: 'Chờ thanh toán',
+    CANCELLED: 'Đã hủy',
+  };
+  return map[s] || status || '—';
+}
+
+function carLabel(car?: Rental['car'] | SaleOrder['car']) {
+  if (!car) return '—';
+  const brand = car.model?.brand?.name ?? '';
+  const model = car.model?.name ?? '';
+  const name = `${brand} ${model}`.trim();
+  return name || '—';
+}
+
+type KpiCardProps = {
+  label: string;
+  value: string;
+  sub: string;
+  icon: ReactNode;
+  accent: string;
+  highlight?: boolean;
 };
+
+function KpiCard({ label, value, sub, icon, accent, highlight }: KpiCardProps) {
+  if (highlight) {
+    return (
+      <div className="rounded-2xl bg-gradient-to-br from-navy to-[#243654] p-6 text-white shadow-md relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-28 h-28 bg-primary/20 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+        <div className={`relative w-11 h-11 rounded-xl flex items-center justify-center mb-4 ${accent}`}>
+          {icon}
+        </div>
+        <p className="text-sm text-white/70 font-medium">{label}</p>
+        <p className="font-heading font-bold text-2xl sm:text-3xl mt-1 tracking-tight">{value}</p>
+        <p className="text-xs text-white/50 mt-2">{sub}</p>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-4 ${accent}`}>{icon}</div>
+      <p className="text-sm text-gray-500 font-medium">{label}</p>
+      <p className="font-heading font-bold text-xl sm:text-2xl text-navy mt-1">{value}</p>
+      <p className="text-xs text-gray-400 mt-2">{sub}</p>
+    </div>
+  );
+}
+
+type DailyChartProps = {
+  title: string;
+  subtitle: string;
+  data: DailyRevenueRow[];
+  dataKey: 'rentalRevenue' | 'saleRevenue';
+  color: string;
+  monthSuffix: string;
+  emptyText: string;
+};
+
+function DailyRevenueChart({
+  title,
+  subtitle,
+  data,
+  dataKey,
+  color,
+  monthSuffix,
+  emptyText,
+}: DailyChartProps) {
+  const hasData = data.some((d) => d[dataKey] > 0);
+  return (
+    <div className="rounded-xl border border-gray-100 bg-slate-50/50 p-5">
+      <h3 className="font-heading font-semibold text-navy">{title}</h3>
+      <p className="text-xs text-gray-500 mt-0.5 mb-4">{subtitle}</p>
+      {hasData ? (
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+            <XAxis
+              dataKey="dayNum"
+              tick={{ fontSize: 10, fill: '#64748b' }}
+              interval={0}
+              axisLine={{ stroke: '#e2e8f0' }}
+            />
+            <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} width={48} />
+            <Tooltip
+              formatter={(value: unknown) => [tooltipMoney(value), title]}
+              labelFormatter={(label) => `Ngày ${label}/${monthSuffix}`}
+              contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0' }}
+            />
+            <Bar dataKey={dataKey} fill={color} radius={[4, 4, 0, 0]} maxBarSize={18} />
+          </BarChart>
+        </ResponsiveContainer>
+      ) : (
+        <div className="h-52 flex flex-col items-center justify-center text-gray-400 gap-2 text-sm">
+          <TrendingUp className="w-8 h-8 opacity-40" />
+          <p>{emptyText}</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const ManageReports = () => {
   const [reportMonth, setReportMonth] = useState(() => format(new Date(), 'yyyy-MM'));
+
   const { data: rentals = [], isLoading: loadRentals } = useQuery<Rental[]>({
     queryKey: ['rentals'],
     queryFn: getAllRentalsApi,
@@ -76,172 +168,44 @@ const ManageReports = () => {
     queryKey: ['saleOrders'],
     queryFn: getAllSaleOrdersApi,
   });
-  const { data: cars = [], isLoading: loadCars } = useQuery<CarType[]>({
-    queryKey: ['cars'],
-    queryFn: getAllCarsApi,
-  });
-  const { data: users = [], isLoading: loadUsers } = useQuery({
-    queryKey: ['users'],
-    queryFn: getAllUsersApi,
-  });
-  const { data: brands = [], isLoading: loadBrands } = useQuery({
-    queryKey: ['brands'],
-    queryFn: getAllBrandsApi,
-  });
 
-  const isLoading = loadRentals || loadSales || loadCars || loadUsers || loadBrands;
+  const isLoading = loadRentals || loadSales;
 
-  const eligibleRentals = useMemo(
-    () => rentals.filter((r) => !isRentalCancelled(r)),
-    [rentals]
+  const allTime = useMemo(() => computeRevenueTotals(rentals, saleOrders), [rentals, saleOrders]);
+  const monthStats = useMemo(
+    () => computeRevenueForMonth(rentals, saleOrders, reportMonth),
+    [rentals, saleOrders, reportMonth]
   );
-  const eligibleSales = useMemo(
-    () => saleOrders.filter((o) => !isSaleCancelled(o)),
-    [saleOrders]
-  );
-
-  const rentalRevenueTotal = useMemo(
-    () => eligibleRentals.reduce((s, r) => s + (r.totalPrice || 0), 0),
-    [eligibleRentals]
-  );
-  const saleRevenueTotal = useMemo(
-    () => eligibleSales.reduce((s, o) => s + (o.totalPrice || 0), 0),
-    [eligibleSales]
-  );
-  const totalRevenueCombined = rentalRevenueTotal + saleRevenueTotal;
-
-  const monthlyData = useMemo((): MonthRow[] => {
-    const map = new Map<
-      string,
-      { month: string; rentalRevenue: number; saleRevenue: number; rentalCount: number; saleCount: number }
-    >();
-
-    const ensure = (monthKey: string, label: string) => {
-      if (!map.has(monthKey)) {
-        map.set(monthKey, {
-          month: label,
-          rentalRevenue: 0,
-          saleRevenue: 0,
-          rentalCount: 0,
-          saleCount: 0,
-        });
-      }
-      return map.get(monthKey)!;
-    };
-
-    eligibleRentals.forEach((r) => {
-      if (!r.startDate) return;
-      try {
-        const d = parseISO(r.startDate);
-        const monthKey = format(startOfMonth(d), 'yyyy-MM');
-        const label = format(startOfMonth(d), 'MM/yyyy', { locale: vi });
-        const row = ensure(monthKey, label);
-        row.rentalRevenue += r.totalPrice || 0;
-        row.rentalCount += 1;
-      } catch {
-        /* skip */
-      }
-    });
-
-    eligibleSales.forEach((o) => {
-      const raw = o.createdDate;
-      if (!raw) return;
-      try {
-        const d = parseISO(raw.length > 10 ? raw : `${raw}T12:00:00`);
-        const monthKey = format(startOfMonth(d), 'yyyy-MM');
-        const label = format(startOfMonth(d), 'MM/yyyy', { locale: vi });
-        const row = ensure(monthKey, label);
-        row.saleRevenue += o.totalPrice || 0;
-        row.saleCount += 1;
-      } catch {
-        /* skip */
-      }
-    });
-
-    return Array.from(map.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-14)
-      .map(([monthKey, v]) => ({
-        monthKey,
-        month: v.month,
-        rentalRevenue: v.rentalRevenue,
-        saleRevenue: v.saleRevenue,
-        totalRevenue: v.rentalRevenue + v.saleRevenue,
-        rentalCount: v.rentalCount,
-        saleCount: v.saleCount,
-      }));
-  }, [eligibleRentals, eligibleSales]);
 
   const dailyRevenueInSelectedMonth = useMemo(() => {
     const monthStart = parseISO(`${reportMonth}-01T12:00:00`);
-    const monthEnd = endOfMonth(monthStart);
-    const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-    return days.map((day) => {
-      const dayKey = format(day, 'yyyy-MM-dd');
-      let rentalRevenue = 0;
-      let saleRevenue = 0;
-      eligibleRentals.forEach((r) => {
-        if (!r.startDate) return;
-        try {
-          if (format(parseISO(r.startDate), 'yyyy-MM-dd') === dayKey) {
-            rentalRevenue += r.totalPrice || 0;
-          }
-        } catch {
-          /* skip */
-        }
-      });
-      eligibleSales.forEach((o) => {
-        const raw = o.createdDate;
-        if (!raw) return;
-        try {
-          const d = parseISO(raw.length > 10 ? raw : `${raw}T12:00:00`);
-          if (format(d, 'yyyy-MM-dd') === dayKey) {
-            saleRevenue += o.totalPrice || 0;
-          }
-        } catch {
-          /* skip */
-        }
-      });
-      return {
-        dayNum: format(day, 'd'),
-        dayKey,
-        rentalRevenue,
-        saleRevenue,
-        totalRevenue: rentalRevenue + saleRevenue,
-      };
-    });
-  }, [reportMonth, eligibleRentals, eligibleSales]);
+    const days = eachDayOfInterval({ start: monthStart, end: endOfMonth(monthStart) });
+    return buildDailyRevenueRows(rentals, saleOrders, days);
+  }, [reportMonth, rentals, saleOrders]);
 
-  const revenueMixData = useMemo(() => {
-    const items = [
-      { name: 'Dịch vụ thuê xe', value: rentalRevenueTotal, color: RENT_COLOR },
-      { name: 'Bán xe', value: saleRevenueTotal, color: SALE_COLOR },
-    ];
-    return items.filter((x) => x.value > 0);
-  }, [rentalRevenueTotal, saleRevenueTotal]);
+  const rentalsInMonth = useMemo(
+    () =>
+      filterRentalsInMonth(rentals, reportMonth).sort((a, b) =>
+        (b.startDate || '').localeCompare(a.startDate || '')
+      ),
+    [rentals, reportMonth]
+  );
 
-  const brandData = (Array.isArray(brands) ? brands : []).map((b: { id: number; name: string }) => ({
-    name: b.name,
-    value: cars.filter((c) => c.model?.brand?.id === b.id).length,
-  })).filter((b) => b.value > 0);
+  const salesInMonth = useMemo(
+    () =>
+      filterSalesInMonth(saleOrders, reportMonth).sort((a, b) =>
+        (getSaleRevenueDayKey(b) || '').localeCompare(getSaleRevenueDayKey(a) || '')
+      ),
+    [saleOrders, reportMonth]
+  );
 
-  const returned = rentals.filter((r) => r.returnDate).length;
-  const active = rentals.length - returned;
-  const statusData = [
-    { name: 'Đang thuê', value: active },
-    { name: 'Đã trả', value: returned },
-  ];
-
-  const saleStatusMap = useMemo(() => {
-    const m = new Map<string, number>();
-    saleOrders.forEach((o) => {
-      const k = o.orderStatus?.trim() || '—';
-      m.set(k, (m.get(k) || 0) + 1);
-    });
-    return Array.from(m.entries()).map(([name, value]) => ({ name, value }));
-  }, [saleOrders]);
-
-  const usersCount = Array.isArray(users) ? users.length : 0;
+  const monthLabel = useMemo(() => {
+    try {
+      return format(parseISO(`${reportMonth}-01T12:00:00`), 'MMMM yyyy', { locale: vi });
+    } catch {
+      return reportMonth;
+    }
+  }, [reportMonth]);
 
   const downloadCsv = (filename: string, header: string[], rows: (string | number)[][]) => {
     const csv = [header.map(csvCell), ...rows.map((r) => r.map(csvCell))].map((r) => r.join(',')).join('\n');
@@ -254,70 +218,61 @@ const ManageReports = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleExportMonthlyCombined = () => {
-    const header = [
-      'Tháng',
-      'Doanh thu thuê (VNĐ)',
-      'Doanh thu bán xe (VNĐ)',
-      'Tổng (VNĐ)',
-      'Số đơn thuê',
-      'Số đơn mua',
-    ];
-    const rows = monthlyData.map((m) => [
-      m.month,
-      m.rentalRevenue,
-      m.saleRevenue,
-      m.totalRevenue,
-      m.rentalCount,
-      m.saleCount,
-    ]);
-    downloadCsv('bao-cao-doanh-thu-theo-thang.csv', header, rows);
-  };
-
-  const handleExportRentalsDetailCSV = () => {
-    const header = [
+  const handleExportMonthDetail = () => {
+    const rentalHeader = [
       'Mã đơn',
       'Ngày bắt đầu',
       'Ngày kết thúc',
-      'Tổng tiền (VNĐ)',
-      'Trạng thái thuê',
-      'Trạng thái thanh toán',
+      'Ngày trả',
       'Email khách',
+      'Xe',
       'Biển số',
+      'Tổng tiền (VNĐ)',
+      'Phương thức TT',
+      'TT thanh toán',
+      'TT đơn thuê',
     ];
-    const rows = rentals.map((r) => [
+    const rentalRows = rentalsInMonth.map((r) => [
       r.id,
       r.startDate ?? '',
       r.endDate ?? '',
-      r.totalPrice ?? 0,
-      r.rentalStatus ?? '',
-      r.paymentStatus ?? '',
+      r.returnDate ?? '',
       r.user?.email ?? '',
+      carLabel(r.car),
       r.car?.plate ?? '',
+      r.totalPrice ?? 0,
+      paymentMethodLabel(r.paymentMethod),
+      r.paymentStatus ?? '',
+      getRentalBadgeDisplay(r).label,
     ]);
-    downloadCsv('don-thue-chi-tiet.csv', header, rows);
-  };
 
-  const handleExportSaleOrdersCSV = () => {
-    const header = [
+    const saleHeader = [
       'Mã đơn',
       'Ngày tạo',
-      'Tổng tiền (VNĐ)',
-      'Trạng thái đơn',
-      'Trạng thái thanh toán',
       'Email khách',
+      'Xe',
       'Biển số',
+      'Tổng tiền (VNĐ)',
+      'Phương thức TT',
+      'TT thanh toán',
+      'TT đơn mua',
+      'Đã đánh giá',
     ];
-    const rows = saleOrders.map((o) => [
+    const saleRows = salesInMonth.map((o) => [
       o.id,
       o.createdDate ?? '',
-      o.totalPrice ?? 0,
-      o.orderStatus ?? '',
-      o.paymentStatus ?? '',
       o.user?.email ?? '',
+      carLabel(o.car),
       o.car?.plate ?? '',
+      o.totalPrice ?? 0,
+      paymentMethodLabel(o.paymentMethod),
+      o.paymentStatus ?? '',
+      saleOrderStatusLabel(o.orderStatus),
+      o.hasReview ? 'Có' : 'Chưa',
     ]);
-    downloadCsv('don-mua-xe-chi-tiet.csv', header, rows);
+
+    downloadCsv(`chi-tiet-thang-${reportMonth}.csv`, rentalHeader, rentalRows);
+    downloadCsv(`chi-tiet-mua-thang-${reportMonth}.csv`, saleHeader, saleRows);
   };
 
   const handleExportExcel = async () => {
@@ -340,14 +295,6 @@ const ManageReports = () => {
     URL.revokeObjectURL(url);
   };
 
-  const formatYAxis = (value: number) => {
-    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(0)}M`;
-    if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K`;
-    return String(value);
-  };
-
-  const tooltipMoney = (value: unknown) => formatCurrency(Number(value));
-
   if (isLoading) {
     return (
       <div className="min-h-[40vh] flex items-center justify-center">
@@ -362,36 +309,9 @@ const ManageReports = () => {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="font-heading font-bold text-2xl text-navy">Báo cáo doanh thu</h1>
-          <p className="text-gray-500 text-sm mt-1 max-w-xl">
-            Tổng hợp doanh thu từ <span className="font-medium text-navy">cho thuê xe</span> và{' '}
-            <span className="font-medium text-navy">bán xe</span>. Đơn đã hủy không tính vào doanh thu.
-          </p>
+          
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleExportMonthlyCombined}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl transition-colors text-sm shadow-sm"
-          >
-            <Download className="w-4 h-4" />
-            CSV theo tháng (thuê + mua)
-          </button>
-          <button
-            type="button"
-            onClick={handleExportRentalsDetailCSV}
-            className="flex items-center gap-2 px-4 py-2.5 bg-navy hover:bg-navy/90 text-white font-semibold rounded-xl transition-colors text-sm"
-          >
-            <Download className="w-4 h-4" />
-            CSV đơn thuê
-          </button>
-          <button
-            type="button"
-            onClick={handleExportSaleOrdersCSV}
-            className="flex items-center gap-2 px-4 py-2.5 border border-navy/20 text-navy hover:bg-navy/5 font-semibold rounded-xl transition-colors text-sm"
-          >
-            <Download className="w-4 h-4" />
-            CSV đơn mua
-          </button>
           <button
             type="button"
             onClick={handleExportExcel}
@@ -411,85 +331,45 @@ const ManageReports = () => {
         </div>
       </div>
 
-      {/* Primary KPI — tổng doanh thu */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-1 bg-gradient-to-br from-navy to-[#243654] rounded-2xl shadow-md p-6 text-white relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
-          <Wallet className="w-9 h-9 text-primary mb-4 relative" />
-          <p className="text-sm text-white/70 font-medium">Tổng doanh thu (ước tính hợp đồng)</p>
-          <p className="font-heading font-bold text-3xl mt-2 tracking-tight">{formatCurrency(totalRevenueCombined)}</p>
-          <p className="text-xs text-white/50 mt-3">
-            Thuê: {formatCurrency(rentalRevenueTotal)} · Bán: {formatCurrency(saleRevenueTotal)}
-          </p>
+      {/* KPI lũy kế — khớp Tổng quan */}
+      <section>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <KpiCard
+            highlight
+            label="Tổng doanh thu"
+            value={formatCurrency(allTime.totalRevenue)}
+            sub={`${allTime.rentalCount + allTime.saleCount} đơn hợp lệ`}
+            icon={<Wallet className="w-5 h-5 text-primary" />}
+            accent="bg-white/10"
+          />
+          <KpiCard
+            label="Doanh thu thuê xe"
+            value={formatCurrency(allTime.rentalRevenue)}
+            sub={`${allTime.rentalCount} đơn thuê`}
+            icon={<Car className="w-5 h-5 text-amber-600" />}
+            accent="bg-amber-50"
+          />
+          <KpiCard
+            label="Doanh thu bán xe"
+            value={formatCurrency(allTime.saleRevenue)}
+            sub={`${allTime.saleCount} đơn mua`}
+            icon={<ShoppingBag className="w-5 h-5 text-navy" />}
+            accent="bg-slate-100"
+          />
         </div>
+      </section>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center flex-shrink-0">
-            <Car className="w-7 h-7 text-amber-600" />
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Doanh thu thuê xe</p>
-            <p className="font-heading font-bold text-xl text-navy">{formatCurrency(rentalRevenueTotal)}</p>
-            <p className="text-xs text-gray-400 mt-1">{eligibleRentals.length} đơn (không tính hủy)</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center flex-shrink-0">
-            <ShoppingBag className="w-7 h-7 text-navy" />
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Doanh thu bán xe</p>
-            <p className="font-heading font-bold text-xl text-navy">{formatCurrency(saleRevenueTotal)}</p>
-            <p className="text-xs text-gray-400 mt-1">{eligibleSales.length} đơn (không tính hủy)</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Secondary stats */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-3 text-blue-600 bg-blue-50">
-            <FileText className="w-5 h-5" />
-          </div>
-          <p className="font-heading font-bold text-xl text-navy">{rentals.length}</p>
-          <p className="text-gray-500 text-sm mt-1">Tổng đơn thuê (mọi TT)</p>
-        </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-3 text-emerald-600 bg-emerald-50">
-            <ShoppingBag className="w-5 h-5" />
-          </div>
-          <p className="font-heading font-bold text-xl text-navy">{saleOrders.length}</p>
-          <p className="text-gray-500 text-sm mt-1">Tổng đơn mua</p>
-        </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-3 text-green-600 bg-green-50">
-            <Car className="w-5 h-5" />
-          </div>
-          <p className="font-heading font-bold text-xl text-navy">{cars.length}</p>
-          <p className="text-gray-500 text-sm mt-1">Xe trong hệ thống</p>
-        </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-3 text-violet-600 bg-violet-50">
-            <Users className="w-5 h-5" />
-          </div>
-          <p className="font-heading font-bold text-xl text-navy">{usersCount}</p>
-          <p className="text-gray-500 text-sm mt-1">Người dùng</p>
-        </div>
-      </div>
-
-      {/* Doanh thu từng ngày trong tháng được chọn */}
+      {/* Biểu đồ chi tiết theo ngày — chọn tháng tại đây */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
+        <div className="flex flex-wrap items-end justify-between gap-4 mb-4">
           <div>
-            <h2 className="font-heading font-semibold text-navy text-lg">Doanh thu theo tháng (chi tiết theo ngày)</h2>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Thuê: theo ngày bắt đầu đơn · Mua: theo ngày tạo đơn · Đơn hủy không tính
-            </p>
+            <h2 className="font-heading font-semibold text-navy text-lg">Chi tiết theo ngày</h2>
+            <p className="text-sm text-gray-500 mt-0.5">Hai biểu đồ riêng cho thuê xe và bán xe</p>
           </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="report-month" className="text-xs text-gray-500 font-medium">
-              Chọn tháng
+              Tháng báo cáo
             </label>
             <input
               id="report-month"
@@ -500,301 +380,205 @@ const ManageReports = () => {
             />
           </div>
         </div>
-        {dailyRevenueInSelectedMonth.some((d) => d.totalRevenue > 0) ? (
-          <ResponsiveContainer width="100%" height={320}>
-            <BarChart data={dailyRevenueInSelectedMonth} margin={{ top: 8, right: 12, left: 4, bottom: 0 }} barGap={2}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eef0f4" vertical={false} />
-              <XAxis
-                dataKey="dayNum"
-                tick={{ fontSize: 10, fill: '#64748b' }}
-                interval={0}
-                axisLine={{ stroke: '#e2e8f0' }}
-              />
-              <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} />
-              <Tooltip
-                formatter={(value: unknown, name?: string | number) => {
-                  const n = String(name ?? '');
-                  return [tooltipMoney(value), n === 'rentalRevenue' ? 'Thuê xe' : n === 'saleRevenue' ? 'Bán xe' : n];
-                }}
-                labelFormatter={(label) => `Tháng ${reportMonth} — ngày ${label}`}
-                contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0' }}
-              />
-              <Legend
-                formatter={(value) => (value === 'rentalRevenue' ? 'Thuê xe' : value === 'saleRevenue' ? 'Bán xe' : value)}
-              />
-              <Bar dataKey="rentalRevenue" name="rentalRevenue" stackId="a" fill={RENT_COLOR} radius={[0, 0, 0, 0]} maxBarSize={14} />
-              <Bar dataKey="saleRevenue" name="saleRevenue" stackId="a" fill={SALE_COLOR} radius={[3, 3, 0, 0]} maxBarSize={14} />
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="h-56 flex flex-col items-center justify-center text-gray-400 gap-2 text-sm">
-            <TrendingUp className="w-10 h-10 opacity-40" />
-            <p>Không có doanh thu trong tháng đã chọn</p>
-          </div>
-        )}
-      </div>
-
-      {/* Doanh thu theo tháng — grouped bar */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6 p-4 rounded-xl bg-slate-50 border border-slate-100">
           <div>
-            <h2 className="font-heading font-semibold text-navy text-lg">Doanh thu theo tháng</h2>
-            <p className="text-sm text-gray-500 mt-0.5">
-              So sánh thu từ thuê xe (theo ngày bắt đầu thuê) và bán xe (theo ngày tạo đơn)
-            </p>
+            <p className="text-xs text-slate-500">Tổng tháng {monthLabel}</p>
+            <p className="font-heading font-bold text-lg text-navy">{formatCurrency(monthStats.totalRevenue)}</p>
           </div>
-          <div className="flex items-center gap-4 text-xs">
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm" style={{ background: RENT_COLOR }} />
-              Thuê xe
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm" style={{ background: SALE_COLOR }} />
-              Bán xe
-            </span>
+          <div>
+            <p className="text-xs text-slate-500">Thuê xe ({monthStats.rentalCount} đơn)</p>
+            <p className="font-semibold text-amber-700">{formatCurrency(monthStats.rentalRevenue)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-500">Bán xe ({monthStats.saleCount} đơn)</p>
+            <p className="font-semibold text-navy">{formatCurrency(monthStats.saleRevenue)}</p>
           </div>
         </div>
-        {monthlyData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={340}>
-            <BarChart data={monthlyData} margin={{ top: 8, right: 16, left: 4, bottom: 8 }} barGap={4}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eef0f4" vertical={false} />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={{ stroke: '#e2e8f0' }} />
-              <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} />
-              <Tooltip
-                formatter={(value: unknown, name?: string | number) => {
-                  const n = String(name ?? '');
-                  return [tooltipMoney(value), n === 'rentalRevenue' ? 'Thuê xe' : n === 'saleRevenue' ? 'Bán xe' : n];
-                }}
-                labelFormatter={(label) => `Tháng ${label}`}
-                contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0' }}
-              />
-              <Legend
-                wrapperStyle={{ paddingTop: 16 }}
-                formatter={(value) => (value === 'rentalRevenue' ? 'Thuê xe' : value === 'saleRevenue' ? 'Bán xe' : value)}
-              />
-              <Bar dataKey="rentalRevenue" name="rentalRevenue" fill={RENT_COLOR} radius={[4, 4, 0, 0]} maxBarSize={48} />
-              <Bar dataKey="saleRevenue" name="saleRevenue" fill={SALE_COLOR} radius={[4, 4, 0, 0]} maxBarSize={48} />
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="h-64 flex flex-col items-center justify-center text-gray-400 gap-2">
-            <TrendingUp className="w-10 h-10 opacity-40" />
-            <p>Chưa có dữ liệu theo tháng</p>
-            <p className="text-xs text-center max-w-md">
-              Đơn mua cần có ngày tạo đơn từ hệ thống; đơn thuê cần ngày bắt đầu thuê.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Trend tổng + đơn */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h2 className="font-heading font-semibold text-navy text-lg mb-1">Xu hướng tổng doanh thu</h2>
-          <p className="text-sm text-gray-500 mb-6">Thuê + bán theo tháng</p>
-          {monthlyData.some((m) => m.totalRevenue > 0) ? (
-            <ResponsiveContainer width="100%" height={260}>
-              <AreaChart data={monthlyData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="totalRevGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={RENT_COLOR} stopOpacity={0.35} />
-                    <stop offset="95%" stopColor={RENT_COLOR} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#eef0f4" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v: unknown) => [tooltipMoney(v), 'Tổng']} labelFormatter={(l) => `Tháng ${l}`} />
-                <Area
-                  type="monotone"
-                  dataKey="totalRevenue"
-                  stroke={RENT_COLOR}
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#totalRevGrad)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-48 flex items-center justify-center text-gray-400 text-sm">Không có dữ liệu</div>
-          )}
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h2 className="font-heading font-semibold text-navy text-lg mb-1">Số đơn theo tháng</h2>
-          <p className="text-sm text-gray-500 mb-6">Đơn thuê và đơn mua (đơn hợp lệ, không hủy)</p>
-          {monthlyData.some((m) => m.rentalCount + m.saleCount > 0) ? (
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={monthlyData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#eef0f4" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip
-                  formatter={(v: unknown, n?: string | number) => {
-                    const key = String(n ?? '');
-                    const label = key === 'rentalCount' ? 'Đơn thuê' : key === 'saleCount' ? 'Đơn mua' : key;
-                    return [String(v ?? ''), label];
-                  }}
-                  labelFormatter={(l) => `Tháng ${l}`}
-                />
-                <Legend formatter={(v) => (v === 'rentalCount' ? 'Đơn thuê' : 'Đơn mua')} />
-                <Bar dataKey="rentalCount" name="rentalCount" fill="#3B82F6" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                <Bar dataKey="saleCount" name="saleCount" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-48 flex items-center justify-center text-gray-400 text-sm">Không có dữ liệu</div>
-          )}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <DailyRevenueChart
+            title="Doanh thu thuê xe"
+            subtitle="Theo ngày bắt đầu đơn thuê"
+            data={dailyRevenueInSelectedMonth}
+            dataKey="rentalRevenue"
+            color={RENT_COLOR}
+            monthSuffix={reportMonth.slice(5)}
+            emptyText="Không có doanh thu thuê trong tháng"
+          />
+          <DailyRevenueChart
+            title="Doanh thu bán xe"
+            subtitle="Theo ngày tạo đơn mua"
+            data={dailyRevenueInSelectedMonth}
+            dataKey="saleRevenue"
+            color={SALE_COLOR}
+            monthSuffix={reportMonth.slice(5)}
+            emptyText="Không có doanh thu bán trong tháng"
+          />
         </div>
       </div>
 
-      {/* Cơ cấu doanh thu + phân bố */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <PieChartIcon className="w-5 h-5 text-navy" />
-            <h2 className="font-heading font-semibold text-navy text-lg">Cơ cấu doanh thu</h2>
-          </div>
-          {revenueMixData.length > 0 ? (
-            <>
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie
-                    data={revenueMixData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={58}
-                    outerRadius={88}
-                    paddingAngle={2}
-                    dataKey="value"
-                    nameKey="name"
-                  >
-                    {revenueMixData.map((entry, index) => (
-                      <Cell key={entry.name} fill={entry.color || COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(v: unknown) => [tooltipMoney(v), '']} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="grid grid-cols-2 gap-3 mt-2 text-sm">
-                <div className="rounded-xl bg-amber-50/80 p-3 border border-amber-100">
-                  <p className="text-amber-800/80 text-xs">Thuê xe</p>
-                  <p className="font-semibold text-navy">
-                    {totalRevenueCombined > 0
-                      ? `${((rentalRevenueTotal / totalRevenueCombined) * 100).toFixed(1)}%`
-                      : '—'}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-slate-100/80 p-3 border border-slate-200">
-                  <p className="text-slate-600 text-xs">Bán xe</p>
-                  <p className="font-semibold text-navy">
-                    {totalRevenueCombined > 0
-                      ? `${((saleRevenueTotal / totalRevenueCombined) * 100).toFixed(1)}%`
-                      : '—'}
-                  </p>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="h-52 flex items-center justify-center text-gray-400 text-sm">Chưa có doanh thu</div>
-          )}
+      {/* Bảng chi tiết đơn trong tháng */}
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-heading font-semibold text-navy text-lg">
+            Chi tiết đơn trong tháng {monthLabel}
+          </h2>
+          <button
+            type="button"
+            onClick={handleExportMonthDetail}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl transition-colors text-sm shadow-sm"
+          >
+            <Download className="w-4 h-4" />
+            Xuất CSV chi tiết
+          </button>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 xl:col-span-2">
-          <h2 className="font-heading font-semibold text-navy text-lg mb-6">Phân bố xe theo thương hiệu</h2>
-          {brandData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie
-                  data={brandData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={100}
-                  dataKey="value"
-                  label={({ name, percent }: { name?: string; percent?: number }) =>
-                    `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                  labelLine={false}
-                >
-                  {brandData.map((_, index) => (
-                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
+        {/* Đơn thuê */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+            <Car className="w-5 h-5 text-amber-600" />
+            <h3 className="font-heading font-semibold text-navy">
+              Đơn thuê xe ({rentalsInMonth.length})
+            </h3>
+          </div>
+          <div className="overflow-x-auto">
+            {rentalsInMonth.length > 0 ? (
+              <table className="w-full text-sm min-w-[960px]">
+                <thead>
+                  <tr className="bg-slate-50 text-left text-slate-500">
+                    <th className="px-4 py-3 font-medium">Mã</th>
+                    <th className="px-4 py-3 font-medium">Ngày bắt đầu</th>
+                    <th className="px-4 py-3 font-medium">Ngày kết thúc</th>
+                    <th className="px-4 py-3 font-medium">Ngày trả</th>
+                    <th className="px-4 py-3 font-medium">Khách hàng</th>
+                    <th className="px-4 py-3 font-medium">Xe</th>
+                    <th className="px-4 py-3 font-medium">Biển số</th>
+                    <th className="px-4 py-3 font-medium text-right">Tổng tiền</th>
+                    <th className="px-4 py-3 font-medium">Thanh toán</th>
+                    <th className="px-4 py-3 font-medium">TT thanh toán</th>
+                    <th className="px-4 py-3 font-medium">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {rentalsInMonth.map((r) => {
+                    const badge = getRentalBadgeDisplay(r);
+                    return (
+                      <tr key={r.id} className="hover:bg-slate-50/80">
+                        <td className="px-4 py-3 text-slate-400 font-mono">#{r.id}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">{r.startDate ? formatDate(r.startDate) : '—'}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">{r.endDate ? formatDate(r.endDate) : '—'}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {r.returnDate ? formatDate(r.returnDate) : '—'}
+                        </td>
+                        <td className="px-4 py-3 max-w-[180px] truncate" title={r.user?.email}>
+                          {r.user?.email ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">{carLabel(r.car)}</td>
+                        <td className="px-4 py-3 font-mono text-xs">{r.car?.plate ?? '—'}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-navy tabular-nums">
+                          {formatCurrency(r.totalPrice ?? 0)}
+                        </td>
+                        <td className="px-4 py-3">{paymentMethodLabel(r.paymentMethod)}</td>
+                        <td className="px-4 py-3 text-xs text-slate-600">{r.paymentStatus ?? '—'}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-block text-xs px-2 py-0.5 rounded-full ${badge.className}`}>
+                            {badge.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-amber-50/60 font-semibold text-navy border-t border-amber-100">
+                    <td colSpan={7} className="px-4 py-3">
+                      Tổng {rentalsInMonth.length} đơn thuê
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {formatCurrency(monthStats.rentalRevenue)}
+                    </td>
+                    <td colSpan={3} />
+                  </tr>
+                </tfoot>
+              </table>
+            ) : (
+              <p className="px-6 py-10 text-center text-gray-400 text-sm">Không có đơn thuê trong tháng này</p>
+            )}
+          </div>
+        </div>
+
+        {/* Đơn mua */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+            <ShoppingBag className="w-5 h-5 text-navy" />
+            <h3 className="font-heading font-semibold text-navy">
+              Đơn mua xe ({salesInMonth.length})
+            </h3>
+          </div>
+          <div className="overflow-x-auto">
+            {salesInMonth.length > 0 ? (
+              <table className="w-full text-sm min-w-[880px]">
+                <thead>
+                  <tr className="bg-slate-50 text-left text-slate-500">
+                    <th className="px-4 py-3 font-medium">Mã</th>
+                    <th className="px-4 py-3 font-medium">Ngày tạo</th>
+                    <th className="px-4 py-3 font-medium">Khách hàng</th>
+                    <th className="px-4 py-3 font-medium">Xe</th>
+                    <th className="px-4 py-3 font-medium">Biển số</th>
+                    <th className="px-4 py-3 font-medium text-right">Tổng tiền</th>
+                    <th className="px-4 py-3 font-medium">Thanh toán</th>
+                    <th className="px-4 py-3 font-medium">TT thanh toán</th>
+                    <th className="px-4 py-3 font-medium">Trạng thái đơn</th>
+                    <th className="px-4 py-3 font-medium text-center">Đánh giá</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {salesInMonth.map((o) => (
+                    <tr key={o.id} className="hover:bg-slate-50/80">
+                      <td className="px-4 py-3 text-slate-400 font-mono">#{o.id}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {o.createdDate ? formatDate(o.createdDate) : '—'}
+                      </td>
+                      <td className="px-4 py-3 max-w-[180px] truncate" title={o.user?.email}>
+                        {o.user?.email ?? '—'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">{carLabel(o.car)}</td>
+                      <td className="px-4 py-3 font-mono text-xs">{o.car?.plate ?? '—'}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-navy tabular-nums">
+                        {formatCurrency(o.totalPrice ?? 0)}
+                      </td>
+                      <td className="px-4 py-3">{paymentMethodLabel(o.paymentMethod)}</td>
+                      <td className="px-4 py-3 text-xs text-slate-600">{o.paymentStatus ?? '—'}</td>
+                      <td className="px-4 py-3">
+                        <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                          {saleOrderStatusLabel(o.orderStatus)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center text-xs">
+                        {o.hasReview ? (
+                          <span className="text-emerald-600 font-medium">Đã đánh giá</span>
+                        ) : (
+                          <span className="text-slate-400">Chưa</span>
+                        )}
+                      </td>
+                    </tr>
                   ))}
-                </Pie>
-                <Legend />
-                <Tooltip formatter={(value: unknown) => [`${value} xe`, '']} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-52 flex items-center justify-center text-gray-400">Chưa có dữ liệu</div>
-          )}
-        </div>
-      </div>
-
-      {/* Trạng thái đơn */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h2 className="font-heading font-semibold text-navy text-lg mb-6">Trạng thái đơn thuê (tổng quan)</h2>
-          {rentals.length > 0 ? (
-            <>
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={statusData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={90}
-                    dataKey="value"
-                  >
-                    <Cell fill="#10B981" />
-                    <Cell fill="#94a3b8" />
-                  </Pie>
-                  <Tooltip formatter={(value: unknown) => [`${value} đơn`, '']} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div className="bg-emerald-50 rounded-xl p-3 text-center border border-emerald-100">
-                  <p className="text-2xl font-bold text-emerald-700">{active}</p>
-                  <p className="text-xs text-emerald-800/80 mt-1">Chưa trả / đang xử lý</p>
-                </div>
-                <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
-                  <p className="text-2xl font-bold text-slate-600">{returned}</p>
-                  <p className="text-xs text-slate-500 mt-1">Đã trả xe</p>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="h-52 flex items-center justify-center text-gray-400">Chưa có đơn thuê</div>
-          )}
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h2 className="font-heading font-semibold text-navy text-lg mb-6">Trạng thái đơn mua</h2>
-          {saleStatusMap.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={saleStatusMap}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={95}
-                  dataKey="value"
-                  label={({ name, value }: { name?: string; value?: number }) => `${name ?? ''}: ${value}`}
-                >
-                  {saleStatusMap.map((_, index) => (
-                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: unknown) => [`${value} đơn`, '']} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-52 flex items-center justify-center text-gray-400">Chưa có đơn mua</div>
-          )}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-slate-100/80 font-semibold text-navy border-t border-slate-200">
+                    <td colSpan={5} className="px-4 py-3">
+                      Tổng {salesInMonth.length} đơn mua
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {formatCurrency(monthStats.saleRevenue)}
+                    </td>
+                    <td colSpan={4} />
+                  </tr>
+                </tfoot>
+              </table>
+            ) : (
+              <p className="px-6 py-10 text-center text-gray-400 text-sm">Không có đơn mua trong tháng này</p>
+            )}
+          </div>
         </div>
       </div>
     </div>

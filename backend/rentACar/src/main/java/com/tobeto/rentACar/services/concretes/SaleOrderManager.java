@@ -21,6 +21,7 @@ import com.tobeto.rentACar.services.dtos.invoice.request.AddInvoiceRequest;
 import com.tobeto.rentACar.services.dtos.saleorder.request.AddSaleOrderRequest;
 import com.tobeto.rentACar.services.dtos.saleorder.response.AddSaleOrderResponse;
 import com.tobeto.rentACar.services.dtos.saleorder.response.GetAllSaleOrdersResponse;
+import com.tobeto.rentACar.services.rules.RentalBusinessRule;
 import com.tobeto.rentACar.services.rules.SaleBusinessRule;
 import lombok.AllArgsConstructor;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -41,6 +42,7 @@ public class SaleOrderManager implements SaleOrderService {
     private final ModelMapperService modelMapperService;
     private final InvoiceService invoiceService;
     private final SaleBusinessRule saleBusinessRule;
+    private final RentalBusinessRule rentalBusinessRule;
     private final BusinessMailNotificationSender businessMailNotificationSender;
     private final com.tobeto.rentACar.services.abstracts.PromotionService promotionService;
     private MessageService messageService;
@@ -51,6 +53,7 @@ public class SaleOrderManager implements SaleOrderService {
         if (!userRepository.existsById(userId)) {
             throw new BusinessException(messageService.getMessage(Messages.User.getUserNotFoundMessage));
         }
+        rentalBusinessRule.checkUserKycApproved(userId);
         Car car = carRepository.findById(request.getCarId()).orElseThrow(
                 () -> new BusinessException(messageService.getMessage(Messages.Car.getCarNotFoundMessage)));
 
@@ -127,10 +130,23 @@ public class SaleOrderManager implements SaleOrderService {
         return res;
     }
 
+    /** ModelMapper LOOSE có thể map {@code id} → {@code hasReview} (Boolean) → MappingException → 401. */
+    private GetAllSaleOrdersResponse toSaleOrderDto(SaleOrder o) {
+        var mapper = modelMapperService.forResponse();
+        if (mapper.getTypeMap(SaleOrder.class, GetAllSaleOrdersResponse.class) == null) {
+            mapper.createTypeMap(SaleOrder.class, GetAllSaleOrdersResponse.class)
+                    .addMappings(m -> m.skip(GetAllSaleOrdersResponse::setHasReview));
+        }
+        GetAllSaleOrdersResponse dto = mapper.map(o, GetAllSaleOrdersResponse.class);
+        dto.setCreatedDate(o.getCreatedDate());
+        dto.setHasReview(reviewRepository.existsBySaleOrder_Id(o.getId()));
+        return dto;
+    }
+
     @Override
     public List<GetAllSaleOrdersResponse> getAll() {
         return saleOrderRepository.findAll().stream()
-                .map(o -> modelMapperService.forResponse().map(o, GetAllSaleOrdersResponse.class))
+                .map(this::toSaleOrderDto)
                 .toList();
     }
 
@@ -141,14 +157,14 @@ public class SaleOrderManager implements SaleOrderService {
         if (!isAdmin && (o.getUser() == null || o.getUser().getId() != actorUserId)) {
             throw new BusinessException("Bạn không có quyền xem đơn mua này.");
         }
-        return modelMapperService.forResponse().map(o, GetAllSaleOrdersResponse.class);
+        return toSaleOrderDto(o);
     }
 
     @Override
     public List<GetAllSaleOrdersResponse> getByUserId(int userId) {
         return saleOrderRepository.findByUser_IdOrderByIdDesc(userId).stream()
                 .map(o -> {
-                    GetAllSaleOrdersResponse dto = modelMapperService.forResponse().map(o, GetAllSaleOrdersResponse.class);
+                    GetAllSaleOrdersResponse dto = toSaleOrderDto(o);
                     dto.setHasReview(reviewRepository.existsBySaleOrder_Id(o.getId()));
                     return dto;
                 })

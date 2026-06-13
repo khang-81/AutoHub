@@ -1,8 +1,10 @@
-import { MapPin, Phone, ExternalLink } from 'lucide-react';
+import { MapPin, Phone } from 'lucide-react';
 
 export const ZALO_CONSULT_URL = 'https://zalo.me/0329248087';
 export const DEALER_PHONE_DISPLAY = '0329 248 087';
 export const DEALER_PHONE_RAW = '0329248087';
+/** Khớp địa chỉ footer / trang Liên hệ */
+export const DEALER_ADDRESS = 'Phúc Am, Ngọc Hồi, Hà Nội';
 
 interface SaleDealerCardProps {
   /** Tên xe — gợi ý nội dung khi chat Zalo */
@@ -29,20 +31,10 @@ const SaleDealerCard = ({ carLabel, className = '' }: SaleDealerCardProps) => {
 
       <p className="mt-3 flex items-start gap-2 text-sm leading-snug text-gray-600">
         <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
-        123 Phố Huế, Hai Bà Trưng, Hà Nội
+        {DEALER_ADDRESS}
       </p>
 
-      <a
-        href="https://autohub.id.vn"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-2 inline-flex items-center gap-1 text-sm text-orange-700 hover:underline"
-      >
-        autohub.id.vn
-        <ExternalLink className="h-3 w-3" />
-      </a>
-
-      <div className="sale-dealer-card__contact">
+      <div className="sale-dealer-card__contact mt-4">
         <a href={`tel:${DEALER_PHONE_RAW}`} className="sale-dealer-card__phone">
           <Phone className="h-5 w-5 shrink-0" />
           <span>{DEALER_PHONE_DISPLAY}</span>
@@ -64,10 +56,6 @@ const SaleDealerCard = ({ carLabel, className = '' }: SaleDealerCardProps) => {
           <span>Zalo</span>
         </a>
       </div>
-
-      <p className="mt-3 text-center text-[11px] leading-relaxed text-gray-400">
-        Liên hệ góc trái màn hình hoặc số trên để được chuyên viên tư vấn trực tiếp về giá lăn bánh và ưu đãi.
-      </p>
     </div>
   );
 };

@@ -3,8 +3,6 @@ import { Link } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import {
   ChevronRight,
-  Share2,
-  Heart,
   Star,
   Phone,
   MessageSquare,
@@ -12,6 +10,8 @@ import {
   Info,
   CalendarClock,
   Shield,
+  FileText,
+  CheckCircle2,
 } from 'lucide-react';
 import type { ReviewDto } from '../../api/reviews';
 import type { Car } from '../../types';
@@ -23,11 +23,11 @@ import {
   getTransmissionLabel,
   inferBodyStyle,
   getConditionLabel,
-  buildSaleDescription,
+  buildSaleDescriptionSections,
+  SALE_PURCHASE_TERMS,
   isSaleCarSold,
 } from '../../utils/saleCarHelpers';
 import SaleDealerCard from './SaleDealerCard';
-import SaleLoanCalculator from './SaleLoanCalculator';
 import CarCard from '../ui/CarCard';
 import CarGallery from '../ui/CarGallery';
 
@@ -58,17 +58,11 @@ function SalePriceBlock({
   title,
   salePrice,
   onRoad,
-  saved,
-  onToggleSave,
-  onShare,
   compact,
 }: {
   title: string;
   salePrice: number;
   onRoad: number;
-  saved: boolean;
-  onToggleSave: () => void;
-  onShare: () => void;
   compact?: boolean;
 }) {
   return (
@@ -88,19 +82,6 @@ function SalePriceBlock({
           {formatCurrency(salePrice)} · Ước tính lăn bánh {formatCurrency(onRoad)}
         </p>
       )}
-      <div className="mt-3 flex items-center gap-4 border-t border-gray-100 pt-3 text-sm text-gray-500">
-        <button type="button" onClick={onShare} className="inline-flex items-center gap-1.5 hover:text-navy">
-          <Share2 className="h-4 w-4" /> Chia sẻ
-        </button>
-        <button
-          type="button"
-          onClick={onToggleSave}
-          className={`inline-flex items-center gap-1.5 hover:text-navy ${saved ? 'text-red-500' : ''}`}
-        >
-          <Heart className={`h-4 w-4 ${saved ? 'fill-red-500' : ''}`} />
-          {saved ? 'Đã lưu' : 'Lưu tin'}
-        </button>
-      </div>
     </div>
   );
 }
@@ -128,8 +109,7 @@ const SaleCarDetailView = ({
   forcedMode,
 }: SaleCarDetailViewProps) => {
   const sold = isSaleCarSold(car);
-  const [descExpanded, setDescExpanded] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [termsExpanded, setTermsExpanded] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<'buy' | 'view'>(
     forcedMode === 'view' ? 'view' : 'buy'
   );
@@ -139,8 +119,7 @@ const SaleCarDetailView = ({
   const title = `${brand} ${model} ${car.modelYear}`;
   const salePrice = car.salePrice ?? 0;
   const onRoad = estimateOnRoadPrice(salePrice);
-  const description = buildSaleDescription(car);
-  const descPreview = description.length > 400 ? `${description.slice(0, 400)}…` : description;
+  const descriptionSections = buildSaleDescriptionSections(car);
   const condition = getConditionLabel(car.kilometer, car.modelYear);
 
   const specRows = useMemo(
@@ -158,19 +137,6 @@ const SaleCarDetailView = ({
     ],
     [car, brand, condition]
   );
-
-  const handleShare = async () => {
-    const url = window.location.href;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title, url });
-        return;
-      } catch {
-        /* fallback */
-      }
-    }
-    await navigator.clipboard.writeText(url);
-  };
 
   const buyPanel = sold ? (
     <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-5 text-center">
@@ -338,7 +304,7 @@ const SaleCarDetailView = ({
           <ChevronRight className="h-3 w-3 text-gray-300" />
           <span className="text-gray-400">{model}</span>
           <ChevronRight className="h-3 w-3 text-gray-300" />
-          <span className="font-medium text-gray-700">Mã tin {car.plate || car.id}</span>
+          <span className="font-medium text-navy">{car.modelYear}</span>
         </div>
       </nav>
 
@@ -355,15 +321,7 @@ const SaleCarDetailView = ({
 
             {/* Tiêu đề + giá — mobile */}
             <div className="sale-panel lg:hidden">
-              <SalePriceBlock
-                title={title}
-                salePrice={salePrice}
-                onRoad={onRoad}
-                saved={saved}
-                onToggleSave={() => setSaved((v) => !v)}
-                onShare={handleShare}
-                compact
-              />
+              <SalePriceBlock title={title} salePrice={salePrice} onRoad={onRoad} compact />
             </div>
 
             {/* Tư vấn — mobile (giống oto: ngay dưới giá) */}
@@ -371,35 +329,90 @@ const SaleCarDetailView = ({
 
             {/* Tình trạng xe — một bảng duy nhất */}
             <section className="sale-panel">
-              <h2 className="sale-section-title">Tình trạng xe</h2>
-              <ul className="sale-spec-list">
+              <h2 className="sale-section-title">Thông số & tình trạng</h2>
+              <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {specRows.map((row) => (
-                  <li key={row.label} className="sale-spec-list__row">
-                    <span className="sale-spec-list__label">{row.label}</span>
-                    <span className="sale-spec-list__value">{row.value}</span>
-                  </li>
+                  <div
+                    key={row.label}
+                    className="rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2.5"
+                  >
+                    <dt className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+                      {row.label}
+                    </dt>
+                    <dd className="mt-1 text-sm font-semibold leading-snug text-navy">{row.value}</dd>
+                  </div>
                 ))}
-              </ul>
+              </dl>
             </section>
 
             <section className="sale-panel">
-              <h2 className="sale-section-title">Mô tả</h2>
-              <div className="text-[15px] leading-[1.7] text-gray-700">
-                {descExpanded ? description : descPreview}
+              <h2 className="sale-section-title">Mô tả chi tiết</h2>
+              <div className="space-y-5">
+                {descriptionSections.map((section) => (
+                  <div key={section.title}>
+                    <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-navy/80">
+                      {section.title}
+                    </h3>
+                    {section.paragraphs?.map((p) => (
+                      <p key={p.slice(0, 40)} className="mb-2 text-[15px] leading-[1.75] text-gray-700 last:mb-0">
+                        {p}
+                      </p>
+                    ))}
+                    {section.bullets && (
+                      <ul className="space-y-2">
+                        {section.bullets.map((item) => (
+                          <li key={item} className="flex items-start gap-2.5 text-[14px] leading-relaxed text-gray-700">
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
               </div>
-              {description.length > 400 && (
+              <p className="sale-disclaimer">
+                Thông tin mang tính tham khảo tại thời điểm niêm yết. Vui lòng liên hệ chuyên viên AutoHub để nhận báo
+                giá chính thức và lịch xem xe phù hợp.
+              </p>
+            </section>
+
+            <section className="sale-panel">
+              <div className="mb-4 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-orange-600" />
+                <h2 className="sale-section-title mb-0">Điều khoản dịch vụ mua xe</h2>
+              </div>
+              <p className="mb-4 text-sm leading-relaxed text-gray-600">
+                Bằng việc đặt mua hoặc đặt lịch xem xe trên AutoHub, bạn đồng ý với các điều khoản dưới đây. Xem thêm{' '}
+                <Link to="/terms" className="font-semibold text-orange-700 hover:underline">
+                  Điều khoản dịch vụ chung
+                </Link>
+                .
+              </p>
+              <div className="space-y-4">
+                {(termsExpanded ? SALE_PURCHASE_TERMS : SALE_PURCHASE_TERMS.slice(0, 2)).map((group) => (
+                  <div key={group.title} className="rounded-lg border border-gray-100 bg-gray-50/80 px-4 py-3">
+                    <h3 className="mb-2 text-sm font-bold text-navy">{group.title}</h3>
+                    <ul className="space-y-1.5">
+                      {group.items.map((item) => (
+                        <li key={item} className="flex items-start gap-2 text-[13px] leading-relaxed text-gray-600">
+                          <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-orange-500" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+              {SALE_PURCHASE_TERMS.length > 2 && (
                 <button
                   type="button"
-                  onClick={() => setDescExpanded((v) => !v)}
+                  onClick={() => setTermsExpanded((v) => !v)}
                   className="mt-3 text-sm font-medium text-orange-700 hover:underline"
                 >
-                  {descExpanded ? 'Thu gọn' : 'Hiển thị thêm'}
+                  {termsExpanded ? 'Thu gọn điều khoản' : 'Xem đầy đủ điều khoản mua xe'}
                 </button>
               )}
-              <p className="sale-disclaimer">
-                * Lưu ý: Thông tin tin rao do người đăng tin đăng tải. Giá và ưu đãi có thể thay đổi — vui lòng liên
-                hệ chuyên viên để được báo giá chính xác.
-              </p>
             </section>
 
             <section className="sale-panel">
@@ -437,8 +450,16 @@ const SaleCarDetailView = ({
 
             {relatedCars.length > 0 && (
               <section className="sale-panel">
-                <h2 className="sale-section-title">Xe {brand} khác</h2>
-                <div className="space-y-3">
+                <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+                  <h2 className="sale-section-title mb-0">Xe {brand} khác</h2>
+                  <Link
+                    to={`/cars/mua?brand=${car.model?.brand?.id ?? ''}`}
+                    className="text-sm font-semibold text-orange-700 hover:underline"
+                  >
+                    Xem tất cả →
+                  </Link>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {relatedCars.map((c) => (
                     <CarCard key={c.id} car={c} variant="sale" />
                   ))}
@@ -450,21 +471,12 @@ const SaleCarDetailView = ({
           {/* ── Sidebar ── */}
           <aside className="sale-sidebar-sticky space-y-4">
             <div className="sale-panel hidden lg:block">
-              <SalePriceBlock
-                title={title}
-                salePrice={salePrice}
-                onRoad={onRoad}
-                saved={saved}
-                onToggleSave={() => setSaved((v) => !v)}
-                onShare={handleShare}
-              />
+              <SalePriceBlock title={title} salePrice={salePrice} onRoad={onRoad} />
             </div>
 
             <SaleDealerCard carLabel={title} className="hidden lg:block" />
 
             <div className="sale-panel">{buyPanel}</div>
-
-            <SaleLoanCalculator carPrice={salePrice} />
           </aside>
         </div>
       </div>

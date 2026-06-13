@@ -12,7 +12,7 @@ import {
 import { useToast } from '../../components/ui/Toast';
 import Modal from '../../components/ui/Modal';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import { formatCurrency, formatDate, CAR_PLACEHOLDER } from '../../utils/helpers';
+import { formatCurrency, formatDate, CAR_PLACEHOLDER, suggestRentalReturnDate } from '../../utils/helpers';
 import type { Rental } from '../../types';
 
 const ManageRentals = () => {
@@ -111,7 +111,6 @@ const ManageRentals = () => {
   const openReturnModal = (rental: Rental) => {
     setReturnRental(rental);
     const startKm = rental.startKilometer ?? rental.car?.kilometer ?? 0;
-    const today = new Date().toISOString().slice(0, 10);
     const pendingReturn = rental.rentalStatus === 'PENDING_RETURN';
     setReturnForm({
       endKilometer: String(
@@ -121,7 +120,7 @@ const ManageRentals = () => {
       additionalIncidentalFees: String(rental.returnAdditionalFees ?? 0),
       damageNotes: rental.damageNotes ?? '',
       damagePhotoUrls: rental.damagePhotoUrls ?? '',
-      returnDate: today,
+      returnDate: suggestRentalReturnDate(rental),
     });
   };
 

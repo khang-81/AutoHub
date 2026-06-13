@@ -191,3 +191,57 @@ export function getRentalBadgeDisplay(rental: {
   }
   return { label: '🚗 Đang thuê', className: 'bg-green-100 text-green-700' };
 }
+
+/** Ngày trả mặc định: không muộn hơn ngày kết thúc hợp đồng nếu chuyến đã qua. */
+export function suggestRentalReturnDate(rental: { endDate?: string | null }): string {
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const end = rental.endDate?.slice(0, 10);
+  if (!end) return today;
+  return end <= today ? end : today;
+}
+
+export type RentalBalanceBreakdown = {
+  contractRemainder: number;
+  lateFee: number;
+  overKmFee: number;
+  missingFuelFee: number;
+  incidentals: number;
+  deposit: number;
+  totalDue: number;
+  paidFullContractUpfront: boolean;
+};
+
+/** Giải thích số tiền còn phải thanh toán sau trả xe (khớp công thức backend). */
+export function getRentalBalanceBreakdown(rental: {
+  totalPrice: number;
+  depositAmount?: number | null;
+  paymentStatus?: string | null;
+  balanceDueAtReturn?: number | null;
+  lateFeeAmount?: number | null;
+  overKmFee?: number | null;
+  missingFuelFee?: number | null;
+  returnAdditionalFees?: number | null;
+}): RentalBalanceBreakdown | null {
+  const totalDue = rental.balanceDueAtReturn ?? 0;
+  if (totalDue <= 0) return null;
+
+  const deposit = rental.depositAmount ?? 0;
+  const ps = (rental.paymentStatus ?? '').trim().toUpperCase();
+  const paidFullContractUpfront = ps === 'PAID';
+  const lateFee = rental.lateFeeAmount ?? 0;
+  const overKmFee = rental.overKmFee ?? 0;
+  const missingFuelFee = rental.missingFuelFee ?? 0;
+  const incidentals = rental.returnAdditionalFees ?? 0;
+  const contractRemainder = paidFullContractUpfront ? 0 : Math.max(0, rental.totalPrice - deposit);
+
+  return {
+    contractRemainder,
+    lateFee,
+    overKmFee,
+    missingFuelFee,
+    incidentals,
+    deposit,
+    totalDue,
+    paidFullContractUpfront,
+  };
+}

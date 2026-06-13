@@ -18,6 +18,7 @@ import { getAllSaleOrdersApi } from '../../api/saleOrders';
 import { getAllUsersApi } from '../../api/users';
 import { getAllBrandsApi } from '../../api/brands';
 import { formatCurrency, formatDate, CAR_PLACEHOLDER } from '../../utils/helpers';
+import { computeRevenueTotals } from '../../utils/revenueStats';
 import { Link } from 'react-router-dom';
 import type { Car as CarType, Rental, SaleOrder } from '../../types';
 
@@ -82,9 +83,7 @@ const AdminDashboard = () => {
   const carsSale = cars.filter(isSaleListing);
   const saleCarsAvailable = carsSale.filter((c) => (c.saleStatus || 'AVAILABLE').toUpperCase() !== 'SOLD');
 
-  const rentalRevenue = rentals.reduce((sum: number, r: Rental) => sum + (r.totalPrice || 0), 0);
-  const saleRevenue = saleOrders.reduce((sum: number, o: SaleOrder) => sum + (o.totalPrice || 0), 0);
-  const totalRevenue = rentalRevenue + saleRevenue;
+  const { rentalRevenue, saleRevenue, totalRevenue } = computeRevenueTotals(rentals, saleOrders);
 
   const recentRentals = rentals.slice(-5).reverse();
   const recentSaleOrders = saleOrders.slice(-5).reverse();
@@ -119,7 +118,7 @@ const AdminDashboard = () => {
       icon: TrendingUp,
       label: 'Doanh thu thuê',
       value: formatCurrency(rentalRevenue),
-      hint: 'Tổng giá trị các đơn thuê',
+      hint: 'Đơn hợp lệ, không tính hủy',
       link: '/admin/reports',
       iconWrap: 'bg-gradient-to-br from-primary/15 to-primary/5 text-primary',
     },
@@ -146,7 +145,7 @@ const AdminDashboard = () => {
       icon: Wallet,
       label: 'Doanh thu bán',
       value: formatCurrency(saleRevenue),
-      hint: 'Tổng giá trị đơn mua xe',
+      hint: 'Đơn hợp lệ, không tính hủy',
       link: '/admin/reports',
       iconWrap: 'bg-gradient-to-br from-emerald-50 to-green-50 text-emerald-800',
     },
@@ -177,7 +176,12 @@ const AdminDashboard = () => {
               <p className="mt-1 font-heading text-2xl font-bold text-primary sm:text-3xl">
                 {formatCurrency(totalRevenue)}
               </p>
-              <p className="mt-1 text-xs text-slate-400">Thuê + bán</p>
+              <p className="mt-1 text-xs text-slate-400">
+                Lũy kế · không tính đơn hủy
+              </p>
+              <p className="mt-0.5 text-[11px] text-slate-500">
+                Thuê {formatCurrency(rentalRevenue)} · Bán {formatCurrency(saleRevenue)}
+              </p>
             </div>
             <div className="min-w-[120px] rounded-2xl border border-white/10 bg-white/[0.07] px-5 py-4 backdrop-blur-sm">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Đơn hàng</p>

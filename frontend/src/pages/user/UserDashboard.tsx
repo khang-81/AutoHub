@@ -15,7 +15,10 @@ import {
 import { getRentalsByUserIdApi } from '../../api/rentals';
 import { getMySaleOrdersApi } from '../../api/saleOrders';
 import { getProfileApi } from '../../api/users';
+import { getMyKycDocumentsApi } from '../../api/kyc';
 import { useAuthStore } from '../../store/authStore';
+import { isKycApproved } from '../../utils/kycStatus';
+import { resolveUserAuthToken } from '../../utils/authToken';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { formatCurrency, formatDate, CAR_PLACEHOLDER, getRentalBadgeDisplay } from '../../utils/helpers';
 import type { RentalByUser, SaleOrder } from '../../types';
@@ -28,22 +31,37 @@ const saleStatusLabel: Record<string, string> = {
 };
 
 const UserDashboard = () => {
-  const { email } = useAuthStore();
+  const { email, isAuthenticated } = useAuthStore();
+  const hasToken = !!resolveUserAuthToken();
 
   const { data: rentals = [], isLoading: rentalsLoading } = useQuery<RentalByUser[]>({
     queryKey: ['myRentals'],
     queryFn: getRentalsByUserIdApi,
+    enabled: isAuthenticated && hasToken,
+    refetchOnMount: 'always',
   });
 
   const { data: saleOrders = [], isLoading: saleOrdersLoading } = useQuery<SaleOrder[]>({
     queryKey: ['mySaleOrders'],
     queryFn: getMySaleOrdersApi,
+    enabled: isAuthenticated && hasToken,
   });
 
   const { data: profile } = useQuery({
     queryKey: ['profile'],
     queryFn: getProfileApi,
+    enabled: isAuthenticated && hasToken,
+    refetchOnMount: 'always',
   });
+
+  const { data: kycDocs = [] } = useQuery({
+    queryKey: ['kycMy'],
+    queryFn: getMyKycDocumentsApi,
+    enabled: isAuthenticated && hasToken,
+    refetchOnMount: 'always',
+  });
+
+  const kycApproved = isKycApproved(profile, kycDocs);
 
   const totalSpent = rentals.reduce((sum, r) => sum + (r.totalPrice || 0), 0);
   const activeRentals = rentals.filter((r) => !r.returnDate).length;
@@ -101,14 +119,14 @@ const UserDashboard = () => {
         </div>
       </div>
 
-      {profile && profile.kycStatus !== 'APPROVED' && (
+      {profile && !kycApproved && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-start gap-3">
             <ShieldAlert className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold text-amber-900 text-sm">Hoàn tất xác minh GPLX</p>
               <p className="text-amber-800/90 text-xs mt-0.5">
-                Bạn cần được duyệt giấy tờ trước khi thuê xe.
+                Bạn cần được duyệt giấy tờ trước khi thuê hoặc mua xe.
               </p>
             </div>
           </div>

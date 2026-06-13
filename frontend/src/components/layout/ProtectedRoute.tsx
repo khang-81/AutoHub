@@ -1,5 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import { useAuthHydrated } from '../../hooks/useAuthHydrated';
+import LoadingSpinner from '../ui/LoadingSpinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -7,8 +9,17 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps) => {
+  const hydrated = useAuthHydrated();
   const { isAuthenticated, isAdmin } = useAuthStore();
   const location = useLocation();
+
+  if (!hydrated) {
+    return (
+      <div className="min-h-[40vh] flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;

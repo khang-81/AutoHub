@@ -62,6 +62,10 @@ public class UserDocumentManager implements UserDocumentService {
         UserDocument doc;
         if (existing.isPresent()) {
             doc = existing.get();
+            if (KycConstants.DOC_APPROVED.equals(doc.getStatus())) {
+                throw new BusinessException(
+                        "Giấy tờ " + documentType + " đã được duyệt. Liên hệ admin nếu cần cập nhật hồ sơ.");
+            }
             doc.setFilePath(storedPath);
             doc.setStatus(KycConstants.DOC_PENDING);
             doc.setAdminNote(null);

@@ -3,6 +3,7 @@ import { ShieldCheck, Upload, Loader2 } from 'lucide-react';
 import { getMyKycDocumentsApi, uploadKycDocumentApi, kycFileAbsoluteUrl } from '../../api/kyc';
 import { isAllowedKycImage, isLikelyKycImageUrl } from '../../utils/kycFile';
 import { getProfileApi } from '../../api/users';
+import { isKycApproved } from '../../utils/kycStatus';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { useToast } from '../../components/ui/Toast';
 
@@ -57,15 +58,16 @@ const KycVerification = () => {
     uploadMutation.mutate({ type, file });
   };
 
-  const kyc = profile?.kycStatus || 'NOT_SUBMITTED';
+  const kycApproved = isKycApproved(profile, docs);
+  const kyc = kycApproved ? 'APPROVED' : profile?.kycStatus || 'NOT_SUBMITTED';
   /** Backend coi thiếu một loại giấy là PENDING; banner phải phân biệt "thiếu file" vs "chờ admin". */
   const hasCccd = docs.some((d) => d.documentType === 'CCCD');
   const hasGplx = docs.some((d) => d.documentType === 'GPLX');
   const bothTypesUploaded = hasCccd && hasGplx;
 
   const kycBanner =
-    kyc === 'APPROVED'
-      ? { text: 'Tài khoản đã xác minh đầy đủ. Bạn có thể thuê xe.', c: 'bg-green-50 border-green-200 text-green-800' }
+    kycApproved
+      ? { text: 'Tài khoản đã xác minh đầy đủ. Bạn có thể thuê hoặc mua xe.', c: 'bg-green-50 border-green-200 text-green-800' }
       : kyc === 'REJECTED'
         ? {
             text: 'Giấy tờ bị từ chối. Vui lòng tải lên bản rõ nét hơn.',
@@ -96,7 +98,7 @@ const KycVerification = () => {
           <h1 className="font-heading font-bold text-xl text-navy">Xác minh GPLX</h1>
         </div>
         <p className="text-gray-500 text-sm">
-          Tải ảnh CCCD và GPLX (PNG/JPG). Sau khi admin duyệt, bạn có thể thuê xe.
+          Tải ảnh CCCD và GPLX (PNG/JPG). Sau khi admin duyệt, bạn có thể thuê hoặc mua xe.
         </p>
         <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${kycBanner.c}`}>{kycBanner.text}</div>
       </div>
@@ -132,11 +134,15 @@ const KycVerification = () => {
               {doc?.adminNote && doc.status === 'REJECTED' && (
                 <p className="text-sm text-red-600 mb-3">Ghi chú: {doc.adminNote}</p>
               )}
-              <label className="btn-primary inline-flex items-center gap-2 cursor-pointer">
-                {uploadMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                {doc ? 'Tải lại' : 'Tải lên'}
-                <input type="file" accept=".png,.jpg,.jpeg" className="hidden" onChange={onPickFile(type)} />
-              </label>
+              {doc?.status === 'APPROVED' ? (
+                <p className="text-sm text-green-700">Giấy tờ đã duyệt — không cần tải lại.</p>
+              ) : (
+                <label className="btn-primary inline-flex items-center gap-2 cursor-pointer">
+                  {uploadMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {doc ? 'Tải lại' : 'Tải lên'}
+                  <input type="file" accept=".png,.jpg,.jpeg" className="hidden" onChange={onPickFile(type)} />
+                </label>
+              )}
             </div>
           );
         })}

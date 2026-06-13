@@ -13,13 +13,19 @@ import {
   CAR_PLACEHOLDER,
   getApiErrorMessage,
   getRentalBadgeDisplay,
+  getRentalBalanceBreakdown,
+  suggestRentalReturnDate,
 } from '../../utils/helpers';
 import { Link } from 'react-router-dom';
 import type { RentalByUser, Invoice } from '../../types';
+import { useAuthStore } from '../../store/authStore';
+import { resolveUserAuthToken } from '../../utils/authToken';
 
 const RentalHistory = () => {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const { isAuthenticated } = useAuthStore();
+  const hasToken = !!resolveUserAuthToken();
   const [cancelId, setCancelId] = useState<number | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [invoiceRentalId, setInvoiceRentalId] = useState<number | null>(null);
@@ -35,12 +41,14 @@ const RentalHistory = () => {
   const { data: rentals = [], isLoading, isError, error, refetch } = useQuery<RentalByUser[]>({
     queryKey: ['myRentals'],
     queryFn: getRentalsByUserIdApi,
+    enabled: isAuthenticated && hasToken,
     refetchOnMount: 'always',
   });
 
   const { data: invoices = [] } = useQuery<Invoice[]>({
     queryKey: ['myInvoices'],
     queryFn: getMyInvoicesApi,
+    enabled: isAuthenticated && hasToken,
   });
 
   const sortedRentals = useMemo(
@@ -301,25 +309,45 @@ const RentalHistory = () => {
                       </span>
                     </div>
 
-                    {rental.rentalStatus === 'COMPLETED' &&
-                      rental.balanceDueAtReturn != null &&
-                      rental.balanceDueAtReturn > 0 && (
+                    {(() => {
+                      const breakdown = getRentalBalanceBreakdown(rental);
+                      if (!breakdown || rental.rentalStatus !== 'COMPLETED') return null;
+                      return (
                         <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
-                          <strong>Số tiền còn phải thanh toán:</strong>{' '}
-                          {formatCurrency(rental.balanceDueAtReturn)}
-                          <span className="block text-xs text-amber-900/90 mt-1">
-                            {rental.lateFeeAmount != null && rental.lateFeeAmount > 0 && (
-                              <>Phí trễ: {formatCurrency(rental.lateFeeAmount)}</>
+                          <p>
+                            <strong>Số tiền còn phải thanh toán:</strong>{' '}
+                            {formatCurrency(breakdown.totalDue)}
+                          </p>
+                          <ul className="mt-2 space-y-1 text-xs text-amber-900/90">
+                            {!breakdown.paidFullContractUpfront && breakdown.contractRemainder > 0 && (
+                              <li>
+                                • Phần còn lại hợp đồng (tổng {formatCurrency(rental.totalPrice)} − cọc{' '}
+                                {formatCurrency(breakdown.deposit)}):{' '}
+                                <strong>{formatCurrency(breakdown.contractRemainder)}</strong>
+                              </li>
                             )}
-                            {rental.returnAdditionalFees != null && rental.returnAdditionalFees > 0 && (
-                              <>
-                                {rental.lateFeeAmount != null && rental.lateFeeAmount > 0 ? ' · ' : ''}
-                                Phí phát sinh: {formatCurrency(rental.returnAdditionalFees)}
-                              </>
+                            {breakdown.lateFee > 0 && (
+                              <li>• Phí trả muộn: {formatCurrency(breakdown.lateFee)}</li>
                             )}
-                          </span>
+                            {breakdown.overKmFee > 0 && (
+                              <li>• Phí vượt km: {formatCurrency(breakdown.overKmFee)}</li>
+                            )}
+                            {breakdown.missingFuelFee > 0 && (
+                              <li>• Phí thiếu xăng: {formatCurrency(breakdown.missingFuelFee)}</li>
+                            )}
+                            {breakdown.incidentals > 0 && (
+                              <li>• Phí phát sinh khác: {formatCurrency(breakdown.incidentals)}</li>
+                            )}
+                          </ul>
+                          {!breakdown.paidFullContractUpfront && breakdown.contractRemainder > 0 && (
+                            <p className="mt-2 text-[11px] text-amber-800/80">
+                              CK chỉ thu ~30% cọc lúc đặt xe; phần còn lại quyết toán khi trả xe (tiền mặt tại quầy
+                              hoặc chuyển khoản theo hướng dẫn admin).
+                            </p>
+                          )}
                         </div>
-                      )}
+                      );
+                    })()}
 
                     {/* Actions */}
                     <div className="flex flex-wrap items-center gap-2">
@@ -328,7 +356,7 @@ const RentalHistory = () => {
                           type="button"
                           onClick={() => {
                             setReturnTarget(rental);
-                            setReturnDateStr(new Date().toISOString().slice(0, 10));
+                            setReturnDateStr(suggestRentalReturnDate(rental));
                             setReturnIncidentals('');
                             const startKm =
                               rental.startKilometer ??
