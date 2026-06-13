@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AuthState } from '../types';
+import { syncUserAuthTokenToStorage } from '../utils/authToken';
+import { isJwtExpired } from '../utils/helpers';
 
 /**
  * Auth state cho người dùng cuối (Khách hàng).
@@ -66,6 +68,21 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'autohub_auth',
+      onRehydrateStorage: () => (state) => {
+        if (!state?.token) return;
+        if (isJwtExpired(state.token)) {
+          state.token = null;
+          state.userId = null;
+          state.email = null;
+          state.fullName = null;
+          state.roles = [];
+          state.isAuthenticated = false;
+          state.isAdmin = false;
+          syncUserAuthTokenToStorage(null);
+          return;
+        }
+        syncUserAuthTokenToStorage(state.token);
+      },
     }
   )
 );

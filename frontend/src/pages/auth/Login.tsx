@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,6 +7,7 @@ import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { loginApi } from '../../api/auth';
 import { getProfileApi, getUserRolesApi } from '../../api/users';
 import { useAuthStore } from '../../store/authStore';
+import { useAuthHydrated } from '../../hooks/useAuthHydrated';
 import { getUserIdFromToken, getEmailFromToken, getApiErrorMessage, getRoleFromToken } from '../../utils/helpers';
 import { useToast } from '../../components/ui/Toast';
 
@@ -22,13 +23,20 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuthStore();
+  const hydrated = useAuthHydrated();
+  const { login, isAuthenticated } = useAuthStore();
   const { showToast } = useToast();
 
   const loginRedirectState = location.state as { from?: { pathname?: string } } | null;
   const fromPath = loginRedirectState?.from?.pathname;
   const redirectAfterLogin =
     fromPath && fromPath !== '/login' ? fromPath : '/';
+
+  useEffect(() => {
+    if (hydrated && isAuthenticated) {
+      navigate(redirectAfterLogin, { replace: true });
+    }
+  }, [hydrated, isAuthenticated, navigate, redirectAfterLogin]);
 
   const {
     register,

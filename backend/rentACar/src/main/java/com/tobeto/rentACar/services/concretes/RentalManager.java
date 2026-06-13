@@ -273,16 +273,23 @@ public class RentalManager implements RentalService {
                 .orElse(null);
     }
 
+    /** ModelMapper LOOSE có thể map {@code id} → {@code hasReview} (Boolean) → MappingException → client thấy 401. */
+    private GetRentalByUserIdResponse toRentalByUserIdDto(Rental rental) {
+        var mapper = modelMapperService.forResponse();
+        if (mapper.getTypeMap(Rental.class, GetRentalByUserIdResponse.class) == null) {
+            mapper.createTypeMap(Rental.class, GetRentalByUserIdResponse.class)
+                    .addMappings(m -> m.skip(GetRentalByUserIdResponse::setHasReview));
+        }
+        GetRentalByUserIdResponse dto = mapper.map(rental, GetRentalByUserIdResponse.class);
+        dto.setHasReview(reviewRepository.existsByRental_Id(rental.getId()));
+        return dto;
+    }
+
     @Transactional(readOnly = true)
     public List<GetRentalByUserIdResponse> getByUserId(int userId) {
         List<Rental> rentals = rentalRepository.findAllForUserHistoryWithCarGraph(userId);
         return rentals.stream()
-                .map(rental -> {
-                    GetRentalByUserIdResponse dto = this.modelMapperService.forResponse()
-                            .map(rental, GetRentalByUserIdResponse.class);
-                    dto.setHasReview(reviewRepository.existsByRental_Id(rental.getId()));
-                    return dto;
-                })
+                .map(this::toRentalByUserIdDto)
                 .toList();
     }
 
@@ -406,6 +413,7 @@ public class RentalManager implements RentalService {
             }
             // Đã nhận cọc (~30%) qua CK — phần còn lại quyết toán khi trả xe
             rental.setPaymentStatus("DEPOSIT_PAID");
+            rental.setDepositStatus("PAID");
         } else if ("CASH".equals(rental.getPaymentMethod())) {
             rental.setPaymentStatus("UNPAID");
         }
@@ -508,12 +516,13 @@ public class RentalManager implements RentalService {
         double contractTotal = rental.getTotalPrice();
         String payStatus = normRentalToken(rental.getPaymentStatus());
 
-        double balanceDue;
-        if ("PAID".equals(payStatus)) {
-            balanceDue = autoExtras;
-        } else {
-            balanceDue = contractTotal - deposit + autoExtras;
+        // CK: admin xác nhận → DEPOSIT_PAID (~30% cọc). Còn lại + phí phát sinh quyết toán khi trả xe.
+        // PAID: đã thanh toán trọn hợp đồng trước đó → chỉ thu phí phát sinh (trễ / vượt km / xăng / khác).
+        double contractRemainder = 0d;
+        if (!"PAID".equals(payStatus)) {
+            contractRemainder = Math.max(0d, contractTotal - deposit);
         }
+        double balanceDue = contractRemainder + autoExtras;
         if (balanceDue < 0) {
             balanceDue = 0;
         }

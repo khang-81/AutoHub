@@ -13,6 +13,8 @@ import { getPublicBusyRangesForCarApi, getInsuranceOptionsApi, getAddonOptionsAp
 import { addSaleOrderApi } from '../../api/saleOrders';
 import { createViewingAppointmentApi } from '../../api/viewingAppointments';
 import { getProfileApi } from '../../api/users';
+import { getMyKycDocumentsApi } from '../../api/kyc';
+import { isKycApproved } from '../../utils/kycStatus';
 import { getReviewsByCarIdApi } from '../../api/reviews';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../components/ui/Toast';
@@ -83,7 +85,17 @@ const CarDetail = () => {
     queryKey: ['profile'],
     queryFn: getProfileApi,
     enabled: isAuthenticated,
+    refetchOnMount: 'always',
   });
+
+  const { data: kycDocs = [] } = useQuery({
+    queryKey: ['kycMy'],
+    queryFn: getMyKycDocumentsApi,
+    enabled: isAuthenticated,
+    refetchOnMount: 'always',
+  });
+
+  const kycApproved = isKycApproved(profile, kycDocs);
 
   const { data: reviews = [], isLoading: reviewsLoading } = useQuery({
     queryKey: ['reviews', id],
@@ -324,7 +336,24 @@ const CarDetail = () => {
     },
   });
 
-  const handleBook = () => {
+  const ensureKycApproved = async (): Promise<boolean> => {
+    if (profileLoading) {
+      showToast('Đang kiểm tra hồ sơ...', 'info');
+      return false;
+    }
+    const [freshProfile, freshDocs] = await Promise.all([
+      queryClient.fetchQuery({ queryKey: ['profile'], queryFn: getProfileApi }),
+      queryClient.fetchQuery({ queryKey: ['kycMy'], queryFn: getMyKycDocumentsApi }),
+    ]);
+    if (!isKycApproved(freshProfile, freshDocs)) {
+      showToast('Vui lòng đăng tải và được duyệt CCCD + GPLX trước khi tiếp tục.', 'info');
+      navigate('/dashboard/kyc');
+      return false;
+    }
+    return true;
+  };
+
+  const handleBook = async () => {
     if (!isAuthenticated) {
       showToast('Vui lòng đăng nhập để đặt xe', 'info');
       navigate('/login', { state: { from: { pathname: `/cars/${id}` } } });
@@ -343,17 +372,7 @@ const CarDetail = () => {
     }
     if (!car) return;
 
-    if (isAuthenticated) {
-      if (profileLoading) {
-        showToast('Đang kiểm tra hồ sơ...', 'info');
-        return;
-      }
-      if (profile?.kycStatus !== 'APPROVED') {
-        showToast('Vui lòng đăng tải và được duyệt CCCD + GPLX trước khi đặt xe.', 'info');
-        navigate('/dashboard/kyc');
-        return;
-      }
-    }
+    if (!(await ensureKycApproved())) return;
 
     const extrasNum = Math.max(0, parseFloat(extraFeesAmount.replace(/,/g, '')) || 0);
 
@@ -370,17 +389,14 @@ const CarDetail = () => {
     });
   };
 
-  const handleBuySale = () => {
+  const handleBuySale = async () => {
     if (!isAuthenticated) {
       showToast('Vui lòng đăng nhập để đặt mua', 'info');
       navigate('/login', { state: { from: { pathname: `/cars/${id}` } } });
       return;
     }
     if (!userId || !car) return;
-    if (profileLoading) {
-      showToast('Đang kiểm tra hồ sơ...', 'info');
-      return;
-    }
+    if (!(await ensureKycApproved())) return;
     saleMutation.mutate(salePaymentMethod);
   };
 
@@ -675,10 +691,10 @@ const CarDetail = () => {
 
               {bookingModeResolved === 'rent' && canRent && (
               <>
-              {isAuthenticated && !profileLoading && profile?.kycStatus !== 'APPROVED' && (
+              {isAuthenticated && !profileLoading && !kycApproved && (
                 <div className="mb-5 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm">
                   <p className="font-medium mb-1">Cần xác minh GPLX</p>
-                  <p className="text-gray-700 mb-2">Tải CCCD và GPLX để thuê xe.</p>
+                  <p className="text-gray-700 mb-2">Tải CCCD và GPLX để thuê hoặc mua xe.</p>
                   <Link to="/dashboard/kyc" className="text-primary font-semibold hover:underline">
                     Đi tới xác minh →
                   </Link>

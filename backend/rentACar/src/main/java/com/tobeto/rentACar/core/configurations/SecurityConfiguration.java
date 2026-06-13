@@ -25,9 +25,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
+import org.springframework.http.MediaType;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.nio.charset.StandardCharsets;
 
 import java.util.List;
 
@@ -100,6 +104,17 @@ public class SecurityConfiguration {
         return http.build();
     }
 
+    /** Trả 401 (không phải 403) khi chưa đăng nhập — khớp axios interceptor & AuthSessionWatcher. */
+    @Bean
+    public AuthenticationEntryPoint jsonAuthenticationEntryPoint() {
+        return (request, response, authException) -> {
+            response.setStatus(401);
+            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.getWriter().write("{\"success\":false,\"message\":\"Yêu cầu đăng nhập.\"}");
+        };
+    }
+
     /** API + tài liệu + file: không áp dụng cho endpoint Actuator (đã có chain riêng). */
     @Bean
     @Order(2)
@@ -108,6 +123,7 @@ public class SecurityConfiguration {
                 .securityMatcher(new NegatedRequestMatcher(EndpointRequest.toAnyEndpoint()))
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(jsonAuthenticationEntryPoint()))
                 .authorizeHttpRequests(x -> x
                         .requestMatchers(PUBLIC_PREFIXES).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
