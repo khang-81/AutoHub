@@ -71,7 +71,6 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      APP_KYC_AUTO_APPROVE: ${APP_KYC_AUTO_APPROVE:-false}
     volumes:
       - uploads_data:/app/uploads
     depends_on:
