@@ -14,7 +14,6 @@ import com.tobeto.rentACar.services.dtos.kyc.response.UserDocumentResponse;
 import com.tobeto.rentACar.services.kyc.KycStatusCalculator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,63 +25,58 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-@Service
-@RequiredArgsConstructor
-@Slf4j
-public class UserDocumentManager implements UserDocumentService {
+    @Service
+    @RequiredArgsConstructor
+    @Slf4j
+    public class UserDocumentManager implements UserDocumentService {
 
-    private final UserDocumentRepository userDocumentRepository;
-    private final UserRepository userRepository;
-    private final FileStorageService fileStorageService;
-    private final BusinessMailNotificationSender businessMailNotificationSender;
+        private final UserDocumentRepository userDocumentRepository;
+        private final UserRepository userRepository;
+        private final FileStorageService fileStorageService;
+        private final BusinessMailNotificationSender businessMailNotificationSender;
 
-    /** Dev/Docker local: tự duyệt khi đủ CCCD + GPLX. Production: false. */
-    @Value("${app.kyc.auto-approve:false}")
-    private boolean kycAutoApprove;
-
-    @Override
-    @Transactional
-    public UserDocumentResponse upload(int userId, String documentType, MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new BusinessException("Vui lòng chọn file.");
-        }
-        if (!KycConstants.DOC_CCCD.equals(documentType) && !KycConstants.DOC_GPLX.equals(documentType)) {
-            throw new BusinessException("Loại giấy tờ phải là CCCD hoặc GPLX.");
-        }
-        User user = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("Không tìm thấy người dùng."));
-
-        String storedPath;
-        try {
-            storedPath = fileStorageService.storeKycFile(userId, file);
-        } catch (IOException e) {
-            throw new BusinessException("Không thể lưu file: " + e.getMessage());
-        }
-
-        Optional<UserDocument> existing = userDocumentRepository.findByUser_IdAndDocumentType(userId, documentType);
-        UserDocument doc;
-        if (existing.isPresent()) {
-            doc = existing.get();
-            if (KycConstants.DOC_APPROVED.equals(doc.getStatus())) {
-                throw new BusinessException(
-                        "Giấy tờ " + documentType + " đã được duyệt. Liên hệ admin nếu cần cập nhật hồ sơ.");
+        @Override
+        @Transactional
+        public UserDocumentResponse upload(int userId, String documentType, MultipartFile file) {
+            if (file == null || file.isEmpty()) {
+                throw new BusinessException("Vui lòng chọn file.");
             }
-            doc.setFilePath(storedPath);
-            doc.setStatus(KycConstants.DOC_PENDING);
-            doc.setAdminNote(null);
-            doc.setReviewedAt(null);
-        } else {
-            doc = UserDocument.builder()
-                    .user(user)
-                    .documentType(documentType)
-                    .filePath(storedPath)
-                    .status(KycConstants.DOC_PENDING)
-                    .build();
+            if (!KycConstants.DOC_CCCD.equals(documentType) && !KycConstants.DOC_GPLX.equals(documentType)) {
+                throw new BusinessException("Loại giấy tờ phải là CCCD hoặc GPLX.");
+            }
+            User user = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("Không tìm thấy người dùng."));
+
+            String storedPath;
+            try {
+                storedPath = fileStorageService.storeKycFile(userId, file);
+            } catch (IOException e) {
+                throw new BusinessException("Không thể lưu file: " + e.getMessage());
+            }
+
+            Optional<UserDocument> existing = userDocumentRepository.findByUser_IdAndDocumentType(userId, documentType);
+            UserDocument doc;
+            if (existing.isPresent()) {
+                doc = existing.get();
+                if (KycConstants.DOC_APPROVED.equals(doc.getStatus())) {
+                    throw new BusinessException(
+                            "Giấy tờ " + documentType + " đã được duyệt. Liên hệ admin nếu cần cập nhật hồ sơ.");
+                }
+                doc.setFilePath(storedPath);
+                doc.setStatus(KycConstants.DOC_PENDING);
+                doc.setAdminNote(null);
+                doc.setReviewedAt(null);
+            } else {
+                doc = UserDocument.builder()
+                        .user(user)
+                        .documentType(documentType)
+                        .filePath(storedPath)
+                        .status(KycConstants.DOC_PENDING)
+                        .build();
+            }
+            userDocumentRepository.save(doc);
+            refreshUserKycStatus(userId);
+            return toResponse(doc);
         }
-        userDocumentRepository.save(doc);
-        refreshUserKycStatus(userId);
-        tryAutoApproveIfEnabled(userId);
-        return toResponse(doc);
-    }
 
     @Override
     @Transactional(readOnly = true)
@@ -166,32 +160,6 @@ public class UserDocumentManager implements UserDocumentService {
         List<UserDocument> docs = userDocumentRepository.findByUser_Id(userId);
         user.setKycStatus(KycStatusCalculator.resolveUserKycStatus(docs));
         userRepository.save(user);
-    }
-
-    /**
-     * Khi {@code app.kyc.auto-approve=true}: duyệt ngay cả bộ CCCD+GPLX đang PENDING (không gửi email).
-     * Bật qua env {@code APP_KYC_AUTO_APPROVE=true} (Docker / VPS).
-     */
-    private void tryAutoApproveIfEnabled(int userId) {
-        if (!kycAutoApprove) {
-            return;
-        }
-        List<UserDocument> docs = userDocumentRepository.findByUser_Id(userId);
-        if (!KycStatusCalculator.bothDocumentsPending(docs)) {
-            return;
-        }
-        LocalDateTime now = LocalDateTime.now();
-        for (UserDocument doc : docs) {
-            if (!KycConstants.DOC_PENDING.equals(doc.getStatus())) {
-                continue;
-            }
-            doc.setStatus(KycConstants.DOC_APPROVED);
-            doc.setReviewedAt(now);
-            doc.setAdminNote(null);
-            userDocumentRepository.save(doc);
-        }
-        refreshUserKycStatus(userId);
-        log.info("Auto-approved KYC for userId={} (app.kyc.auto-approve=true)", userId);
     }
 
     private UserDocumentResponse toResponse(UserDocument d) {

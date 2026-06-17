@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  CalendarClock, CheckCircle, Search, XCircle, UserX, CircleCheck, Eye, Phone, MessageSquare,
+  CalendarClock, CheckCircle, Search, XCircle, UserX, CircleCheck, Phone, MessageSquare, Mail, User as UserIcon,
 } from 'lucide-react';
 import {
   getAllViewingAppointmentsAdminApi,
@@ -29,6 +29,23 @@ const statusLabel = (s: string) => {
       return s;
   }
 };
+
+/** Parse trích đoạn "Họ tên: …" trong note (được ghi từ form Liên hệ). */
+function parseCustomerNameFromNote(note: string | null | undefined): string {
+  if (!note) return '';
+  const m = note.match(/Họ\s*tên\s*:\s*([^\n\r]+)/i);
+  return m ? m[1].trim() : '';
+}
+
+/** Bỏ phần metadata "Họ tên: …" / "Email: …" ở đầu note, trả về phần yêu cầu thuần. */
+function stripNoteMetadata(note: string | null | undefined): string {
+  if (!note) return '';
+  return note
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*(Họ\s*tên|Email)\s*:/i.test(line))
+    .join('\n')
+    .trim();
+}
 
 const ManageViewingAppointments = () => {
   const queryClient = useQueryClient();
@@ -133,100 +150,150 @@ const ManageViewingAppointments = () => {
                 <tr className="text-gray-500">
                   <th className="text-left px-5 py-4 font-medium">ID</th>
                   <th className="text-left px-5 py-4 font-medium">Xe</th>
-                  <th className="text-left px-5 py-4 font-medium">Khách</th>
+                  <th className="text-left px-5 py-4 font-medium">Khách hàng</th>
                   <th className="text-left px-5 py-4 font-medium">Thời gian</th>
+                  <th className="text-left px-5 py-4 font-medium">Yêu cầu</th>
                   <th className="text-left px-5 py-4 font-medium">TT</th>
                   <th className="text-right px-5 py-4 font-medium">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((r) => (
-                  <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="px-5 py-4 text-gray-400">#{r.id}</td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3 min-w-[180px]">
-                        <img
-                          src={r.car?.imagePath || CAR_PLACEHOLDER}
-                          alt=""
-                          className="w-10 h-8 object-cover rounded-lg"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = CAR_PLACEHOLDER;
-                          }}
-                        />
-                        <span className="font-medium text-navy">
-                          {r.car?.model?.brand?.name} {r.car?.model?.name}
+                {sorted.map((r) => {
+                  const customerName = parseCustomerNameFromNote(r.note);
+                  const customerRequest = stripNoteMetadata(r.note);
+                  return (
+                    <tr
+                      key={r.id}
+                      className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer"
+                      onClick={() => setDetailRow(r)}
+                    >
+                      <td className="px-5 py-4 text-gray-400">#{r.id}</td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3 min-w-[180px]">
+                          <img
+                            src={r.car?.imagePath || CAR_PLACEHOLDER}
+                            alt=""
+                            className="w-10 h-8 object-cover rounded-lg"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = CAR_PLACEHOLDER;
+                            }}
+                          />
+                          <span className="font-medium text-navy">
+                            {r.car?.model?.brand?.name} {r.car?.model?.name}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="space-y-1 min-w-[220px]">
+                          {customerName && (
+                            <div className="flex items-center gap-1.5 font-medium text-navy">
+                              <UserIcon className="w-3.5 h-3.5 text-primary" />
+                              <span>{customerName}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1.5 text-gray-600 text-xs">
+                            <Mail className="w-3.5 h-3.5 text-gray-400" />
+                            <span className="truncate max-w-[220px]" title={r.user?.email}>
+                              {r.user?.email || '—'}
+                            </span>
+                          </div>
+                          {r.contactPhone?.trim() ? (
+                            <div className="flex items-center gap-1.5 text-gray-600 text-xs">
+                              <Phone className="w-3.5 h-3.5 text-gray-400" />
+                              <a
+                                href={`tel:${r.contactPhone}`}
+                                className="hover:text-primary"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {r.contactPhone}
+                              </a>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-gray-400 text-xs italic">
+                              <Phone className="w-3.5 h-3.5" />
+                              <span>Chưa để lại SĐT</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-gray-700 whitespace-nowrap">
+                        {formatDateTime(r.scheduledAt)}
+                      </td>
+                      <td className="px-5 py-4 max-w-[260px]">
+                        {customerRequest ? (
+                          <div
+                            className="text-gray-600 text-xs whitespace-pre-wrap line-clamp-3"
+                            title={customerRequest}
+                          >
+                            {customerRequest}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 italic text-xs">Không có yêu cầu thêm</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="badge text-xs bg-gray-100 text-gray-700 whitespace-nowrap">
+                          {statusLabel(r.status)}
                         </span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 text-gray-600 max-w-[160px] truncate">{r.user?.email}</td>
-                    <td className="px-5 py-4 text-gray-700 whitespace-nowrap">
-                      {formatDateTime(r.scheduledAt)}
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className="badge text-xs bg-gray-100 text-gray-700">{statusLabel(r.status)}</span>
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <div className="flex flex-wrap items-center justify-end gap-1 max-w-[280px] ml-auto">
-                        <button
-                          type="button"
-                          onClick={() => setDetailRow(r)}
-                          className="p-2 rounded-lg text-navy hover:bg-gray-100 transition-colors"
-                          title="Xem chi tiết"
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <div
+                          className="flex flex-wrap items-center justify-end gap-1 max-w-[220px] ml-auto"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        {r.status === 'PENDING' && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => openModal(r, 'CONFIRMED')}
-                              className="p-2 rounded-lg text-green-600 hover:bg-green-50 transition-colors"
-                              title="Xác nhận lịch"
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openModal(r, 'CANCELLED')}
-                              className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
-                              title="Hủy lịch"
-                            >
-                              <XCircle className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
-                        {r.status === 'CONFIRMED' && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => openModal(r, 'COMPLETED')}
-                              className="p-2 rounded-lg text-primary hover:bg-primary/10 transition-colors"
-                              title="Hoàn tất (đã xem)"
-                            >
-                              <CircleCheck className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openModal(r, 'NO_SHOW')}
-                              className="p-2 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors"
-                              title="Khách không đến"
-                            >
-                              <UserX className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openModal(r, 'CANCELLED')}
-                              className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
-                              title="Hủy lịch"
-                            >
-                              <XCircle className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {r.status === 'PENDING' && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => openModal(r, 'CONFIRMED')}
+                                className="p-2 rounded-lg text-green-600 hover:bg-green-50 transition-colors"
+                                title="Xác nhận lịch"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openModal(r, 'CANCELLED')}
+                                className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+                                title="Hủy lịch"
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                          {r.status === 'CONFIRMED' && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => openModal(r, 'COMPLETED')}
+                                className="p-2 rounded-lg text-primary hover:bg-primary/10 transition-colors"
+                                title="Hoàn tất (đã xem)"
+                              >
+                                <CircleCheck className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openModal(r, 'NO_SHOW')}
+                                className="p-2 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors"
+                                title="Khách không đến"
+                              >
+                                <UserX className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openModal(r, 'CANCELLED')}
+                                className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+                                title="Hủy lịch"
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             {sorted.length === 0 && (
@@ -301,25 +368,46 @@ const ManageViewingAppointments = () => {
                 </span>
               </p>
               <p className="text-gray-600">
-                <span className="text-gray-400">Khách:</span> {detailRow.user?.email}
-              </p>
-              <p className="text-gray-600">
                 <span className="text-gray-400">Thời gian hẹn:</span>{' '}
                 <strong>{formatDateTime(detailRow.scheduledAt)}</strong>
               </p>
               <p className="text-gray-600">
                 <span className="text-gray-400">Trạng thái:</span> {statusLabel(detailRow.status)}
               </p>
+              {detailRow.createdDate && (
+                <p className="text-gray-600">
+                  <span className="text-gray-400">Ngày tạo:</span> {formatDateTime(detailRow.createdDate)}
+                </p>
+              )}
             </div>
 
             <div className="rounded-xl border border-gray-200 p-3">
               <p className="font-medium text-navy mb-2 flex items-center gap-2">
-                <Phone className="w-4 h-4 text-primary" />
-                Liên hệ
+                <UserIcon className="w-4 h-4 text-primary" />
+                Thông tin khách hàng
               </p>
-              <p className="text-gray-600">
-                {detailRow.contactPhone?.trim() ? detailRow.contactPhone : 'Khách chưa để lại số điện thoại'}
-              </p>
+              <div className="space-y-1.5">
+                {parseCustomerNameFromNote(detailRow.note) && (
+                  <p className="text-gray-700">
+                    <span className="text-gray-400">Họ tên:</span>{' '}
+                    <strong>{parseCustomerNameFromNote(detailRow.note)}</strong>
+                  </p>
+                )}
+                <p className="text-gray-700 flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-gray-400" />
+                  {detailRow.user?.email || '—'}
+                </p>
+                <p className="text-gray-700 flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5 text-gray-400" />
+                  {detailRow.contactPhone?.trim() ? (
+                    <a href={`tel:${detailRow.contactPhone}`} className="hover:text-primary">
+                      {detailRow.contactPhone}
+                    </a>
+                  ) : (
+                    <span className="italic text-gray-400">Chưa để lại SĐT</span>
+                  )}
+                </p>
+              </div>
             </div>
 
             <div className="rounded-xl border border-gray-200 p-3">
@@ -328,7 +416,7 @@ const ManageViewingAppointments = () => {
                 Yêu cầu thêm từ khách
               </p>
               <p className="text-gray-600 whitespace-pre-wrap">
-                {detailRow.note?.trim() ? detailRow.note : 'Không có ghi chú thêm'}
+                {stripNoteMetadata(detailRow.note) || 'Không có yêu cầu thêm'}
               </p>
             </div>
 

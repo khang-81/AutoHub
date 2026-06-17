@@ -1,13 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMutation } from '@tanstack/react-query';
-import { Mail, Phone, MapPin, Send, CalendarClock, MessageSquare } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Link, useNavigate } from 'react-router-dom';
+import { Mail, Phone, MapPin, Send, CalendarClock, MessageSquare, LogIn } from 'lucide-react';
 import { sendContactEmailApi } from '../../api/contact';
-import type { ContactMailRequest } from '../../types';
+import {
+  createViewingAppointmentApi,
+  getSlotAvailabilityApi,
+  type SlotAvailability,
+} from '../../api/viewingAppointments';
+import { getAllCarsApi } from '../../api/cars';
+import type { Car, ContactMailRequest } from '../../types';
 import { useToast } from '../../components/ui/Toast';
 import { getApiErrorMessage } from '../../utils/helpers';
+import { useAuthStore } from '../../store/authStore';
 
 /** Tách họ / tên cho body gửi mail (backend có `name` + `surname`) */
 function splitNameForMail(fullName: string): { name: string; surname: string } {
@@ -38,13 +46,13 @@ const contactSchema = z.object({
 });
 
 const viewingSchema = z.object({
+  carId: z.number().positive('Vui lòng chọn xe muốn xem'),
   name: z.string().min(2, 'Họ và tên tối thiểu 2 ký tự'),
   email: z.string().email('Email không hợp lệ'),
-  phone: z.string().min(9, 'Số điện thoại không hợp lệ'),
+  contactPhone: z.string().min(9, 'Số điện thoại không hợp lệ'),
   preferredDate: z.string().min(1, 'Chọn ngày mong muốn'),
   preferredTime: z.string().min(1, 'Chọn khung giờ'),
-  carNote: z.string().optional(),
-  notes: z.string().min(10, 'Mô tả ngắn tối thiểu 10 ký tự (nhu cầu xem xe, số người đi cùng…)'),
+  note: z.string().max(500, 'Ghi chú tối đa 500 ký tự').optional().or(z.literal('')),
 });
 
 type ContactForm = z.infer<typeof contactSchema>;
@@ -80,10 +88,51 @@ const CONTACT_ITEMS = [
 
 const Contact = () => {
   const { showToast } = useToast();
+  const navigate = useNavigate();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [formMode, setFormMode] = useState<'message' | 'viewing'>('message');
+  const [slots, setSlots] = useState<SlotAvailability[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedDate, setSelectedDate] = useState('');
 
   const contactForm = useForm<ContactForm>({ resolver: zodResolver(contactSchema) });
   const viewingForm = useForm<ViewingForm>({ resolver: zodResolver(viewingSchema) });
+
+  // Reset form + slots khi đổi tab
+  useEffect(() => {
+    if (formMode === 'viewing') {
+      viewingForm.reset();
+      setSlots([]);
+      setSelectedDate('');
+    } else {
+      contactForm.reset();
+    }
+  }, [formMode, viewingForm, contactForm]);
+
+  // Lấy danh sách xe cho dropdown (chỉ khi mở tab đặt lịch)
+  const { data: cars = [], isLoading: loadingCars } = useQuery<Car[]>({
+    queryKey: ['cars', 'viewing-form'],
+    queryFn: getAllCarsApi,
+    enabled: formMode === 'viewing',
+  });
+
+  // Tải slot availability khi chọn ngày
+  const fetchSlots = async (date: string) => {
+    setSelectedDate(date);
+    setSlots([]);
+    viewingForm.setValue('preferredTime', '');
+    if (!date) return;
+    setLoadingSlots(true);
+    try {
+      const result = await getSlotAvailabilityApi(date);
+      setSlots(result);
+    } catch {
+      setSlots([]);
+      showToast('Không thể tải khung giờ trống. Vui lòng thử lại.', 'error');
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
 
   const contactMutation = useMutation({
     mutationFn: sendContactEmailApi,
@@ -99,17 +148,32 @@ const Contact = () => {
   });
 
   const viewingMutation = useMutation({
-    mutationFn: sendContactEmailApi,
+    mutationFn: createViewingAppointmentApi,
     onSuccess: () => {
-      showToast('Yêu cầu đặt lịch đã được gửi! Chúng tôi sẽ xác nhận qua điện thoại hoặc email.', 'success');
+      showToast('Đặt lịch xem xe thành công! Chúng tôi sẽ xác nhận qua điện thoại hoặc email.', 'success');
       viewingForm.reset();
+      setSlots([]);
+      setSelectedDate('');
     },
-    onError: (err: unknown) =>
+    onError: (err: unknown) => {
+      const e = err as { response?: { status?: number; data?: { message?: string } } };
+      if (e?.response?.status === 401) {
+        showToast('Vui lòng đăng nhập để đặt lịch xem xe.', 'error');
+        navigate('/login?redirect=/contact');
+        return;
+      }
       showToast(
-        getApiErrorMessage(err, 'Có lỗi khi gửi yêu cầu. Kiểm tra kết nối hoặc liên hệ trực tiếp qua hotline.'),
+        e?.response?.data?.message || getApiErrorMessage(err, 'Có lỗi khi đặt lịch. Vui lòng thử lại hoặc gọi hotline.'),
         'error'
-      ),
+      );
+    },
   });
+
+  const minDate = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1); // tối thiểu đặt trước 1 ngày
+    return d.toISOString().split('T')[0];
+  })();
 
   return (
     <div className="min-h-screen pad-top-nav">
@@ -296,118 +360,171 @@ const Contact = () => {
                   <p className="text-gray-500 text-sm mb-5">
                     Đăng ký lịch đến showroom tại Phúc Am, Ngọc Hồi. Chúng tôi sẽ xác nhận qua điện thoại hoặc email.
                   </p>
-              <form
-                onSubmit={viewingForm.handleSubmit((d) => {
-                  const carLine = d.carNote?.trim()
-                    ? `\nXe quan tâm / ghi chú xe: ${d.carNote.trim()}`
-                    : '';
-                  const body = [
-                    'YÊU CẦU ĐẶT LỊCH XEM XE',
-                    `Điện thoại: ${d.phone}`,
-                    `Ngày mong muốn: ${d.preferredDate}`,
-                    `Khung giờ: ${d.preferredTime}`,
-                    carLine,
-                    '',
-                    'Chi tiết / ghi chú:',
-                    d.notes.trim(),
-                  ]
-                    .filter(Boolean)
-                    .join('\n');
 
-                  viewingMutation.mutate(
-                    toContactPayload(
-                      d.email,
-                      '[AutoHub] Đặt lịch xem xe tại showroom',
-                      body,
-                      d.name
-                    )
-                  );
-                })}
-                className="space-y-4"
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên *</label>
-                    <input {...viewingForm.register('name')} className="input-field" placeholder="Nguyễn Văn An" />
-                    {viewingForm.formState.errors.name && (
-                      <p className="text-red-500 text-xs mt-1">{viewingForm.formState.errors.name.message}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-                    <input
-                      {...viewingForm.register('email')}
-                      type="email"
-                      className="input-field"
-                      placeholder="you@example.com"
-                    />
-                    {viewingForm.formState.errors.email && (
-                      <p className="text-red-500 text-xs mt-1">{viewingForm.formState.errors.email.message}</p>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại *</label>
-                  <input {...viewingForm.register('phone')} className="input-field" placeholder="032 924 8087" />
-                  {viewingForm.formState.errors.phone && (
-                    <p className="text-red-500 text-xs mt-1">{viewingForm.formState.errors.phone.message}</p>
+                  {!isAuthenticated && (
+                    <div className="mb-5 p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+                      <LogIn className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm">
+                        <p className="font-medium text-amber-900">Cần đăng nhập để đặt lịch</p>
+                        <p className="text-amber-700 mt-0.5">
+                          Lịch xem xe sẽ được lưu vào tài khoản của bạn để quản lý trong dashboard.{' '}
+                          <Link to="/login?redirect=/contact" className="font-semibold underline hover:text-amber-900">
+                            Đăng nhập ngay
+                          </Link>
+                        </p>
+                      </div>
+                    </div>
                   )}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày mong muốn *</label>
-                    <input {...viewingForm.register('preferredDate')} type="date" className="input-field" />
-                    {viewingForm.formState.errors.preferredDate && (
-                      <p className="text-red-500 text-xs mt-1">{viewingForm.formState.errors.preferredDate.message}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Khung giờ *</label>
-                    <select {...viewingForm.register('preferredTime')} className="input-field">
-                      <option value="">Chọn khung giờ</option>
-                      <option value="8:00 – 10:00">8:00 – 10:00</option>
-                      <option value="10:00 – 12:00">10:00 – 12:00</option>
-                      <option value="13:00 – 15:00">13:00 – 15:00</option>
-                      <option value="15:00 – 17:00">15:00 – 17:00</option>
-                    </select>
-                    {viewingForm.formState.errors.preferredTime && (
-                      <p className="text-red-500 text-xs mt-1">{viewingForm.formState.errors.preferredTime.message}</p>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Xe quan tâm (tuỳ chọn)</label>
-                  <input
-                    {...viewingForm.register('carNote')}
-                    className="input-field"
-                    placeholder="Hãng, dòng xe hoặc biển số nếu đã xem trên website"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú *</label>
-                  <textarea
-                    {...viewingForm.register('notes')}
-                    rows={4}
-                    className="input-field resize-none"
-                    placeholder="Nhu cầu xem xe, số người đi cùng, yêu cầu lái thử…"
-                  />
-                  {viewingForm.formState.errors.notes && (
-                    <p className="text-red-500 text-xs mt-1">{viewingForm.formState.errors.notes.message}</p>
-                  )}
-                </div>
-                <button
-                  type="submit"
-                  disabled={viewingMutation.isPending}
-                  className="btn-primary inline-flex items-center gap-2 disabled:opacity-60"
-                >
-                  {viewingMutation.isPending ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <CalendarClock className="w-4 h-4" />
-                  )}
-                  {viewingMutation.isPending ? 'Đang gửi…' : 'Gửi yêu cầu đặt lịch'}
-                </button>
-              </form>
+
+                  <form
+                    onSubmit={viewingForm.handleSubmit((d) => {
+                      const scheduledAt = `${d.preferredDate}T${d.preferredTime}:00`;
+                      const noteParts = [
+                        `Họ tên: ${d.name.trim()}`,
+                        `Email: ${d.email.trim()}`,
+                      ];
+                      if (d.note?.trim()) {
+                        noteParts.push('', d.note.trim());
+                      }
+                      viewingMutation.mutate({
+                        carId: d.carId,
+                        scheduledAt,
+                        contactPhone: d.contactPhone.trim(),
+                        note: noteParts.join('\n'),
+                      });
+                    })}
+                    className="space-y-4"
+                  >
+                    {/* Chọn xe */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Xe muốn xem *</label>
+                      <select
+                        {...viewingForm.register('carId', { valueAsNumber: true })}
+                        className="input-field"
+                        disabled={loadingCars}
+                      >
+                        <option value={0}>-- Chọn xe --</option>
+                        {cars.map((c: Car) => (
+                          <option key={c.id} value={c.id}>
+                            {c.model?.brand?.name} {c.model?.name} {c.modelYear ? `(${c.modelYear})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      {loadingCars && <p className="text-gray-400 text-xs mt-1">Đang tải danh sách xe…</p>}
+                      {viewingForm.formState.errors.carId && (
+                        <p className="text-red-500 text-xs mt-1">{viewingForm.formState.errors.carId.message}</p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên *</label>
+                        <input {...viewingForm.register('name')} className="input-field" placeholder="Nguyễn Văn An" />
+                        {viewingForm.formState.errors.name && (
+                          <p className="text-red-500 text-xs mt-1">{viewingForm.formState.errors.name.message}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                        <input
+                          {...viewingForm.register('email')}
+                          type="email"
+                          className="input-field"
+                          placeholder="you@example.com"
+                        />
+                        {viewingForm.formState.errors.email && (
+                          <p className="text-red-500 text-xs mt-1">{viewingForm.formState.errors.email.message}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại *</label>
+                      <input
+                        {...viewingForm.register('contactPhone')}
+                        className="input-field"
+                        placeholder="032 924 8087"
+                      />
+                      {viewingForm.formState.errors.contactPhone && (
+                        <p className="text-red-500 text-xs mt-1">{viewingForm.formState.errors.contactPhone.message}</p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Ngày mong muốn *</label>
+                        <input
+                          {...viewingForm.register('preferredDate')}
+                          type="date"
+                          className="input-field"
+                          min={minDate}
+                          onChange={(e) => fetchSlots(e.target.value)}
+                        />
+                        {viewingForm.formState.errors.preferredDate && (
+                          <p className="text-red-500 text-xs mt-1">{viewingForm.formState.errors.preferredDate.message}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Khung giờ *</label>
+                        {loadingSlots ? (
+                          <div className="input-field flex items-center text-gray-400 text-sm">Đang tải khung giờ…</div>
+                        ) : !selectedDate ? (
+                          <div className="input-field flex items-center text-gray-400 text-sm">Chọn ngày trước</div>
+                        ) : slots.length === 0 ? (
+                          <div className="input-field flex items-center text-gray-400 text-sm">Không có khung giờ trống</div>
+                        ) : (
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {slots.map((s) => (
+                              <button
+                                key={s.startTime}
+                                type="button"
+                                disabled={!s.available}
+                                onClick={() => viewingForm.setValue('preferredTime', s.startTime.substring(0, 5))}
+                                className={`text-xs py-2 rounded-lg border transition-colors ${
+                                  !s.available
+                                    ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                                    : viewingForm.watch('preferredTime') === s.startTime.substring(0, 5)
+                                    ? 'bg-primary text-white border-primary'
+                                    : 'hover:bg-primary/10 border-gray-200'
+                                }`}
+                              >
+                                {s.startTime.substring(0, 5)}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {viewingForm.formState.errors.preferredTime && (
+                          <p className="text-red-500 text-xs mt-1">{viewingForm.formState.errors.preferredTime.message}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú (tuỳ chọn)</label>
+                      <textarea
+                        {...viewingForm.register('note')}
+                        rows={3}
+                        maxLength={500}
+                        className="input-field resize-none"
+                        placeholder="Nhu cầu xem xe, số người đi cùng, yêu cầu lái thử…"
+                      />
+                      {viewingForm.formState.errors.note && (
+                        <p className="text-red-500 text-xs mt-1">{viewingForm.formState.errors.note.message}</p>
+                      )}
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={viewingMutation.isPending || !isAuthenticated}
+                      className="btn-primary inline-flex items-center gap-2 disabled:opacity-60"
+                    >
+                      {viewingMutation.isPending ? (
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <CalendarClock className="w-4 h-4" />
+                      )}
+                      {viewingMutation.isPending ? 'Đang gửi…' : 'Gửi yêu cầu đặt lịch'}
+                    </button>
+                  </form>
                 </>
               )}
             </section>
