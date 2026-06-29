@@ -130,6 +130,9 @@ public class CustomerManager implements CustomerService {
         }
         String[] parts = splitFullName(fullName.trim());
         Customer customer = new Customer();
+        // Convention VN: firstName = Tên (+ đệm), lastName = Họ.
+        // VD. "Nguyễn Văn An" → firstName="văn an", lastName="nguyễn".
+        // Khớp với frontend Profile.tsx (placeholder lastName="Nguyễn", firstName="Văn An").
         customer.setFirstName(parts[0].toLowerCase(Locale.ROOT));
         customer.setLastName(parts[1].toLowerCase(Locale.ROOT));
         customer.setBirthdate(user.getBirthDate());
@@ -138,15 +141,17 @@ public class CustomerManager implements CustomerService {
         return customerRepository.save(customer);
     }
 
-    /** Họ = token đầu; tên + đệm = phần còn lại (vd. "Nguyễn Văn An" → họ Nguyễn, tên Văn An). */
+    /** Tách họ/tên theo chuẩn Việt Nam. Trả về [firstName, lastName].
+     *  VD. "Nguyễn Văn An" → firstName="Văn An", lastName="Nguyễn".
+     *  Nếu không có khoảng trắng → [firstName="", lastName=fullName]. */
     static String[] splitFullName(String fullName) {
         int sp = fullName.indexOf(' ');
         if (sp < 0) {
-            return new String[]{fullName, fullName};
+            return new String[]{"", fullName};
         }
         return new String[]{
-                fullName.substring(sp + 1).trim(),
-                fullName.substring(0, sp).trim()
+                fullName.substring(sp + 1).trim(),   // firstName = phần sau khoảng trắng đầu tiên (Tên + đệm)
+                fullName.substring(0, sp).trim()     // lastName = phần trước khoảng trắng đầu tiên (Họ)
         };
     }
 

@@ -248,6 +248,13 @@ public class SaleOrderManager implements SaleOrderService {
             throw new BusinessException("Bạn không có quyền hủy đơn này.");
         }
 
+        // BUGFIX #16: Check trạng thái xe TRƯỚC khi thay đổi DB, tránh inconsistent state
+        // nếu throw exception giữa chừng (race với admin confirm đồng thời).
+        Car car = carRepository.findById(order.getCar().getId()).orElseThrow();
+        if (ListingConstants.SALE_SOLD.equalsIgnoreCase(car.getSaleStatus())) {
+            throw new BusinessException("Trạng thái xe không cho phép hủy đơn.");
+        }
+
         order.setCancelledAt(LocalDateTime.now());
         order.setCancelledBy(isAdmin ? "ADMIN" : "USER");
         order.setCancellationReason(reason);
@@ -255,10 +262,6 @@ public class SaleOrderManager implements SaleOrderService {
         order.setPaymentStatus("CANCELLED");
         saleOrderRepository.save(order);
 
-        Car car = carRepository.findById(order.getCar().getId()).orElseThrow();
-        if (ListingConstants.SALE_SOLD.equalsIgnoreCase(car.getSaleStatus())) {
-            throw new BusinessException("Trạng thái xe không cho phép hủy đơn.");
-        }
         car.setSaleStatus(ListingConstants.SALE_AVAILABLE);
         carRepository.save(car);
 

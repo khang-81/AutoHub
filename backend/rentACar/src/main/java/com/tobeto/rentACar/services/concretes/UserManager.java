@@ -39,32 +39,45 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@Service
-@AllArgsConstructor
-public class UserManager implements UserService {
+    @Service
+    @AllArgsConstructor
+    public class UserManager implements UserService {
 
-    private final UserRepository userRepository;
-    private final RentalRepository rentalRepository;
-    private final SaleOrderRepository saleOrderRepository;
-    private final CustomerRepository customerRepository;
-    private final CorporateCustomerRepository corporateCustomerRepository;
-    private final ModelMapperService modelMapperService;
-    private final UserBusinessRule userBusinessRule;
-    private final PasswordEncoder passwordEncoder;
-    private MessageService messageService;
+        private final UserRepository userRepository;
+        private final RentalRepository rentalRepository;
+        private final SaleOrderRepository saleOrderRepository;
+        private final CustomerRepository customerRepository;
+        private final CorporateCustomerRepository corporateCustomerRepository;
+        private final ModelMapperService modelMapperService;
+        private final UserBusinessRule userBusinessRule;
+        private final PasswordEncoder passwordEncoder;
+        private final RoleService roleService;
+        private MessageService messageService;
 
-    @Override
-    public Result add(AddUserRequest request) {
+        @Override
+        public Result add(AddUserRequest request) {
 
-        userBusinessRule.existsUserByEmail(request.getEmail());
+            userBusinessRule.existsUserByEmail(request.getEmail());
 
-        User user = modelMapperService.forRequest().map(request, User.class);
+            User user = modelMapperService.forRequest().map(request, User.class);
 
-        userRepository.save(user);
+            // BUGFIX #10: Encode password thay vì lưu plain text.
+            if (request.getPassword() != null && !request.getPassword().isBlank()) {
+                user.setPassword(passwordEncoder.encode(request.getPassword()));
+            }
 
-        return new SuccessResult(messageService.getMessage(Messages.User.userAddSuccess));
+            // BUGFIX #9: Gán role 'user' mặc định từ server, không bao giờ tin client.
+            Role userRole = roleService.findByName("user");
+            if (userRole == null) {
+                throw new BusinessException("Role 'user' chưa được khởi tạo trong hệ thống.");
+            }
+            user.setAuthorities(new java.util.HashSet<>(java.util.Set.of(userRole)));
 
-    }
+            userRepository.save(user);
+
+            return new SuccessResult(messageService.getMessage(Messages.User.userAddSuccess));
+
+        }
 
     @Override
     public Result add(User user) {
@@ -150,7 +163,12 @@ public class UserManager implements UserService {
             throw new BusinessException("Không thể xóa/khóa tài khoản — người dùng còn đơn mua đang hoạt động.");
         }
 
-        userRepository.deleteById(request.getId());
+        // BUGFIX #14: Soft delete thay vì hard delete để giữ lịch sử đơn thuê/đơn mua
+        // (hóa đơn, review). Khi đã có lịch sử COMPLETED, vẫn cho xóa mềm.
+        // Đồng thời bump tokenVersion + disable để JWT hiện tại không dùng được nữa.
+        toDelete.setEnabled(false);
+        toDelete.setTokenVersion(toDelete.getTokenVersion() + 1);
+        userRepository.save(toDelete);
 
         return new SuccessResult(messageService.getMessage(Messages.User.userDeleteSuccess));
     }
