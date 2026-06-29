@@ -7,6 +7,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,39 @@ public class JwtService {
 
     @Value("${jwt.expiration}")
     private long EXPIRATION;
+
+    /**
+     * BUGFIX #1: Từ chối các default value yếu đã từng commit lên Git, đảm bảo mọi môi trường
+     * đều cấu hình JWT_KEY riêng. Nếu thiếu hoặc trùng secret cũ → fail-fast.
+     */
+    private static final String[] FORBIDDEN_DEFAULT_SECRETS = {
+            "QXV0b0h1YkBSZW50QUNhciNTZWNyZXRLZXkhMjAyNCQ=",
+            "Y2hhbmdlbWU=", // legacy dev-secret fallback
+    };
+
+    @PostConstruct
+    void assertSecureSecret() {
+        if (SECRET == null || SECRET.isBlank()) {
+            throw new IllegalStateException(
+                    "Thiếu biến môi trường JWT_KEY. Hãy set JWT_KEY trong .env hoặc docker-compose.");
+        }
+        for (String forbidden : FORBIDDEN_DEFAULT_SECRETS) {
+            if (forbidden.equals(SECRET)) {
+                throw new IllegalStateException(
+                        "JWT_KEY đang dùng giá trị mặc định công khai trên Git. Hãy đổi secret mới (Base64 ≥ 32 bytes random).");
+            }
+        }
+        // Base64 → raw ≥ 32 bytes (256-bit) cho HS256.
+        try {
+            byte[] raw = Decoders.BASE64.decode(SECRET);
+            if (raw.length < 32) {
+                throw new IllegalStateException(
+                        "JWT_KEY quá yếu (cần ≥ 32 bytes raw sau Base64 decode, hiện " + raw.length + ").");
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("JWT_KEY không phải chuỗi Base64 hợp lệ: " + e.getMessage(), e);
+        }
+    }
 
     public String generateToken(String email, GetUserByNameResponse userResponse) {
         return generateToken(email, userResponse, 0);

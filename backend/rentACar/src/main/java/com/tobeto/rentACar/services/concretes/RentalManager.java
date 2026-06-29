@@ -64,9 +64,34 @@ public class RentalManager implements RentalService {
             rule.checkEndDate(request.getStartDate(), request.getEndDate());
             rule.existsUserById(request.getUserId());
             rule.existsCarById(request.getCarId());
-            rule.checkCarAvailability(request.getCarId(), request.getStartDate(), request.getEndDate());
             rule.checkUserKycApproved(request.getUserId());
-            rule.checkCarAllowsRental(request.getCarId());
+        }
+
+        // BUGFIX #4: Acquire pessimistic write lock trên Car TRƯỚC khi check availability &
+        // tạo rental. Hai transaction cùng đặt 1 xe sẽ serialize: một cái pass, một cái sẽ
+        // nhìn thấy overlap sau khi transaction kia commit.
+        Car lockedCar = carRepository
+                .findByIdForUpdate(request.getCarId())
+                .orElseThrow(() -> new NotFoundException(messageService.getMessage(Messages.Car.getCarNotFoundMessage)));
+        String lt = lockedCar.getListingType();
+        if (lt == null || lt.isBlank()) lt = com.tobeto.rentACar.services.constants.ListingConstants.LISTING_RENT_ONLY;
+        if (com.tobeto.rentACar.services.constants.ListingConstants.LISTING_SALE_ONLY.equalsIgnoreCase(lt)) {
+            throw new BusinessException("Xe này chỉ bán, không cho thuê.");
+        }
+        if (com.tobeto.rentACar.services.constants.ListingConstants.LISTING_RENT_ONLY.equalsIgnoreCase(lt)) {
+            String ss = lockedCar.getSaleStatus();
+            if (ss != null && (com.tobeto.rentACar.services.constants.ListingConstants.SALE_RESERVED.equalsIgnoreCase(ss)
+                    || com.tobeto.rentACar.services.constants.ListingConstants.SALE_SOLD.equalsIgnoreCase(ss))) {
+                throw new BusinessException("Xe đang giữ chỗ bán hoặc đã bán, không thể thuê.");
+            }
+        }
+        if (lockedCar.getDailyPrice() == null || lockedCar.getDailyPrice() <= 0) {
+            throw new BusinessException("Xe chưa có giá thuê hợp lệ.");
+        }
+
+        // Check overlap SAU khi lock → không còn race.
+        for (RentalBusinessRule rule : rentalBusinessRules) {
+            rule.checkCarAvailability(request.getCarId(), request.getStartDate(), request.getEndDate());
         }
 
         // When renting, the StartKilometer should be taken from the Kilometer field of

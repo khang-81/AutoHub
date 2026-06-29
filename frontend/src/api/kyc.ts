@@ -49,8 +49,30 @@ export const rejectKycApi = async (id: number, adminNote?: string): Promise<User
 };
 
 /**
- * URL đầy đủ để mở file / <img src> (cùng origin với SPA hoặc VITE_API_URL).
- * GET /files/** được API permitAll — không cần Bearer trên thẻ img.
+ * BUGFIX #2: KYC file PHẢI dùng Bearer token. Vì <img src> không gửi Authorization header mặc định,
+ * ta chuyển sang dùng một endpoint controller có @PreAuthorize và gọi qua axios với header.
+ *
+ * Helper này giờ trả về URL tuyệt đối dạng `/files/secure/kyc/<userId>/<uuid>.ext` — frontend
+ * sẽ fetch qua API với Authorization header rồi hiển thị bằng blob URL.
+ */
+
+/**
+ * Fetch file KYC với Bearer token và trả về blob URL để hiển thị trong <img src>.
+ * Dùng cho user xem ảnh của chính mình.
+ */
+export async function fetchKycFileAsBlobUrl(fileUrl: string): Promise<string> {
+  if (!fileUrl) return '';
+  // Backend sẽ map URL cũ → URL mới khi trả về (đã làm ở backend).
+  const cleanUrl = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
+  const fullUrl = cleanUrl.startsWith('http')
+      ? cleanUrl
+      : `${API_BASE_URL.replace(/\/+$/, '')}${cleanUrl}`;
+  const res = await axiosInstance.get<Blob>(fullUrl, { responseType: 'blob' });
+  return URL.createObjectURL(res.data);
+}
+
+/**
+ * URL đầy đủ cho file PUBLIC (ảnh xe, brand logo) — không cần auth.
  */
 export function kycFileAbsoluteUrl(fileUrl: string): string {
   if (!fileUrl) return '';

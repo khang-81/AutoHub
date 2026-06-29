@@ -167,7 +167,9 @@ import java.util.stream.Collectors;
         r.setId(d.getId());
         r.setUserId(d.getUser() != null ? d.getUser().getId() : null);
         r.setDocumentType(d.getDocumentType());
-        r.setFileUrl(fileStorageService.publicFileUrl(d.getFilePath()));
+        // BUGFIX #2: KYC files phải dùng secure URL (cần Authorization header), không serve
+        // qua static resource handler.
+        r.setFileUrl(fileStorageService.secureFileUrl(d.getFilePath()));
         r.setStatus(d.getStatus());
         r.setAdminNote(d.getAdminNote());
         r.setReviewedAt(d.getReviewedAt());

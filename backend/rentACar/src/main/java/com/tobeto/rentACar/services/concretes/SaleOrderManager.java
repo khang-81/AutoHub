@@ -54,7 +54,10 @@ public class SaleOrderManager implements SaleOrderService {
             throw new BusinessException(messageService.getMessage(Messages.User.getUserNotFoundMessage));
         }
         rentalBusinessRule.checkUserKycApproved(userId);
-        Car car = carRepository.findById(request.getCarId()).orElseThrow(
+
+        // BUGFIX #4: pessimistic lock tránh race condition khi 2 user cùng mua 1 xe cùng lúc.
+        // assertNoOpenSaleOrderForCar + setSaleStatus phải atomic.
+        Car car = carRepository.findByIdForUpdate(request.getCarId()).orElseThrow(
                 () -> new BusinessException(messageService.getMessage(Messages.Car.getCarNotFoundMessage)));
 
         saleBusinessRule.assertCarReadyToSell(car);

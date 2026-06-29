@@ -110,8 +110,15 @@ public class UserManager implements UserService {
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
             throw new BusinessException("Mật khẩu hiện tại không đúng.");
         }
+        // BUGFIX #3: Nếu mật khẩu mới trùng mật khẩu cũ, fail-fast để tránh nhầm lẫn.
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new BusinessException("Mật khẩu mới phải khác mật khẩu hiện tại.");
+        }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        // BUGFIX #3: Bump tokenVersion để vô hiệu hóa mọi JWT cũ trên thiết bị khác (khớp với
+        // resetPassword ở AuthCManager). tokenVersion là int primitive (mặc định 0).
+        user.setTokenVersion(user.getTokenVersion() + 1);
         userRepository.save(user);
 
         return new SuccessResult("Password changed successfully.");
