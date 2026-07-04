@@ -1,5 +1,7 @@
+import { useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ShieldCheck, Upload, Loader2, Clock, CheckCircle2, XCircle, Info } from 'lucide-react';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { ShieldCheck, Upload, Loader2, Clock, CheckCircle2, XCircle, Info, ArrowLeft } from 'lucide-react';
 import { getMyKycDocumentsApi, uploadKycDocumentApi, kycFileAbsoluteUrl } from '../../api/kyc';
 import { isAllowedKycImage, isLikelyKycImageUrl } from '../../utils/kycFile';
 import { getProfileApi } from '../../api/users';
@@ -32,6 +34,11 @@ const statusInfo = (s: string) => {
 const KycVerification = () => {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const kycLayoutState = location.state as { from?: { pathname?: string } } | null;
+  const returnPath = kycLayoutState?.from?.pathname;
+  const autoRedirectRef = useRef(false);
 
   const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ['profile'],
@@ -84,6 +91,16 @@ const KycVerification = () => {
   /** Tài liệu nào đang chờ duyệt → dùng cho banner chi tiết */
   const pendingDocs = docs.filter((d) => d.status === 'PENDING');
 
+  useEffect(() => {
+    if (!returnPath) return;
+    if (profileLoading || docsLoading) return;
+    if (!kycApproved) return;
+    if (autoRedirectRef.current) return;
+    autoRedirectRef.current = true;
+    showToast('Xác minh GPLX đã được duyệt — quay lại trang trước.', 'success');
+    navigate(returnPath, { replace: true });
+  }, [returnPath, profileLoading, docsLoading, kycApproved, navigate, showToast]);
+
   const kycBanner = (() => {
     if (kycApproved)
       return {
@@ -131,6 +148,26 @@ const KycVerification = () => {
 
   return (
     <div className="space-y-6">
+      {returnPath && (
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(returnPath, { replace: true })}
+            className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-primary transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Quay lại trang trước
+          </button>
+          <Link
+            to={returnPath}
+            replace
+            className="text-xs text-primary font-medium hover:underline"
+          >
+            Mở trang xe
+          </Link>
+        </div>
+      )}
+
       <div className="bg-white rounded-2xl shadow-sm p-6">
         <div className="flex items-center gap-3 mb-2">
           <ShieldCheck className="w-6 h-6 text-primary" />
