@@ -37,3 +37,4 @@ scripts/_models.sql
 scripts/_car_values_indented.sql
 scripts/_generated_*.sql
 scripts/seed-car-images.sql
+.opencode

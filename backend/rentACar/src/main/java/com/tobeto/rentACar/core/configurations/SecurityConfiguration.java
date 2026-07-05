@@ -134,8 +134,10 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/api/models/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/viewing-appointments/availability").permitAll()
-                        // Ảnh/PDF KYC: trình duyệt không gửi Bearer khi <img src> hoặc mở tab mới — phải cho GET tĩnh.
-                        .requestMatchers(HttpMethod.GET, "/files/**").permitAll()
+                        // BUGFIX #2: Tách rõ file public (ảnh xe, logo hãng) vs file secure (KYC,
+                        // bằng chứng hư hại). File secure phải qua FileAccessController có @PreAuthorize.
+                        .requestMatchers(HttpMethod.GET, "/files/public/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/files/secure/**").authenticated()
                         .anyRequest().authenticated())
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

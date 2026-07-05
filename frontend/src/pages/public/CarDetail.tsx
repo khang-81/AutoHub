@@ -347,7 +347,7 @@ const CarDetail = () => {
     ]);
     if (!isKycApproved(freshProfile, freshDocs)) {
       showToast('Vui lòng đăng tải và được duyệt CCCD + GPLX trước khi tiếp tục.', 'info');
-      navigate('/dashboard/kyc');
+      navigate('/dashboard/kyc', { state: { from: { pathname: `/cars/${id}` } } });
       return false;
     }
     return true;
@@ -695,7 +695,11 @@ const CarDetail = () => {
                 <div className="mb-5 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm">
                   <p className="font-medium mb-1">Cần xác minh GPLX</p>
                   <p className="text-gray-700 mb-2">Tải CCCD và GPLX để thuê hoặc mua xe.</p>
-                  <Link to="/dashboard/kyc" className="text-primary font-semibold hover:underline">
+                  <Link
+                    to="/dashboard/kyc"
+                    state={{ from: { pathname: `/cars/${id}` } }}
+                    className="text-primary font-semibold hover:underline"
+                  >
                     Đi tới xác minh →
                   </Link>
                 </div>

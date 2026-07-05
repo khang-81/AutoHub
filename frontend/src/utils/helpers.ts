@@ -142,14 +142,24 @@ export function getApiErrorMessage(err: unknown, fallback: string): string {
 
 export const CAR_PLACEHOLDER = 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=800&q=80';
 
-/** URL hiển thị ảnh: https trực tiếp hoặc `/files/...` trên cùng origin API. */
+/** URL hiển thị ảnh: https trực tiếp hoặc `/files/...` trên cùng origin API.
+ *  BUGFIX #2: Tự build prefix `/files/public/` cho ảnh car/brand (file công khai).
+ *  File KYC dùng `fetchKycFileAsBlobUrl()` riêng (cần Authorization header). */
 export function resolveMediaUrl(url: string): string {
   if (!url) return '';
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
   const base = API_BASE_URL.replace(/\/+$/, '');
   const path = url.startsWith('/') ? url : `/${url}`;
-  if (!base) return path;
-  return `${base}${path}`;
+  // Ảnh đã có sẵn prefix /files/... (vd khi admin upload trả url mới) — giữ nguyên.
+  if (path.startsWith('/files/')) {
+    return base ? `${base}${path}` : path;
+  }
+  // Relative path như "cars/car_5/uuid.jpg" — thêm /files/public/ để match static handler.
+  const publicPath = path.startsWith('/') ? path : `/${path}`;
+  const finalPath = publicPath.startsWith('/files/public/')
+    ? publicPath
+    : `/files/public${publicPath}`;
+  return base ? `${base}${finalPath}` : finalPath;
 }
 
 /** Badge trạng thái đơn thuê trên lịch sử / dashboard khách. */

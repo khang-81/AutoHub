@@ -50,7 +50,7 @@ const Register = () => {
         birthDate: data.birthDate,
         email: data.email,
         password: data.password,
-        roles: ['user'],
+        // BUGFIX #9: KHÔNG gửi roles từ client — server tự gán role 'user'.
       });
       if (res.success) {
         localStorage.removeItem('autohub_admin_token');

@@ -54,7 +54,10 @@ public class SaleOrderManager implements SaleOrderService {
             throw new BusinessException(messageService.getMessage(Messages.User.getUserNotFoundMessage));
         }
         rentalBusinessRule.checkUserKycApproved(userId);
-        Car car = carRepository.findById(request.getCarId()).orElseThrow(
+
+        // BUGFIX #4: pessimistic lock tránh race condition khi 2 user cùng mua 1 xe cùng lúc.
+        // assertNoOpenSaleOrderForCar + setSaleStatus phải atomic.
+        Car car = carRepository.findByIdForUpdate(request.getCarId()).orElseThrow(
                 () -> new BusinessException(messageService.getMessage(Messages.Car.getCarNotFoundMessage)));
 
         saleBusinessRule.assertCarReadyToSell(car);
@@ -245,6 +248,13 @@ public class SaleOrderManager implements SaleOrderService {
             throw new BusinessException("Bạn không có quyền hủy đơn này.");
         }
 
+        // BUGFIX #16: Check trạng thái xe TRƯỚC khi thay đổi DB, tránh inconsistent state
+        // nếu throw exception giữa chừng (race với admin confirm đồng thời).
+        Car car = carRepository.findById(order.getCar().getId()).orElseThrow();
+        if (ListingConstants.SALE_SOLD.equalsIgnoreCase(car.getSaleStatus())) {
+            throw new BusinessException("Trạng thái xe không cho phép hủy đơn.");
+        }
+
         order.setCancelledAt(LocalDateTime.now());
         order.setCancelledBy(isAdmin ? "ADMIN" : "USER");
         order.setCancellationReason(reason);
@@ -252,10 +262,6 @@ public class SaleOrderManager implements SaleOrderService {
         order.setPaymentStatus("CANCELLED");
         saleOrderRepository.save(order);
 
-        Car car = carRepository.findById(order.getCar().getId()).orElseThrow();
-        if (ListingConstants.SALE_SOLD.equalsIgnoreCase(car.getSaleStatus())) {
-            throw new BusinessException("Trạng thái xe không cho phép hủy đơn.");
-        }
         car.setSaleStatus(ListingConstants.SALE_AVAILABLE);
         carRepository.save(car);
 

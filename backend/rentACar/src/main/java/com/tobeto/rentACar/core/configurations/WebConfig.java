@@ -45,7 +45,9 @@ public class WebConfig implements WebMvcConfigurer {
         if (!loc.endsWith("/")) {
             loc = loc + "/";
         }
-        registry.addResourceHandler("/files/**")
+        // BUGFIX #2: Chỉ serve file public qua static handler. File KYC/bằng chứng phải đi qua
+        // FileAccessController có kiểm tra quyền sở hữu + role admin.
+        registry.addResourceHandler("/files/public/**")
                 .addResourceLocations(loc);
     }
 
@@ -59,11 +61,13 @@ public class WebConfig implements WebMvcConfigurer {
             log.warn("app.cors.allowed-origins is empty — using local dev defaults so API is reachable (fix APP_CORS_ALLOWED_ORIGINS in production).");
             origins = LOCAL_DEV_ORIGINS.clone();
         }
+        // BUGFIX #6: Đồng bộ với SecurityConfiguration (allowCredentials=false). JWT gửi qua header
+        // Authorization, không cần cookie/session, nên false là đủ và an toàn cho SPA.
         registry.addMapping("/**")
                 .allowedOrigins(origins)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS", "PATCH")
                 .allowedHeaders("*")
-                .allowCredentials(true);
+                .allowCredentials(false);
     }
 
 }
