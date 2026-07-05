@@ -12,7 +12,8 @@ export interface RegisterRequest {
   fullName: string;
   phone: string;
   birthDate: string;
-  roles: string[];
+  /** BUGFIX #9: client không gửi roles — backend tự gán 'user'. */
+  roles?: string[];
 }
 
 export interface LoginResponse {
