@@ -228,27 +228,7 @@ const Contact = () => {
                 </div>
               )}
 
-              <>
-                  <p className="text-gray-500 text-sm mb-5">
-                    Đăng ký lịch đến showroom tại Phúc Am, Ngọc Hồi. Chúng tôi sẽ xác nhận qua điện thoại hoặc email.
-                  </p>
-
-                  {!isAuthenticated && (
-                    <div className="mb-5 p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
-                      <LogIn className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                      <div className="text-sm">
-                        <p className="font-medium text-amber-900">Cần đăng nhập để đặt lịch</p>
-                        <p className="text-amber-700 mt-0.5">
-                          Lịch xem xe sẽ được lưu vào tài khoản của bạn để quản lý trong dashboard.{' '}
-                          <Link to="/login?redirect=/contact" className="font-semibold underline hover:text-amber-900">
-                            Đăng nhập ngay
-                          </Link>
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  <form
+              <form
                     onSubmit={viewingForm.handleSubmit((d) => {
                       const scheduledAt = `${d.preferredDate}T${d.preferredTime}:00`;
                       const noteParts = [
@@ -397,8 +377,6 @@ const Contact = () => {
                       {viewingMutation.isPending ? 'Đang gửi…' : 'Gửi yêu cầu đặt lịch'}
                     </button>
                   </form>
-                </>
-              )}
             </section>
           </div>
         </div>
