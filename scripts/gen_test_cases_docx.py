@@ -328,11 +328,11 @@ add_test_table(doc, HEADERS, [
 ])
 
 # TC12: AI CHATBOT (3)
-add_module_heading(doc, "AI Chatbot (Gemini)", "TC12")
+add_module_heading(doc, "AI Chatbot (Arcanic)", "TC12")
 add_test_table(doc, HEADERS, [
     ["TC12_01", "Mở AI Chatbot và hỏi về xe",
      "Click nút AI góc dưới phải | Hỏi: 'Xe 5 chỗ giá dưới 1 triệu?'",
-     "Chatbot mở, gọi Gemini API với system prompt có context xe, trả lời gợi ý",
+     "Chatbot mở, gọi Arcanic API với system prompt có context xe, trả lời gợi ý",
      "Pass"],
     ["TC12_02", "AI ẩn trên admin",
      "Truy cập /admin/*",
@@ -340,7 +340,7 @@ add_test_table(doc, HEADERS, [
      "Pass"],
     ["TC12_03", "Kiểm tra trạng thái AI",
      "GET /api/ai/status",
-     "Trả về { enabled, model } tùy GEMINI_API_KEY có hay không",
+     "Trả về { aiConfigured } tùy ARCANIC_API_KEY có hay không",
      "Pass"],
 ])
 

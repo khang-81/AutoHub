@@ -8,5 +8,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AiStatusResponse {
-    private boolean geminiConfigured;
+    private boolean aiConfigured;
 }

@@ -22,17 +22,17 @@ import java.util.Map;
 @Service
 public class AiChatManager implements AiChatService {
 
-    private static final List<String> MODEL_CANDIDATES = List.of(
-            "gemini-2.5-flash",
-            "gemini-2.0-flash",
-            "gemini-2.0-flash-lite"
-    );
-
-    @Value("${gemini.api.key:}")
+    @Value("${arcanic.api.key:}")
     private String apiKey;
 
-    @Value("${gemini.api.base-url:https://generativelanguage.googleapis.com}")
+    @Value("${arcanic.api.base-url:https://api.arcanic.ai/v1}")
     private String baseUrl;
+
+    @Value("${arcanic.api.model:cono-3}")
+    private String model;
+
+    @Value("${arcanic.api.chat-max-tokens:500}")
+    private int chatMaxTokens;
 
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
@@ -43,14 +43,14 @@ public class AiChatManager implements AiChatService {
     }
 
     @Override
-    public boolean isGeminiConfigured() {
+    public boolean isAiConfigured() {
         return apiKey != null && !apiKey.isBlank();
     }
 
     @Override
     public AiChatResponse chat(AiChatRequest request) {
-        if (!isGeminiConfigured()) {
-            return new AiChatResponse(false, "Gemini API key is missing on server", null, null, null, null);
+        if (!isAiConfigured()) {
+            return new AiChatResponse(false, "Arcanic API key is missing on server", null, null, null, null);
         }
 
         String prompt = request.getMessage() == null ? "" : request.getMessage().trim();
@@ -58,73 +58,65 @@ public class AiChatManager implements AiChatService {
             return new AiChatResponse(false, "Message is required", null, null, null, null);
         }
 
-        List<String> errors = new ArrayList<>();
-        boolean hasQuotaError = false;
-        for (String model : MODEL_CANDIDATES) {
-            try {
-                GeminiResult result = callGemini(model, request);
-                if (result.text() != null && !result.text().isBlank()) {
-                    return new AiChatResponse(
-                            true,
-                            result.text().trim(),
-                            model,
-                            result.promptTokens(),
-                            result.completionTokens(),
-                            result.totalTokens());
-                }
-            } catch (Exception e) {
-                String msg = e.getMessage() == null ? "Unknown error" : e.getMessage();
-                errors.add(model + ": " + msg);
-                if (msg.contains("HTTP 429")) {
-                    hasQuotaError = true;
-                }
+        try {
+            ArcanicResult result = callArcanic(request);
+            if (result.text() != null && !result.text().isBlank()) {
+                return new AiChatResponse(
+                        true,
+                        result.text().trim(),
+                        model,
+                        result.promptTokens(),
+                        result.completionTokens(),
+                        result.totalTokens());
             }
+            return new AiChatResponse(false, "Arcanic returned empty response", null, null, null, null);
+        } catch (Exception e) {
+            String msg = e.getMessage() == null ? "Unknown error" : e.getMessage();
+            if (msg.contains("HTTP 429")) {
+                return new AiChatResponse(false,
+                        "Arcanic quota/rate limit exceeded (HTTP 429). Please wait or upgrade billing.",
+                        null, null, null, null);
+            }
+            return new AiChatResponse(false, msg, null, null, null, null);
         }
-
-        String err;
-        if (hasQuotaError) {
-            err = "Gemini quota exceeded (HTTP 429). Please wait or upgrade billing.";
-        } else if (!errors.isEmpty()) {
-            err = errors.get(errors.size() - 1);
-        } else {
-            err = "Unknown Gemini error";
-        }
-        return new AiChatResponse(false, err, null, null, null, null);
     }
 
-    private record GeminiResult(String text, Integer promptTokens, Integer completionTokens, Integer totalTokens) {}
+    private record ArcanicResult(String text, Integer promptTokens, Integer completionTokens, Integer totalTokens) {}
 
-    private GeminiResult callGemini(String model, AiChatRequest request) throws IOException, InterruptedException {
+    private ArcanicResult callArcanic(AiChatRequest request) throws IOException, InterruptedException {
         Map<String, Object> payload = new HashMap<>();
-        payload.put("contents", toContents(request));
+        payload.put("model", model);
+        payload.put("messages", toMessages(request));
+        payload.put("max_tokens", chatMaxTokens);
+        payload.put("temperature", 0.6);
 
         String body = objectMapper.writeValueAsString(payload);
-        String url = String.format("%s/v1beta/models/%s:generateContent", baseUrl, model);
+        String url = String.format("%s/chat/completions", baseUrl);
 
         HttpRequest httpRequest = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(25))
                 .header("Content-Type", "application/json")
-                .header("x-goog-api-key", apiKey)
+                .header("Authorization", "Bearer " + apiKey)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
 
         HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new IOException("Gemini HTTP " + response.statusCode() + ": " + response.body());
+            throw new IOException("Arcanic HTTP " + response.statusCode() + ": " + response.body());
         }
 
         JsonNode root = objectMapper.readTree(response.body());
-        JsonNode textNode = root.path("candidates").path(0).path("content").path("parts").path(0).path("text");
+        JsonNode textNode = root.path("choices").path(0).path("message").path("content");
         if (textNode.isMissingNode() || textNode.isNull()) {
-            return new GeminiResult(null, null, null, null);
+            return new ArcanicResult(null, null, null, null);
         }
 
-        JsonNode usage = root.path("usageMetadata");
-        Integer promptTokens = intOrNull(usage, "promptTokenCount");
-        Integer completionTokens = intOrNull(usage, "candidatesTokenCount");
-        Integer totalTokens = intOrNull(usage, "totalTokenCount");
-        return new GeminiResult(textNode.asText(), promptTokens, completionTokens, totalTokens);
+        JsonNode usage = root.path("usage");
+        Integer promptTokens = intOrNull(usage, "prompt_tokens");
+        Integer completionTokens = intOrNull(usage, "completion_tokens");
+        Integer totalTokens = intOrNull(usage, "total_tokens");
+        return new ArcanicResult(textNode.asText(), promptTokens, completionTokens, totalTokens);
     }
 
     private static Integer intOrNull(JsonNode node, String field) {
@@ -135,37 +127,38 @@ public class AiChatManager implements AiChatService {
         return v.asInt();
     }
 
-    private List<Map<String, Object>> toContents(AiChatRequest request) {
-        List<Map<String, Object>> contents = new ArrayList<>();
+    private List<Map<String, Object>> toMessages(AiChatRequest request) {
+        List<Map<String, Object>> messages = new ArrayList<>();
 
         String systemPrompt = request.getSystemPrompt();
         if (systemPrompt != null && !systemPrompt.isBlank()) {
-            contents.add(toPart("user", systemPrompt));
-            contents.add(toPart("model", "Tôi đã hiểu hướng dẫn và sẽ trả lời đúng vai trò."));
+            Map<String, Object> sys = new HashMap<>();
+            sys.put("role", "system");
+            sys.put("content", systemPrompt);
+            messages.add(sys);
         }
 
         if (request.getHistory() != null) {
             for (AiChatMessage msg : request.getHistory()) {
                 if (msg == null || msg.getContent() == null || msg.getContent().isBlank()) continue;
-                String role = "user".equalsIgnoreCase(msg.getRole()) ? "user" : "model";
-                contents.add(toPart(role, msg.getContent()));
+                String role;
+                if ("model".equalsIgnoreCase(msg.getRole()) || "assistant".equalsIgnoreCase(msg.getRole())) {
+                    role = "assistant";
+                } else {
+                    role = "user";
+                }
+                Map<String, Object> m = new HashMap<>();
+                m.put("role", role);
+                m.put("content", msg.getContent());
+                messages.add(m);
             }
         }
 
-        contents.add(toPart("user", request.getMessage()));
-        return contents;
-    }
+        Map<String, Object> userMsg = new HashMap<>();
+        userMsg.put("role", "user");
+        userMsg.put("content", request.getMessage());
+        messages.add(userMsg);
 
-    private Map<String, Object> toPart(String role, String text) {
-        Map<String, Object> part = new HashMap<>();
-        part.put("text", text);
-
-        List<Map<String, Object>> parts = new ArrayList<>();
-        parts.add(part);
-
-        Map<String, Object> item = new HashMap<>();
-        item.put("role", role);
-        item.put("parts", parts);
-        return item;
+        return messages;
     }
 }

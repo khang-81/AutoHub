@@ -25,11 +25,11 @@ PHONG CÁCH:
 - Luôn có thể giới thiệu mình là AutoBot khi được hỏi.`;
 
 export interface ChatMessage {
-    role: 'user' | 'model';
+    role: 'user' | 'model' | 'assistant';
     content: string;
 }
 
-export type ChatReplySource = 'gemini' | 'faq' | 'fallback';
+export type ChatReplySource = 'arcanic' | 'faq' | 'fallback';
 
 export interface ChatReply {
     content: string;
@@ -39,7 +39,7 @@ export interface ChatReply {
 }
 
 export interface AiStatus {
-    geminiConfigured: boolean;
+    aiConfigured: boolean;
 }
 
 let aiStatusCache: { data: AiStatus; at: number } | null = null;
@@ -52,11 +52,11 @@ export async function getAiStatus(): Promise<AiStatus> {
     }
     try {
         const res = await axiosInstance.get<AiStatus>('/api/ai/status');
-        const data = { geminiConfigured: Boolean(res.data?.geminiConfigured) };
+        const data = { aiConfigured: Boolean(res.data?.aiConfigured) };
         aiStatusCache = { data, at: now };
         return data;
     } catch {
-        return { geminiConfigured: false };
+        return { aiConfigured: false };
     }
 }
 
@@ -318,15 +318,15 @@ async function tryBusinessReply(message: string): Promise<string | null> {
 function toErrorMessage(error: unknown): string {
     const text = String(error || '').toLowerCase();
     if (text.includes('404') || text.includes('not found') || text.includes('model')) {
-        return '⚠️ Model Gemini hiện tại không tương thích với key/project. AutoBot đã tự chuyển sang chế độ dự phòng nghiệp vụ realtime.';
+        return '⚠️ Model Gemini AI hiện tại không tương thích với key/project. AutoBot đã tự chuyển sang chế độ dự phòng nghiệp vụ realtime.';
     }
-    if (text.includes('api key') || text.includes('permission') || text.includes('403')) {
-        return '⚠️ Gemini API key đang bị từ chối (403). Mình đã chuyển sang chế độ tư vấn nghiệp vụ realtime từ dữ liệu hệ thống.';
+    if (text.includes('api key') || text.includes('permission') || text.includes('403') || text.includes('401')) {
+        return '⚠️ Gemini AI API key đang bị từ chối (401/403). Mình đã chuyển sang chế độ tư vấn nghiệp vụ realtime từ dữ liệu hệ thống.';
     }
     if (text.includes('quota') || text.includes('429') || text.includes('rate')) {
-        return '⚠️ Gemini đang quá tải/quá quota. Mình vẫn có thể tư vấn theo dữ liệu xe realtime của AutoHub.';
+        return '⚠️ Gemini AI đang quá tải/quá quota. Mình vẫn có thể tư vấn theo dữ liệu xe realtime của AutoHub.';
     }
-    return '⚠️ Kết nối Gemini tạm thời lỗi. Mình tiếp tục hỗ trợ bằng dữ liệu nghiệp vụ realtime nhé.';
+    return '⚠️ Kết nối Gemini AI tạm thời lỗi. Mình tiếp tục hỗ trợ bằng dữ liệu nghiệp vụ realtime nhé.';
 }
 
 function getBusinessFallback(message: string): string {
@@ -340,10 +340,12 @@ function getBusinessFallback(message: string): string {
 export const sendChatMessage = async (message: string, history: ChatMessage[]): Promise<ChatReply> => {
     const status = await getAiStatus();
 
-    if (status.geminiConfigured) {
+    if (status.aiConfigured) {
         try {
             const cars = await getCarsLive();
             const liveContext = buildLiveContextBlock(cars);
+
+            const historyTrimmed = history.slice(-10);
 
             const res = await axiosInstance.post<{
                 success?: boolean;
@@ -352,21 +354,21 @@ export const sendChatMessage = async (message: string, history: ChatMessage[]): 
                 totalTokens?: number;
             }>('/api/ai/chat', {
                 message,
-                history,
+                history: historyTrimmed,
                 systemPrompt: `${SYSTEM_PROMPT}\n\nDu lieu realtime (API): ${liveContext}`,
             });
 
             if (res?.data?.success && res?.data?.message) {
                 return {
                     content: res.data.message,
-                    source: 'gemini',
+                    source: 'arcanic',
                     model: res.data.model,
                     totalTokens: res.data.totalTokens ?? undefined,
                 };
             }
             throw new Error(res?.data?.message || 'AI backend returned no response');
         } catch (error) {
-            console.error('Gemini API error:', error);
+            console.error('Gemini AI API error:', error);
             const businessReply = await tryBusinessReply(message);
             const fallback = businessReply || getBusinessFallback(message);
             return {
@@ -383,8 +385,8 @@ export const sendChatMessage = async (message: string, history: ChatMessage[]): 
 
     return {
         content:
-            '🤖 **Chế độ FAQ:** Server chưa cấu hình `GEMINI_API_KEY` nên AutoBot chỉ trả lời câu hỏi mẫu (giá, quy trình, liên hệ…).\n\n' +
-            'Để hỏi tự do (so sánh xe, tư vấn theo ngữ cảnh…), thêm key Gemini vào `.env` trên VPS rồi `docker compose up -d --build api`.\n\n' +
+            '🤖 **Chế độ FAQ:** Server chưa cấu hình `ARCANIC_API_KEY` nên AutoBot chỉ trả lời câu hỏi mẫu (giá, quy trình, liên hệ…).\n\n' +
+            'Để hỏi tự do (so sánh xe, tư vấn theo ngữ cảnh…), thêm key Gemini AI (Arcanic) vào `.env` rồi `docker compose up -d --build api`.\n\n' +
             getBusinessFallback(message),
         source: 'fallback',
     };

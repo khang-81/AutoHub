@@ -4,7 +4,7 @@ import com.tobeto.rentACar.services.dtos.ai.AiChatRequest;
 import com.tobeto.rentACar.services.dtos.ai.AiChatResponse;
 
 public interface AiChatService {
-    boolean isGeminiConfigured();
+    boolean isAiConfigured();
 
     AiChatResponse chat(AiChatRequest request);
 }

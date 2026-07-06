@@ -17,7 +17,7 @@ public class AiController {
 
     @GetMapping("/status")
     public AiStatusResponse status() {
-        return new AiStatusResponse(aiChatService.isGeminiConfigured());
+        return new AiStatusResponse(aiChatService.isAiConfigured());
     }
 
     @PostMapping("/chat")

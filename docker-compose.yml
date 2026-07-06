@@ -70,7 +70,9 @@ services:
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ARCANIC_API_KEY: ${ARCANIC_API_KEY:-}
+      ARCANIC_BASE_URL: ${ARCANIC_BASE_URL:-https://api.arcanic.ai/v1}
+      ARCANIC_MODEL: ${ARCANIC_MODEL:-cono-3}
     volumes:
       - uploads_data:/app/uploads
     depends_on:

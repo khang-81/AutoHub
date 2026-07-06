@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Bot, User, Loader2 } from 'lucide-react';
-import { getAiStatus, sendChatMessage } from '../../api/gemini';
-import type { ChatMessage, ChatReplySource } from '../../api/gemini';
+import { getAiStatus, sendChatMessage } from '../../api/ai';
+import type { ChatMessage, ChatReplySource } from '../../api/ai';
 
 const QUICK_QUESTIONS = [
   '💰 Giá thuê và giá mua xe?',
@@ -24,7 +24,7 @@ const AIChatbot = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [unread, setUnread] = useState(0);
-  const [geminiConfigured, setGeminiConfigured] = useState<boolean | null>(null);
+  const [aiConfigured, setAiConfigured] = useState<boolean | null>(null);
   const [lastTokens, setLastTokens] = useState<number | null>(null);
   const [lastSource, setLastSource] = useState<ChatReplySource | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -32,8 +32,8 @@ const AIChatbot = () => {
 
   useEffect(() => {
     getAiStatus()
-      .then((status) => setGeminiConfigured(status.geminiConfigured))
-      .catch(() => setGeminiConfigured(false));
+      .then((status) => setAiConfigured(status.aiConfigured))
+      .catch(() => setAiConfigured(false));
   }, []);
 
   useEffect(() => {
@@ -48,11 +48,11 @@ const AIChatbot = () => {
   }, [messages]);
 
   const statusLabel = (() => {
-    if (lastSource === 'gemini') return 'Trực tuyến • Gemini';
+    if (lastSource === 'arcanic') return 'Trực tuyến • Gemini AI';
     if (lastSource === 'faq') return 'Trực tuyến • FAQ';
     if (lastSource === 'fallback') return 'Trực tuyến • AutoBot';
-    if (geminiConfigured === null) return 'Đang kết nối...';
-    return geminiConfigured ? 'Trực tuyến • Gemini' : 'Trực tuyến • FAQ';
+    if (aiConfigured === null) return 'Đang kết nối...';
+    return aiConfigured ? 'Trực tuyến • Gemini AI' : 'Trực tuyến • FAQ';
   })();
 
   const handleSend = async (text?: string) => {
@@ -65,7 +65,6 @@ const AIChatbot = () => {
     setLoading(true);
 
     try {
-      // Skip the initial greeting message when sending context to Gemini.
       const history = messages.slice(1);
       const response = await sendChatMessage(msg, history);
       setLastSource(response.source);
@@ -241,7 +240,7 @@ const AIChatbot = () => {
             </div>
             <p className="mt-1 text-center text-[10px] text-gray-400">
               AutoBot • AutoHub
-              {lastTokens != null && lastSource === 'gemini' && (
+              {lastTokens != null && lastSource === 'arcanic' && (
                 <span className="text-gray-300"> • {lastTokens} tokens</span>
               )}
             </p>

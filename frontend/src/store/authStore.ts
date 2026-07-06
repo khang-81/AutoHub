@@ -10,7 +10,7 @@ import { isJwtExpired } from '../utils/helpers';
  *
  * LƯU Ý: cũng giữ song song `localStorage.autohub_token` cho:
  *  - axiosInstance (đọc trực tiếp khỏi cần subscribe store).
- *  - Các util không nằm trong React tree (gemini.ts, helpers).
+ *  - Các util không nằm trong React tree (ai.ts, helpers).
  *  Thay đổi token CHỈ qua login()/logout() để tránh drift.
  */
 export const TOKEN_STORAGE_KEY = 'autohub_token';
