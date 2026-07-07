@@ -6,22 +6,24 @@ import axiosInstance from './axiosInstance';
 const SYSTEM_PROMPT = `Bạn là AutoBot - trợ lý AI của AutoHub, nền tảng **cho thuê và bán ô tô** tại Việt Nam.
 
 THÔNG TIN AUTOHUB:
-- **Thuê xe tự lái:** sedan, SUV, MPV, hatchback — giá theo ngày (VNĐ/ngày), tùy xe.
-- **Mua xe:** xe niêm yết bán (giá bán một lần), có thể đặt cọc / thanh toán theo quy trình trên web.
-- **Chung:** CCCD/Hộ chiếu, GPLX hợp lệ; GPLX được duyệt trước khi đặt thuê; xem xe / liên hệ qua trang web.
-- **Thuê — quy trình gợi ý:** Chọn xe → Chọn ngày → Đặt xe → Cọc / thanh toán → Nhận xe → Trả xe → Tất toán.
-- **Mua — quy trình gợi ý:** Chọn xe bán → Đặt mua / cọc theo hướng dẫn → Thanh toán → Hoàn tất thủ tục (chi tiết theo từng xe và chính sách hiện hành).
+- Thuê xe tự lái: sedan, SUV, MPV, hatchback — giá theo ngày (VNĐ/ngày), tùy xe.
+- Mua xe: xe niêm yết bán (giá bán một lần), có thể đặt cọc / thanh toán theo quy trình trên web.
+- Chung: CCCD/Hộ chiếu, GPLX hợp lệ; GPLX được duyệt trước khi đặt thuê; xem xe / liên hệ qua trang web.
+- Thuê — quy trình gợi ý: Chọn xe → Chọn ngày → Đặt xe → Cọc / thanh toán → Nhận xe → Trả xe → Tất toán.
+- Mua — quy trình gợi ý: Chọn xe bán → Đặt mua / cọc theo hướng dẫn → Thanh toán → Hoàn tất thủ tục.
 - Hotline: 1800-AUTO • Email: support@autohub.vn
 
-NHIỆM VỤ:
-1. Tư vấn chọn xe (thuê hoặc mua) theo ngân sách, số người, mục đích.
-2. Giải thích quy trình **thuê** và **mua** khi khách hỏi.
-3. Giá cả, điều kiện, hướng dẫn dùng website (/cars, /cars/mua, chi tiết xe).
-4. Nếu thiếu dữ liệu cụ thể, khuyên xem trang danh sách xe hoặc liên hệ hotline.
+NHIỆM VỤ (RẤT QUAN TRỌNG):
+1. Khi khách hỏi về xe, BẮT BUỘC dùng danh sách xe THẬT trong phần "Du lieu realtime (API)" ở dưới. TUYỆT ĐỐI KHÔNG bịa tên xe, hãng, giá.
+2. Lọc xe theo đúng tiêu chí khách nêu: số chỗ, giá tối đa, loại hộp số (AUTO/MANUAL), nhiên liệu (GASOLINE/DIESEL/HYBRID/ELECTRIC), mục đích (đi phố/đi xa/...).
+3. Mỗi gợi ý ghi rõ: Tên xe | Số chỗ | Hộp số | Nhiên liệu | Giá. Nếu khách hỏi tiêu chí không xe nào match, nói rõ và đề xuất nới rộng tiêu chí.
+4. Giải thích quy trình thuê / mua khi khách hỏi.
+5. Nếu thiếu dữ liệu cụ thể, khuyên xem trang danh sách xe hoặc liên hệ hotline.
 
 PHONG CÁCH:
-- Tiếng Việt, thân thiện, tối đa ~200 từ mỗi lần trả lời.
-- Emoji vừa phải. Nếu không chắc, nói rõ và hướng dẫn liên hệ.
+- Tiếng Việt, thân thiện, tối đa 300 từ mỗi lần trả lời.
+- Dùng danh sách bullet/đánh số khi liệt kê xe.
+- Trích dẫn giá chính xác từ DB, không làm tròn.
 - Luôn có thể giới thiệu mình là AutoBot khi được hỏi.`;
 
 export interface ChatMessage {
@@ -136,32 +138,68 @@ function wantsRent(msg: string): boolean {
 function buildLiveContextBlock(cars: Car[]): string {
     if (!cars.length) return 'Du lieu realtime tam thoi chua tai duoc.';
 
-    const rentCars = cars.filter((c) => isRentCar(c) && (c.dailyPrice ?? 0) > 0);
-    const saleCars = cars.filter(isSaleCar);
+    const rentCars = cars
+        .filter((c) => isRentCar(c) && (c.dailyPrice ?? 0) > 0)
+        .sort((a, b) => (a.dailyPrice ?? 0) - (b.dailyPrice ?? 0));
+    const saleCars = cars
+        .filter(isSaleCar)
+        .sort((a, b) => (a.salePrice ?? 0) - (b.salePrice ?? 0));
 
-    const parts: string[] = [`Tong ${cars.length} xe trong he thong.`];
+    const parts: string[] = [
+        `Tong ${cars.length} xe trong he thong AutoHub.`,
+        '',
+        '=== XE CHO THUE (uu tien tu van) ===',
+    ];
 
     if (rentCars.length) {
-        const dMin = Math.min(...rentCars.map((c) => c.dailyPrice ?? 0));
-        const dMax = Math.max(...rentCars.map((c) => c.dailyPrice ?? 0));
+        const dMin = rentCars[0].dailyPrice ?? 0;
+        const dMax = rentCars[rentCars.length - 1].dailyPrice ?? 0;
         parts.push(
-            `Cho thue: ${rentCars.length} xe, gia ngay tu ${formatVnd(dMin)} den ${formatVnd(dMax)} VND/ngay.`
+            `Tong ${rentCars.length} xe thue, gia tu ${formatVnd(dMin)} den ${formatVnd(dMax)} VND/ngay.`
         );
+        parts.push('');
+    parts.push('Danh sach chi tiet (moi dong la 1 xe that trong DB):');
+        rentCars.forEach((c, i) => {
+          const year = c.modelYear ? `${c.modelYear}` : '?';
+          const color = c.color?.name ? c.color.name : '?';
+          const seats = c.seats != null ? `${c.seats} cho` : '? cho';
+          const trans = c.transmission ? String(c.transmission).toUpperCase() : '?';
+          const fuel = c.fuelType ? String(c.fuelType).toUpperCase() : '?';
+          const km = c.kilometer != null ? `${formatVnd(c.kilometer)} km` : '? km';
+          const price = formatVnd(c.dailyPrice ?? 0);
+          parts.push(`  ${i + 1}. ${carLabel(c)} ${year} | mau ${color} | ${seats} | hop so ${trans} | ${fuel} | ${km} | ${price} VND/ngay`);
+        });
     } else {
-        parts.push('Cho thue: khong co xe hop le trong du lieu (gia ngay).');
+        parts.push('Hien khong co xe cho thue hop le.');
     }
 
+    parts.push('');
+    parts.push('=== XE CHO BAN ===');
     if (saleCars.length) {
-        const sMin = Math.min(...saleCars.map((c) => c.salePrice ?? 0));
-        const sMax = Math.max(...saleCars.map((c) => c.salePrice ?? 0));
+        const sMin = saleCars[0].salePrice ?? 0;
+        const sMax = saleCars[saleCars.length - 1].salePrice ?? 0;
         parts.push(
-            `Ban xe: ${saleCars.length} xe, gia ban tu ${formatVnd(sMin)} den ${formatVnd(sMax)} VND (mot lan).`
+            `Tong ${saleCars.length} xe ban, gia tu ${formatVnd(sMin)} den ${formatVnd(sMax)} VND.`
         );
+        parts.push('');
+        parts.push('Danh sach tat ca xe ban (moi dong la 1 xe that trong DB):');
+        saleCars.forEach((c, i) => {
+            const year = c.modelYear ? `${c.modelYear}` : '?';
+            const color = c.color?.name ? c.color.name : '?';
+            const km = c.kilometer != null ? `${formatVnd(c.kilometer)} km` : '? km';
+            const price = formatVnd(c.salePrice ?? 0);
+            parts.push(`  ${i + 1}. ${carLabel(c)} ${year} | mau ${color} | ${km} | ${price} VND`);
+        });
     } else {
-        parts.push('Ban xe: khong co xe SALE_ONLY hop le trong du lieu.');
+        parts.push('Hien khong co xe ban hop le.');
     }
 
-    return parts.join(' ');
+    parts.push('');
+    parts.push(
+        'QUAN TRONG: Chi tu van cac xe co trong danh sach tren. Neu khong co xe phu hop, noi ro va goi y trang /cars hoac /cars/mua.'
+    );
+
+    return parts.join('\n');
 }
 
 async function tryBusinessReply(message: string): Promise<string | null> {
