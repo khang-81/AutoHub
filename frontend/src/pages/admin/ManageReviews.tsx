@@ -85,6 +85,13 @@ const ManageReviews = () => {
     });
   }, [reviews, ratingFilter, search, sourceFilter]);
 
+  const countBySource = useMemo(() => {
+    const all = reviews.length;
+    const rental = reviews.filter((r) => r.sourceType === 'RENTAL').length;
+    const sale = reviews.filter((r) => r.sourceType === 'SALE_ORDER').length;
+    return { all, rental, sale };
+  }, [reviews]);
+
   const avg = reviews.length > 0 ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) : '-';
 
   return (
@@ -96,7 +103,67 @@ const ManageReviews = () => {
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-1.5 inline-flex flex-wrap gap-1">
+        <button
+          type="button"
+          onClick={() => setSourceFilter('ALL')}
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 ${
+            sourceFilter === 'ALL'
+              ? 'bg-navy text-white shadow'
+              : 'text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          <MessageSquare className="w-4 h-4" />
+          Tất cả
+          <span
+            className={`text-xs px-1.5 py-0.5 rounded-full ${
+              sourceFilter === 'ALL' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
+            }`}
+          >
+            {countBySource.all}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setSourceFilter('RENTAL')}
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 ${
+            sourceFilter === 'RENTAL'
+              ? 'bg-blue-600 text-white shadow'
+              : 'text-gray-600 hover:bg-blue-50'
+          }`}
+        >
+          <span className="w-2 h-2 rounded-full bg-blue-500" />
+          Thuê xe
+          <span
+            className={`text-xs px-1.5 py-0.5 rounded-full ${
+              sourceFilter === 'RENTAL' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-700'
+            }`}
+          >
+            {countBySource.rental}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setSourceFilter('SALE_ORDER')}
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 ${
+            sourceFilter === 'SALE_ORDER'
+              ? 'bg-amber-600 text-white shadow'
+              : 'text-gray-600 hover:bg-amber-50'
+          }`}
+        >
+          <span className="w-2 h-2 rounded-full bg-amber-500" />
+          Mua xe
+          <span
+            className={`text-xs px-1.5 py-0.5 rounded-full ${
+              sourceFilter === 'SALE_ORDER' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'
+            }`}
+          >
+            {countBySource.sale}
+          </span>
+        </button>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="relative md:col-span-2">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
@@ -106,15 +173,6 @@ const ManageReviews = () => {
             placeholder="Tìm theo ID, xe, nhận xét..."
           />
         </div>
-        <select
-          value={sourceFilter}
-          onChange={(e) => setSourceFilter(e.target.value as 'ALL' | 'RENTAL' | 'SALE_ORDER')}
-          className="input-field"
-        >
-          <option value="ALL">Tất cả nguồn</option>
-          <option value="RENTAL">Từ đơn thuê</option>
-          <option value="SALE_ORDER">Từ đơn mua</option>
-        </select>
         <select
           value={ratingFilter}
           onChange={(e) => setRatingFilter(Number(e.target.value) as number | 0)}
