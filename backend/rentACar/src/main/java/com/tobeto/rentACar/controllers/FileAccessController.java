@@ -3,8 +3,10 @@ package com.tobeto.rentACar.controllers;
 import com.tobeto.rentACar.core.exceptions.types.BusinessException;
 import com.tobeto.rentACar.core.services.FileStorageService;
 import com.tobeto.rentACar.core.services.JwtService;
+import com.tobeto.rentACar.entities.concretes.User;
 import com.tobeto.rentACar.repositories.UserDocumentRepository;
 import com.tobeto.rentACar.repositories.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import org.springframework.core.io.Resource;
@@ -35,6 +37,7 @@ import java.nio.file.Path;
 @RestController
 @RequestMapping("/files/secure")
 @AllArgsConstructor
+@Slf4j
 public class FileAccessController {
 
     private final FileStorageService fileStorageService;
@@ -43,9 +46,46 @@ public class FileAccessController {
     private final JwtService jwtService;
 
     @GetMapping("/kyc/**")
-    @PreAuthorize("hasRole('admin')")
-    public ResponseEntity<Resource> getKycFile(HttpServletRequest request) throws IOException {
-        String path = extractRelativePath(request, "/files/secure/kyc/");
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Resource> getKycFile(HttpServletRequest request,
+                                                Authentication authentication) throws IOException {
+        // path = "kyc/user_4/uuid.jpg" hoặc "kyc/demo-gplx-user.png"
+        String path = extractRelativePath(request, "/files/secure/");
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_admin".equals(a.getAuthority()) || "admin".equals(a.getAuthority()));
+
+        if (!isAdmin) {
+            User authUser = userRepository.findByEmail(authentication.getName()).orElse(null);
+            if (authUser == null || authUser.getId() == null) {
+                log.warn("KYC access denied: authUser not found for principal={}", authentication.getName());
+                return ResponseEntity.notFound().build();
+            }
+            int authId = authUser.getId();
+            String[] segs = path.split("/");
+            Integer pathUserId = null;
+            // path[0] = "kyc", path[1] = "user_4" hoặc "demo-..."
+            if (segs.length >= 2 && "kyc".equals(segs[0]) && segs[1].startsWith("user_")) {
+                try {
+                    pathUserId = Integer.parseInt(segs[1].substring("user_".length()));
+                } catch (NumberFormatException ignored) {}
+            }
+            boolean allowed;
+            if (pathUserId != null) {
+                allowed = authId == pathUserId;
+            } else {
+                // Legacy/demo (vd "kyc/demo-gplx-user.png"): check DB xem file có thuộc user không
+                String fileName = segs[segs.length - 1];
+                allowed = userDocumentRepository.findByUser_Id(authId).stream()
+                        .anyMatch(d -> d.getFilePath() != null
+                                && (d.getFilePath().endsWith("/" + fileName)
+                                        || d.getFilePath().endsWith(fileName)));
+            }
+            log.info("KYC access: path={} by user={} (id={}) pathUserId={} allowed={}",
+                    path, authentication.getName(), authId, pathUserId, allowed);
+            if (!allowed) {
+                return ResponseEntity.notFound().build();
+            }
+        }
         Resource resource = resolveResource(path);
         if (!resource.exists()) {
             return ResponseEntity.notFound().build();

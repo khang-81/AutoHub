@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { ShieldCheck, Upload, Loader2, Clock, CheckCircle2, XCircle, Info, ArrowLeft } from 'lucide-react';
-import { getMyKycDocumentsApi, uploadKycDocumentApi, kycFileAbsoluteUrl } from '../../api/kyc';
-import { isAllowedKycImage, isLikelyKycImageUrl } from '../../utils/kycFile';
+import { getMyKycDocumentsApi, uploadKycDocumentApi, kycFileAbsoluteUrl, type UserDocumentDto } from '../../api/kyc';
+import { isAllowedKycImage, isLikelyKycImageUrl, useKycFileBlobUrl } from '../../utils/kycFile';
 import { getProfileApi } from '../../api/users';
 import { isKycApproved } from '../../utils/kycStatus';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -191,64 +191,14 @@ const KycVerification = () => {
           const st = doc
             ? statusInfo(doc.status)
             : { text: 'Chưa nộp', className: 'bg-gray-100 text-gray-600', Icon: Info };
-          const StatusIcon = st.Icon;
           return (
-            <div key={type} className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-heading font-semibold text-navy">{type === 'CCCD' ? 'CCCD / Căn cước' : 'GPLX'}</h2>
-                <span className={`text-xs px-2.5 py-1 rounded-full font-medium inline-flex items-center gap-1 ${st.className}`}>
-                  <StatusIcon className="w-3.5 h-3.5" />
-                  {st.text}
-                </span>
-              </div>
-              {doc?.fileUrl && (
-                <a
-                  href={kycFileAbsoluteUrl(doc.fileUrl)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block mb-4 rounded-lg overflow-hidden border bg-gray-50 max-h-48"
-                >
-                  {isLikelyKycImageUrl(doc.fileUrl) ? (
-                    <img
-                      src={kycFileAbsoluteUrl(doc.fileUrl)}
-                      alt={type}
-                      className="w-full h-full object-contain max-h-48"
-                    />
-                  ) : (
-                    <div className="p-8 text-center text-gray-500 text-sm">Bấm để mở file</div>
-                  )}
-                </a>
-              )}
-              {doc?.adminNote && doc.status === 'REJECTED' && (
-                <div className="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
-                  <span className="font-medium">Ghi chú admin:</span> {doc.adminNote}
-                </div>
-              )}
-              {doc?.status === 'APPROVED' ? (
-                <p className="text-sm text-green-700 inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4" />
-                  Giấy tờ đã được admin duyệt — không cần tải lại.
-                </p>
-              ) : doc?.status === 'PENDING' ? (
-                <div className="space-y-2">
-                  <p className="text-sm text-amber-700 inline-flex items-center gap-1.5">
-                    <Clock className="w-4 h-4" />
-                    Đã gửi, đang chờ admin xét duyệt. Có thể tải lại nếu cần sửa ảnh.
-                  </p>
-                  <label className="text-xs inline-flex items-center gap-1 text-primary hover:underline cursor-pointer">
-                    <Upload className="w-3.5 h-3.5" />
-                    Tải lại ảnh khác
-                    <input type="file" accept=".png,.jpg,.jpeg" className="hidden" onChange={onPickFile(type)} />
-                  </label>
-                </div>
-              ) : (
-                <label className="btn-primary inline-flex items-center gap-2 cursor-pointer">
-                  {uploadMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                  {doc ? 'Tải lại' : 'Tải lên'}
-                  <input type="file" accept=".png,.jpg,.jpeg" className="hidden" onChange={onPickFile(type)} />
-                </label>
-              )}
-            </div>
+            <DocCard
+              key={type}
+              type={type}
+              doc={doc}
+              statusInfo={st}
+              onPickFile={onPickFile(type)}
+            />
           );
         })}
       </div>
@@ -265,6 +215,93 @@ const KycVerification = () => {
           <li>Bạn nhận email thông báo kết quả. Sau khi duyệt, bạn có thể thuê hoặc mua xe.</li>
         </ol>
       </div>
+    </div>
+  );
+};
+
+interface DocCardProps {
+  type: 'CCCD' | 'GPLX';
+  doc?: UserDocumentDto;
+  statusInfo: { text: string; className: string; Icon: typeof Info };
+  onPickFile: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+const DocCard = ({ type, doc, statusInfo: st, onPickFile }: DocCardProps) => {
+  const { url: blobUrl, loading: imgLoading, error: imgError } = useKycFileBlobUrl(doc?.fileUrl);
+  const StatusIcon = st.Icon;
+  const isImage = doc ? isLikelyKycImageUrl(doc.fileUrl) : false;
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-heading font-semibold text-navy">{type === 'CCCD' ? 'CCCD / Căn cước' : 'GPLX'}</h2>
+        <span className={`text-xs px-2.5 py-1 rounded-full font-medium inline-flex items-center gap-1 ${st.className}`}>
+          <StatusIcon className="w-3.5 h-3.5" />
+          {st.text}
+        </span>
+      </div>
+      {doc?.fileUrl && (
+        <div className="mb-4 rounded-lg overflow-hidden border bg-gray-50 max-h-48 relative">
+          {isImage && imgLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+            </div>
+          )}
+          {isImage && imgError && (
+            <div className="p-4 text-center text-sm text-red-600 bg-red-50">
+              ❌ Không tải được ảnh: {imgError}
+            </div>
+          )}
+          {isImage && blobUrl ? (
+            <img
+              src={blobUrl}
+              alt={type}
+              className="w-full h-full object-contain max-h-48"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : !isImage ? (
+            <a
+              href={kycFileAbsoluteUrl(doc.fileUrl)}
+              target="_blank"
+              rel="noreferrer"
+              className="block p-8 text-center text-gray-500 text-sm"
+            >
+              Bấm để mở file
+            </a>
+          ) : null}
+        </div>
+      )}
+      {doc?.adminNote && doc.status === 'REJECTED' && (
+        <div className="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+          <span className="font-medium">Ghi chú admin:</span> {doc.adminNote}
+        </div>
+      )}
+      {doc?.status === 'APPROVED' ? (
+        <p className="text-sm text-green-700 inline-flex items-center gap-1.5">
+          <CheckCircle2 className="w-4 h-4" />
+          Giấy tờ đã được admin duyệt — không cần tải lại.
+        </p>
+      ) : doc?.status === 'PENDING' ? (
+        <div className="space-y-2">
+          <p className="text-sm text-amber-700 inline-flex items-center gap-1.5">
+            <Clock className="w-4 h-4" />
+            Đã gửi, đang chờ admin xét duyệt. Có thể tải lại nếu cần sửa ảnh.
+          </p>
+          <label className="text-xs inline-flex items-center gap-1 text-primary hover:underline cursor-pointer">
+            <Upload className="w-3.5 h-3.5" />
+            Tải lại ảnh khác
+            <input type="file" accept=".png,.jpg,.jpeg" className="hidden" onChange={onPickFile} />
+          </label>
+        </div>
+      ) : (
+        <label className="btn-primary inline-flex items-center gap-2 cursor-pointer">
+          <Upload className="w-4 h-4" />
+          {doc ? 'Tải lại' : 'Tải lên'}
+          <input type="file" accept=".png,.jpg,.jpeg" className="hidden" onChange={onPickFile} />
+        </label>
+      )}
     </div>
   );
 };

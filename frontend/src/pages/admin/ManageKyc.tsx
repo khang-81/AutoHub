@@ -13,7 +13,7 @@ import { getAllUsersApi } from '../../api/users';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { useToast } from '../../components/ui/Toast';
 import Modal from '../../components/ui/Modal';
-import { isLikelyKycImageUrl } from '../../utils/kycFile';
+import { isLikelyKycImageUrl, useKycFileBlobUrl } from '../../utils/kycFile';
 
 /** Gộp các giấy tờ PENDING theo một khách hàng (một dòng bảng). */
 function groupPendingByUserId(rows: UserDocumentDto[]): Map<number, UserDocumentDto[]> {
@@ -162,15 +162,12 @@ const ManageKyc = ({ embedded = false }: { embedded?: boolean }) => {
                   <td className="p-4">
                     <div className="flex flex-col gap-1">
                       {docs.map((d) => (
-                        <a
+                        <span
                           key={d.id}
-                          href={kycFileAbsoluteUrl(d.fileUrl)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-primary inline-flex items-center gap-1 hover:underline text-xs"
+                          className="text-primary text-xs"
                         >
-                          {d.documentType}: mở tab <ExternalLink className="w-3 h-3" />
-                        </a>
+                          {d.documentType}
+                        </span>
                       ))}
                     </div>
                   </td>
@@ -233,37 +230,9 @@ const ManageKyc = ({ embedded = false }: { embedded?: boolean }) => {
                   </strong>
                 </p>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {pendingForDetailUser.map((doc) => {
-                    const absUrl = kycFileAbsoluteUrl(doc.fileUrl);
-                    return (
-                      <div key={doc.id} className="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
-                        <p className="text-xs font-semibold text-navy px-3 py-2 border-b border-gray-100 bg-white">
-                          {doc.documentType}
-                        </p>
-                        <div className="min-h-[160px] flex items-center justify-center p-2">
-                          {isLikelyKycImageUrl(doc.fileUrl) ? (
-                            <img
-                              src={absUrl}
-                              alt={doc.documentType}
-                              className="max-h-[55vh] w-full object-contain"
-                            />
-                          ) : (
-                            <div className="p-6 text-center text-gray-600 text-sm">
-                              <p className="mb-2">PDF hoặc định dạng không xem trực tiếp được.</p>
-                              <a
-                                href={absUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-primary font-medium inline-flex items-center gap-1"
-                              >
-                                Mở / tải file <ExternalLink className="w-4 h-4" />
-                              </a>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {pendingForDetailUser.map((doc) => (
+                    <KycDocImage key={doc.id} doc={doc} />
+                  ))}
                 </div>
 
                 {userAllKyc.length > 0 && (
@@ -273,21 +242,11 @@ const ManageKyc = ({ embedded = false }: { embedded?: boolean }) => {
                       {userAllKyc.map((d) => (
                         <li
                           key={d.id}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2"
+                          className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 px-3 py-2"
                         >
-                          <span>
-                            <span className="font-medium text-navy">{d.documentType}</span>
-                            <span className="text-gray-400 mx-2">·</span>
-                            <span className="text-gray-600">{d.status}</span>
-                          </span>
-                          <a
-                            href={kycFileAbsoluteUrl(d.fileUrl)}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-xs text-primary hover:underline"
-                          >
-                            Mở tab
-                          </a>
+                          <span className="font-medium text-navy">{d.documentType}</span>
+                          <span className="text-gray-400">·</span>
+                          <span className="text-gray-600">{d.status}</span>
                         </li>
                       ))}
                     </ul>
@@ -349,3 +308,50 @@ const ManageKyc = ({ embedded = false }: { embedded?: boolean }) => {
 };
 
 export default ManageKyc;
+
+/** Component nhỏ: load ảnh qua Bearer + hiển thị blob URL, có spinner + lỗi. */
+const KycDocImage = ({ doc }: { doc: UserDocumentDto }) => {
+  const { url: blobUrl, loading, error } = useKycFileBlobUrl(doc.fileUrl);
+  const isImage = isLikelyKycImageUrl(doc.fileUrl);
+  return (
+    <div className="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
+      <p className="text-xs font-semibold text-navy px-3 py-2 border-b border-gray-100 bg-white">
+        {doc.documentType}
+      </p>
+      <div className="min-h-[160px] flex items-center justify-center p-2 relative">
+        {isImage && loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-50/80">
+            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+          </div>
+        )}
+        {isImage && error && (
+          <div className="text-center text-sm text-red-600 bg-red-50 p-3 rounded">
+            ❌ Không tải được ảnh: {error}
+          </div>
+        )}
+        {isImage && blobUrl ? (
+          <img
+            src={blobUrl}
+            alt={doc.documentType}
+            className="max-h-[55vh] w-full object-contain"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        ) : !isImage ? (
+          <div className="p-6 text-center text-gray-600 text-sm">
+            <p className="mb-2">PDF hoặc định dạng không xem trực tiếp được.</p>
+            <a
+              href={kycFileAbsoluteUrl(doc.fileUrl)}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary font-medium inline-flex items-center gap-1"
+            >
+              Mở / tải file <ExternalLink className="w-4 h-4" />
+            </a>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+};
