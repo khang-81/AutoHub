@@ -22,6 +22,14 @@ public class Rental extends BaseEntity {
     @Column(name="end_date")
     private LocalDate endDate;
 
+    /** Khung giờ nhận xe (Sprint 4 — TIME precision cho overlap check). */
+    @Column(name = "start_time")
+    private java.time.LocalTime startTime;
+
+    /** Khung giờ trả xe. */
+    @Column(name = "end_time")
+    private java.time.LocalTime endTime;
+
     @Column(name="return_date")
     private LocalDate returnDate;
 

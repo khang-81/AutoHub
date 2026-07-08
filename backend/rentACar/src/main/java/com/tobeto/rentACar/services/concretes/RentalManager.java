@@ -91,7 +91,8 @@ public class RentalManager implements RentalService {
 
         // Check overlap SAU khi lock → không còn race.
         for (RentalBusinessRule rule : rentalBusinessRules) {
-            rule.checkCarAvailability(request.getCarId(), request.getStartDate(), request.getEndDate());
+            rule.checkCarAvailability(request.getCarId(), request.getStartDate(), request.getEndDate(),
+                    request.getStartTime(), request.getEndTime());
         }
 
         // When renting, the StartKilometer should be taken from the Kilometer field of
@@ -139,10 +140,21 @@ public class RentalManager implements RentalService {
         double totalPrice = Math.max(0, subtotal - discount);
         double depositAmount = RentalPolicy.computeDeposit(totalPrice);
 
+        // Validate time hợp lệ (end > start) — cùng ngày hoặc khác ngày
+        if (request.getEndDate().isEqual(request.getStartDate())
+                && !request.getEndTime().isAfter(request.getStartTime())) {
+            throw new BusinessException("Giờ trả xe phải sau giờ nhận xe trong cùng một ngày.");
+        }
+        if (request.getEndDate().isBefore(request.getStartDate())) {
+            throw new BusinessException("Ngày trả xe phải sau hoặc bằng ngày nhận xe.");
+        }
+
         Rental rental = modelMapperService.forRequest().map(request, Rental.class);
         rental.setUser(userRepository.getReferenceById(request.getUserId()));
         rental.setCar(carRepository.getReferenceById(request.getCarId()));
         rental.setStartKilometer(currentCarKilometer);
+        rental.setStartTime(request.getStartTime());
+        rental.setEndTime(request.getEndTime());
         rental.setTotalPrice(totalPrice);
         rental.setInsuranceCode(insCode);
         rental.setInsuranceFeeAmount(insuranceTotal);
@@ -266,7 +278,9 @@ public class RentalManager implements RentalService {
             throw new NotFoundException(messageService.getMessage(Messages.Car.getCarNotFoundMessage));
         }
         return rentalRepository.findBlockingRentalsForPublicCalendar(carId).stream()
-                .map(r -> new RentalBusyRangeResponse(r.getStartDate(), r.getEndDate()))
+                .map(r -> new RentalBusyRangeResponse(
+                        r.getStartDate(), r.getEndDate(),
+                        r.getStartTime(), r.getEndTime()))
                 .toList();
     }
 

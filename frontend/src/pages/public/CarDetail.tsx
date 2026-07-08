@@ -43,6 +43,9 @@ const CarDetail = () => {
 
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
+  // Sprint 4: TIME precision cho overlap check (sáng vs chiều cùng ngày)
+  const [startTime, setStartTime] = useState<string>('09:00');
+  const [endTime, setEndTime] = useState<string>('18:00');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'BANK_TRANSFER'>('BANK_TRANSFER');
   const [salePaymentMethod, setSalePaymentMethod] = useState<'CASH' | 'BANK_TRANSFER'>('BANK_TRANSFER');
   const [insuranceCode, setInsuranceCode] = useState('NONE');
@@ -379,6 +382,8 @@ const CarDetail = () => {
     rentalMutation.mutate({
       startDate: formatDateForApi(startDate),
       endDate: formatDateForApi(endDate),
+      startTime: startTime + ':00',
+      endTime: endTime + ':00',
       carId: car.id,
       userId: effectiveUserId,
       paymentMethod,
@@ -790,6 +795,34 @@ const CarDetail = () => {
                     dayClassName={getDayClassName}
                     filterDate={(date) => !isBookedDate(date)}
                   />
+                </div>
+
+                {/* Sprint 4: TIME precision (sáng vs chiều cùng ngày) */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      <Clock3 className="w-4 h-4 text-primary" />
+                      Giờ nhận
+                    </label>
+                    <input
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      className="input-field"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      <Clock3 className="w-4 h-4 text-primary" />
+                      Giờ trả
+                    </label>
+                    <input
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      className="input-field"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2 text-xs">
                   <div className="flex items-center gap-2 text-red-600">

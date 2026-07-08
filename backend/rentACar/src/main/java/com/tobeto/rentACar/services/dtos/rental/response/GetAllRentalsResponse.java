@@ -20,6 +20,12 @@ public class GetAllRentalsResponse {
 
     private LocalDate endDate;
 
+    /** Khung giờ nhận xe (Sprint 4). */
+    private java.time.LocalTime startTime;
+
+    /** Khung giờ trả xe. */
+    private java.time.LocalTime endTime;
+
     private LocalDate returnDate;
 
     private int startKilometer;
@@ -61,3 +67,4 @@ public class GetAllRentalsResponse {
 
     private GetUserByIdResponse user;
 }
+

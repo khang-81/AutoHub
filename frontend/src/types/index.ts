@@ -206,6 +206,9 @@ export interface Rental {
 export interface AddRentalRequest {
   startDate: string;
   endDate: string;
+  /** Sprint 4: TIME precision cho overlap check (vd sáng 8-12h, chiều 14-18h). */
+  startTime: string;
+  endTime: string;
   carId: number;
   userId: number;
   paymentMethod: 'CASH' | 'BANK_TRANSFER';

@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 @Data
@@ -20,6 +21,13 @@ public class AddRentalRequest {
 
     @NotNull
     private LocalDate endDate;
+
+    /** Khung giờ nhận/trả xe (Sprint 4) — dùng để chống trùng lịch theo giờ. */
+    @NotNull
+    private LocalTime startTime;
+
+    @NotNull
+    private LocalTime endTime;
 
     @NotNull
     @Positive(message = "The assigned value must not assume a negative numerical value!")

@@ -21,12 +21,15 @@ public interface RentalRepository extends JpaRepository<Rental, Integer> {
             + "WHERE r.user.id = :userId")
     List<Rental> findAllForUserHistoryWithCarGraph(@Param("userId") int userId);
 
-    @Query("select case when count(r)>0 then true else false end from Rental r " +
-            "where r.car.id = :carId and r.startDate <= :endDate and r.endDate >= :startDate " +
+    /**
+     * Lấy tất cả rentals active của 1 xe (chưa COMPLETED/CANCELLED) để check overlap ở service.
+     * Service sẽ filter overlap dựa trên (date, time) tuples ở Java — tránh phức tạp SQL
+     * vì SQL Server + JPA không CAST date+time trực tiếp tốt.
+     */
+    @Query("select r from Rental r " +
+            "where r.car.id = :carId " +
             "and (r.rentalStatus is null or (r.rentalStatus <> 'COMPLETED' and r.rentalStatus <> 'CANCELLED'))")
-    boolean existsActiveOverlap(@Param("carId") int carId,
-                                @Param("startDate") java.time.LocalDate startDate,
-                                @Param("endDate") java.time.LocalDate endDate);
+    java.util.List<Rental> findActiveByCarId(@Param("carId") int carId);
 
     @Query("select u.email from Rental r join r.user u where r.id = :id")
     Optional<String> findUserEmailByRentalId(@Param("id") int id);
