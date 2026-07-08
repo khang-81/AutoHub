@@ -423,8 +423,8 @@ export const sendChatMessage = async (message: string, history: ChatMessage[]): 
 
     return {
         content:
-            '🤖 **Chế độ FAQ:** Server chưa cấu hình `ARCANIC_API_KEY` nên AutoBot chỉ trả lời câu hỏi mẫu (giá, quy trình, liên hệ…).\n\n' +
-            'Để hỏi tự do (so sánh xe, tư vấn theo ngữ cảnh…), thêm key Gemini AI (Arcanic) vào `.env` rồi `docker compose up -d --build api`.\n\n' +
+            '🤖 **AutoBot đang dùng dữ liệu cục bộ:** Server chưa cấu hình `ARCANIC_API_KEY` nên chỉ trả lời câu hỏi mẫu (giá, quy trình, liên hệ…).\n\n' +
+            'Để hỏi tự do (so sánh xe, tư vấn theo ngữ cảnh…), thêm key vào `.env` rồi `docker compose up -d --build api`.\n\n' +
             getBusinessFallback(message),
         source: 'fallback',
     };

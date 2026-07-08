@@ -48,11 +48,12 @@ const AIChatbot = () => {
   }, [messages]);
 
   const statusLabel = (() => {
-    if (lastSource === 'arcanic') return 'Trực tuyến • Gemini AI';
-    if (lastSource === 'faq') return 'Trực tuyến • FAQ';
-    if (lastSource === 'fallback') return 'Trực tuyến • AutoBot';
     if (aiConfigured === null) return 'Đang kết nối...';
-    return aiConfigured ? 'Trực tuyến • Gemini AI' : 'Trực tuyến • FAQ';
+    if (!aiConfigured) return 'AutoBot (cục bộ)';
+    // AI configured - show online status
+    if (lastSource === 'arcanic') return 'Trực tuyến • AutoBot AI';
+    // Fallback (FAQ or error) - still online, just using local data
+    return 'Trực tuyến • AutoBot';
   })();
 
   const handleSend = async (text?: string) => {
