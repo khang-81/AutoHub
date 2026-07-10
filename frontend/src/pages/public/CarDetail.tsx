@@ -890,18 +890,8 @@ const CarDetail = () => {
                     />
                   </div>
                 </div>
-                <div className="space-y-2 text-xs">
-                  <div className="flex items-center gap-2 text-red-600">
-                    <span className="inline-block w-3 h-3 rounded-full bg-red-500" />
-                    <span>Xe đã đặt</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-amber-600">
-                    <span className="inline-block w-3 h-3 rounded-full bg-amber-400" />
-                    <span>Xe có sẵn</span>
-                  </div>
-                </div>
-              </div>
 
+              </div>
               {/* Location & extras */}
               <div className="space-y-4 mb-5">
                 <div>
