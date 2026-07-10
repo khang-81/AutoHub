@@ -792,12 +792,6 @@ const CarDetail = () => {
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 text-[10px] text-gray-500 mb-5">
-                <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-50 border border-emerald-200" />Còn trống</span>
-                <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-amber-100 border border-amber-300" />Có người đặt một phần (vd: sáng)</span>
-                <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-red-100 border border-red-200" />Đã đặt cả ngày</span>
-              </div>
-
               {/* Date pickers */}
               <div className="space-y-4 mb-5">
                 <div>
