@@ -142,30 +142,28 @@ const CarDetail = () => {
   function sameYMD(a: Date, b: Date): boolean {
     return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
   }
+  // Logic mới (Sprint 4 fix #3): nhìn vào NHIỀU NGÀY của booking:
+  // - Middle day (startDate < day < endDate): xe bận CẢ NGÀY → FULL (đỏ)
+  // - First day (day = startDate): pickup buổi sáng chiếm cả ngày → FULL (đỏ)
+  // - Last day (day = endDate): return buổi sáng → PARTIAL (vàng) trừ khi end = 23:59
+  // - Same-day booking: FULL nếu cả ngày, PARTIAL nếu vài giờ
   function getDayStatus(date: Date): 'full' | 'partial' | 'free' {
-    const dayStartMs = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-    const dayEndMs = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1).getTime() - 1;
     for (const r of bookedRanges) {
-      if (r.start.getTime() > dayEndMs || r.end.getTime() < dayStartMs) {
-        continue; // không overlap
-      }
+      const isOverlap = r.start.getTime() <= new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1).getTime() - 1
+        && r.end.getTime() >= new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+      if (!isOverlap) continue;
       const isStartDay = sameYMD(r.start, date);
       const isEndDay = sameYMD(r.end, date);
-      if (!isStartDay && !isEndDay) {
-        // Middle day of multi-day rental -> luôn full
-        return 'full';
-      }
-      if (isStartDay && !isEndDay) {
-        // First day: full nếu start 00:00
-        if (r.start.getHours() === 0 && r.start.getMinutes() === 0) return 'full';
-        return 'partial';
-      }
+      // Middle day of multi-day booking → luôn full (xe bận 24h)
+      if (!isStartDay && !isEndDay) return 'full';
+      // First day → full vì pickup sáng chiếm cả ngày
+      if (isStartDay && !isEndDay) return 'full';
+      // Last day → full nếu end 23:59, ngược lại partial (return sáng)
       if (!isStartDay && isEndDay) {
-        // Last day: full nếu end 23:59
         if (r.end.getHours() === 23 && r.end.getMinutes() >= 59) return 'full';
         return 'partial';
       }
-      // Same day rental
+      // Same-day rental
       const durationMs = r.end.getTime() - r.start.getTime();
       if (durationMs >= 23.5 * 60 * 60 * 1000) return 'full';
       if (r.start.getHours() === 0 && r.end.getHours() >= 23) return 'full';
