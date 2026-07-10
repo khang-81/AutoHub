@@ -929,9 +929,6 @@ const CarDetail = () => {
                     <input
                       type="time"
                       value={startTime}
-                      min={busyRangeInDay?.some(r => r.start.toDateString() === formatDateForApi(startDate))
-                        ? formatTime(busyEndInDay)
-                        : undefined}
                       onChange={(e) => setStartTime(e.target.value)}
                       className={`input-field ${timeConflict && timeConflict.includes('nhận') ? 'border-red-500 bg-red-50' : ''}`}
                     />
