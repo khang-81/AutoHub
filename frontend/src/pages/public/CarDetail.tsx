@@ -134,24 +134,44 @@ const CarDetail = () => {
   });
 
   // Phân biệt 3 trạng thái: 'full' (full-day busy), 'partial' (1 phần ngày bận), 'free'
-  // Lưu ý: r.start/r.end là Date object thật, không nên setHours(0,0,0,0) vì sẽ MUTATE làm sai logic
-  // (vd: 09:00-12:00 sau khi setHours(0,0,0,0) sẽ thành 00:00-12:00 -> sai).
-  const getDayStatus = (date: Date): 'full' | 'partial' | 'free' => {
-    const dayStart = new Date(date);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(date);
-    dayEnd.setHours(23, 59, 59, 999);
-    const overlapping = bookedRanges.filter((r) => r.start <= dayEnd && r.end >= dayStart);
-    if (overlapping.length === 0) return 'free';
-    // Full day = r.start là 00:00 VÀ r.end là 23:59 (booking kín cả ngày)
-    const fullDayCovered = overlapping.some((r) => {
-      const sh = r.start.getHours(); const sm = r.start.getMinutes();
-      const eh = r.end.getHours(); const em = r.end.getMinutes();
-      return sh === 0 && sm === 0 && (eh > 23 || (eh === 23 && em >= 59));
-    });
-    if (fullDayCovered) return 'full';
-    return 'partial';
-  };
+  // Logic mới (Sprint 4 fix #2): xét cả range multi-day:
+  // - Middle day (không phải startDate/endDate) → luôn FULL (xe bận cả ngày)
+  // - First day (startDate) → FULL nếu startTime=00:00, ngược lại PARTIAL
+  // - Last day (endDate) → FULL nếu endTime=23:59, ngược lại PARTIAL
+  // - Same day → FULL nếu cả ngày, ngược lại PARTIAL
+  function sameYMD(a: Date, b: Date): boolean {
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  }
+  function getDayStatus(date: Date): 'full' | 'partial' | 'free' {
+    for (const r of bookedRanges) {
+      if (r.start > new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1).getTime() - 1 ||
+          r.end < new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()) {
+        continue; // không overlap
+      }
+      const isStartDay = sameYMD(r.start, date);
+      const isEndDay = sameYMD(r.end, date);
+      if (!isStartDay && !isEndDay) {
+        // Middle day of multi-day rental -> luôn full
+        return 'full';
+      }
+      if (isStartDay && !isEndDay) {
+        // First day: full nếu start 00:00
+        if (r.start.getHours() === 0 && r.start.getMinutes() === 0) return 'full';
+        return 'partial';
+      }
+      if (!isStartDay && isEndDay) {
+        // Last day: full nếu end 23:59
+        if (r.end.getHours() === 23 && r.end.getMinutes() >= 59) return 'full';
+        return 'partial';
+      }
+      // Same day rental
+      const durationMs = r.end.getTime() - r.start.getTime();
+      if (durationMs >= 23.5 * 60 * 60 * 1000) return 'full';
+      if (r.start.getHours() === 0 && r.end.getHours() >= 23) return 'full';
+      return 'partial';
+    }
+    return 'free';
+  }
   const isBookedDate = (date: Date) => getDayStatus(date) === 'full';
   const isPartiallyBooked = (date: Date) => getDayStatus(date) === 'partial';
   const getDayClassName = (date: Date) => (isBookedDate(date) ? 'booked-day' : '');
