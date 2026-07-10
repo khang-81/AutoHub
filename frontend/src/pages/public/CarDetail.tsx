@@ -134,6 +134,8 @@ const CarDetail = () => {
   });
 
   // Phân biệt 3 trạng thái: 'full' (full-day busy), 'partial' (1 phần ngày bận), 'free'
+  // Lưu ý: r.start/r.end là Date object thật, không nên setHours(0,0,0,0) vì sẽ MUTATE làm sai logic
+  // (vd: 09:00-12:00 sau khi setHours(0,0,0,0) sẽ thành 00:00-12:00 -> sai).
   const getDayStatus = (date: Date): 'full' | 'partial' | 'free' => {
     const dayStart = new Date(date);
     dayStart.setHours(0, 0, 0, 0);
@@ -141,11 +143,11 @@ const CarDetail = () => {
     dayEnd.setHours(23, 59, 59, 999);
     const overlapping = bookedRanges.filter((r) => r.start <= dayEnd && r.end >= dayStart);
     if (overlapping.length === 0) return 'free';
-    // Check nếu phủ kín ngày (>= 1 đơn full-day)
+    // Full day = r.start là 00:00 VÀ r.end là 23:59 (booking kín cả ngày)
     const fullDayCovered = overlapping.some((r) => {
-      const rStart = new Date(r.start); rStart.setHours(0, 0, 0, 0);
-      const rEnd = new Date(r.end); rEnd.setHours(23, 59, 59, 999);
-      return rStart <= dayStart && rEnd >= dayEnd;
+      const sh = r.start.getHours(); const sm = r.start.getMinutes();
+      const eh = r.end.getHours(); const em = r.end.getMinutes();
+      return sh === 0 && sm === 0 && (eh > 23 || (eh === 23 && em >= 59));
     });
     if (fullDayCovered) return 'full';
     return 'partial';
