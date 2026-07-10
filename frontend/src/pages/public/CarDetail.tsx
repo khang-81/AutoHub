@@ -46,6 +46,9 @@ const CarDetail = () => {
   // Sprint 4: TIME precision cho overlap check (sáng vs chiều cùng ngày)
   const [startTime, setStartTime] = useState<string>('09:00');
   const [endTime, setEndTime] = useState<string>('18:00');
+  const [timeConflict, setTimeConflict] = useState<string | null>(null);
+  // Buffer cleaning (giờ) giữa 2 đơn liên tiếp trên cùng 1 xe - khớp với backend
+  const CLEANING_BUFFER_HOURS = 2;
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'BANK_TRANSFER'>('BANK_TRANSFER');
   const [salePaymentMethod, setSalePaymentMethod] = useState<'CASH' | 'BANK_TRANSFER'>('BANK_TRANSFER');
   const [insuranceCode, setInsuranceCode] = useState('NONE');
@@ -423,6 +426,15 @@ const CarDetail = () => {
 
     if (!(await ensureKycApproved())) return;
 
+    // Validate time conflict (realtime client-side) + buffer
+    const conflict = getTimeConflict();
+    if (conflict) {
+      setTimeConflict(conflict);
+      showToast(conflict, 'error');
+      return;
+    }
+    setTimeConflict(null);
+
     const extrasNum = Math.max(0, parseFloat(extraFeesAmount.replace(/,/g, '')) || 0);
 
     rentalMutation.mutate({
@@ -439,6 +451,39 @@ const CarDetail = () => {
       addonCodes: selectedAddons.length > 0 ? selectedAddons : undefined,
     });
   };
+
+  // Validate thời gian chọn có conflict với booking khác + buffer không
+  const getTimeConflict = (): string | null => {
+    if (!startDate || !endDate) return null;
+    const newStart = new Date(`${formatDateForApi(startDate)}T${startTime}:00`);
+    const newEnd = new Date(`${formatDateForApi(endDate)}T${endTime}:00`);
+    if (newEnd <= newStart) return 'Giờ trả phải sau giờ nhận.';
+    const BUFFER_MS = CLEANING_BUFFER_HOURS * 60 * 60 * 1000;
+    for (const r of bookedRanges) {
+      const rStart = new Date(r.start);
+      const rEnd = new Date(r.end);
+      // Đơn cũ + buffer (rEnd + 2h) cũng là conflict
+      const overlap = rStart.getTime() < newEnd.getTime() && (rEnd.getTime() + BUFFER_MS) > newStart.getTime();
+      if (overlap) {
+        const f = (d: Date) => d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        const reason = rEnd.getTime() + BUFFER_MS > rStart.getTime() && newStart.getTime() < rEnd.getTime() + BUFFER_MS && newStart.getTime() >= rStart.getTime()
+          ? `Có người đặt đến ${f(rEnd)}, cần đợi đến ${f(new Date(rEnd.getTime() + BUFFER_MS))} (sau 2h buffer vệ sinh) mới book tiếp.`
+          : `Trùng giờ với đơn #${r.id || '?'} (${f(rStart)}-${f(rEnd)}).`;
+        return reason;
+      }
+    }
+    return null;
+  };
+
+  // Cập nhật validation khi user đổi time/date
+  useEffect(() => {
+    if (startDate && startTime && endTime) {
+      setTimeConflict(getTimeConflict());
+    } else {
+      setTimeConflict(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, endDate, startTime, endTime, busyRangeRows.length]);
 
   const handleBuySale = async () => {
     if (!isAuthenticated) {
@@ -884,8 +929,11 @@ const CarDetail = () => {
                     <input
                       type="time"
                       value={startTime}
+                      min={busyRangeInDay?.some(r => r.start.toDateString() === formatDateForApi(startDate))
+                        ? formatTime(busyEndInDay)
+                        : undefined}
                       onChange={(e) => setStartTime(e.target.value)}
-                      className="input-field"
+                      className={`input-field ${timeConflict && timeConflict.includes('nhận') ? 'border-red-500 bg-red-50' : ''}`}
                     />
                   </div>
                   <div>
@@ -903,6 +951,13 @@ const CarDetail = () => {
                 </div>
 
               </div>
+
+              {timeConflict && (
+                <div className="mb-4 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700 flex items-start gap-2">
+                  <span className="font-semibold shrink-0">⚠ Trùng lịch:</span>
+                  <span>{timeConflict}</span>
+                </div>
+              )}
               {/* Location & extras */}
               <div className="space-y-4 mb-5">
                 <div>
