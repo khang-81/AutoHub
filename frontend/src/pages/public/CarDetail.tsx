@@ -143,9 +143,10 @@ const CarDetail = () => {
     return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
   }
   function getDayStatus(date: Date): 'full' | 'partial' | 'free' {
+    const dayStartMs = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    const dayEndMs = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1).getTime() - 1;
     for (const r of bookedRanges) {
-      if (r.start > new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1).getTime() - 1 ||
-          r.end < new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()) {
+      if (r.start.getTime() > dayEndMs || r.end.getTime() < dayStartMs) {
         continue; // không overlap
       }
       const isStartDay = sameYMD(r.start, date);
