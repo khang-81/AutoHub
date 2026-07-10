@@ -134,6 +134,28 @@ public final class RentalPolicy {
     }
 
     /**
+     * Buffer cleaning (giờ) giữa 2 đơn liên tiếp trên cùng 1 xe.
+     * VD: khách A trả xe 12:00 → khách B phải bắt đầu từ 14:00 (12:00 + 2h buffer).
+     * Đảm bảo có thời gian vệ sinh, kiểm tra kỹ thuật giữa 2 đơn.
+     * Có thể config qua env RENTAL_CLEANING_BUFFER_HOURS (mặc định 2).
+     */
+    public static int CLEANING_BUFFER_HOURS = 2;
+
+    /**
+     * Overlap check có buffer cleaning: thêm buffer vào end của existing booking.
+     * Nghĩa là booking mới bắt đầu sớm hơn existing.end + buffer bị coi là conflict.
+     */
+    public static boolean overlapsWithBuffer(
+            java.time.LocalDateTime existStart,
+            java.time.LocalDateTime existEnd,
+            java.time.LocalDateTime newStart,
+            java.time.LocalDateTime newEnd) {
+        java.time.LocalDateTime existStartBuffered = existStart;
+        java.time.LocalDateTime existEndBuffered = existEnd.plusHours(CLEANING_BUFFER_HOURS);
+        return existStartBuffered.isBefore(newEnd) && existEndBuffered.isAfter(newStart);
+    }
+
+    /**
      * Phí vượt km khi trả xe.
      * @param drivenKm  số km thực tế khách đã chạy
      * @param allowedKm hạn mức km của đơn (snapshot khi tạo)

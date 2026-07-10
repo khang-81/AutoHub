@@ -73,8 +73,9 @@ public class RentalBusinessRule {
             if (r.getStartTime() == null || r.getEndTime() == null) continue; // data cũ chưa có time
             java.time.LocalDateTime existStart = java.time.LocalDateTime.of(r.getStartDate(), r.getStartTime());
             java.time.LocalDateTime existEnd = java.time.LocalDateTime.of(r.getEndDate(), r.getEndTime());
-            // Overlap: existStart < newEnd AND existEnd > newStart
-            if (existStart.isBefore(newEnd) && existEnd.isAfter(newStart)) {
+            // Overlap + buffer cleaning (exist.end + buffer)
+            if (com.tobeto.rentACar.services.policy.RentalPolicy.overlapsWithBuffer(
+                    existStart, existEnd, newStart, newEnd)) {
                 throw new BusinessException("Xe đang được thuê trong khoảng thời gian này (đụng đơn #" + r.getId() + ").");
             }
         }

@@ -768,15 +768,21 @@ const CarDetail = () => {
                     const dayLabel = date.getDate();
                     const monthShort = date.getMonth() + 1;
                     const partial = isPartiallyBooked(date);
-                    const fullBooking = bookedRanges.find((r) => {
+                    // Tìm booking trong ngày để lấy giờ phục vụ gradient half-day
+                    const dayBooking = bookedRanges.find((r) => {
                       const rStart = new Date(r.start); rStart.setHours(0, 0, 0, 0);
                       const rEnd = new Date(r.end); rEnd.setHours(23, 59, 59, 999);
                       return rStart <= new Date(date) && rEnd >= new Date(date);
                     });
-                    const title = fullBooking
+                    // Gradient đỏ cho nửa ngày bận: sáng thì top đỏ, chiều thì bottom đỏ
+                    const isMorning = dayBooking && dayBooking.start.getHours() < 12;
+                    const halfDayStyle = isMorning
+                      ? 'linear-gradient(180deg, rgba(252,165,165,0.85) 0%, rgba(252,165,165,0.85) 50%, transparent 50%, transparent 100%)'
+                      : 'linear-gradient(0deg, transparent 0%, transparent 50%, rgba(252,165,165,0.85) 50%, rgba(252,165,165,0.85) 100%)';
+                    const title = dayBooking
                       ? busy
-                        ? `Đã có người đặt cả ngày: ${fullBooking.label}`
-                        : `Có người đặt một phần: ${fullBooking.label}`
+                        ? `Đã có người đặt cả ngày: ${dayBooking.label}`
+                        : `Có người đặt nửa ngày (${dayBooking.start.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}-${dayBooking.end.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}). Buffer +2h: trống từ ${new Date(dayBooking.end.getTime() + 2 * 3600 * 1000).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`
                       : `Còn trống — chọn làm ngày nhận`;
                     return (
                       <button
@@ -792,16 +798,21 @@ const CarDetail = () => {
                           busy
                             ? 'bg-red-100 text-red-500 cursor-not-allowed'
                             : partial
-                            ? 'bg-amber-100 text-amber-700 border border-amber-300'
+                            ? 'border border-amber-300 text-amber-700'
                             : isStart
                             ? 'bg-primary text-white shadow-sm'
                             : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                         }`}
+                        style={partial && dayBooking ? { background: halfDayStyle } : {}}
                         title={title}
                       >
                         <span className="font-semibold">{dayLabel}</span>
                         <span className="text-[9px] opacity-75">th{monthShort}</span>
-                        {partial && <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-amber-500" />}
+                        {partial && dayBooking && (
+                          <span className="absolute bottom-0 left-0 right-0 text-[8px] font-medium text-red-700 bg-white/80 rounded-b">
+                            {dayBooking.start.getHours() < 12 ? '☀ sáng' : '🌅 chiều'}
+                          </span>
+                        )}
                       </button>
                     );
                   })}
