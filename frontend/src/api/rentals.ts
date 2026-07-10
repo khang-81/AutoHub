@@ -18,10 +18,17 @@ export const getAddonOptionsApi = async (): Promise<InsuranceOptionDto[]> => {
   return res.data;
 };
 
-/** Khoảng ngày đã có đơn (công khai, không token) — dùng cho lịch trên trang chi tiết xe. */
+/** Khoảng ngày đã có đơn (công khai, không token) — dùng cho lịch trên trang chi tiết xe.
+ *  Sprint 4: thêm startTime/endTime để check overlap theo giờ (morning vs afternoon cùng ngày). */
+export interface BusyRangeDto {
+  startDate: string;
+  endDate: string;
+  startTime?: string;
+  endTime?: string;
+}
 export const getPublicBusyRangesForCarApi = async (
   carId: number
-): Promise<{ startDate: string; endDate: string }[]> => {
+): Promise<BusyRangeDto[]> => {
   const res = await axiosInstance.get(`/api/rentals/public/busy-ranges/${carId}`);
   const data = res.data;
   return Array.isArray(data) ? data : [];

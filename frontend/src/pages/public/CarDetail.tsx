@@ -119,14 +119,39 @@ const CarDetail = () => {
   });
   const relatedCars = (relatedSaleData?.content ?? []).filter((c) => c.id !== car?.id).slice(0, 3);
 
-  const bookedRanges = busyRangeRows.map((r) => ({
-    start: new Date(`${r.startDate}T00:00:00`),
-    end: new Date(`${r.endDate}T00:00:00`),
-    label: `${r.startDate} - ${r.endDate}`,
-  }));
+  const bookedRanges = busyRangeRows.map((r) => {
+    const startDateTime = new Date(`${r.startDate}T${r.startTime?.slice(0, 8) || '00:00:00'}`);
+    const endDateTime = new Date(`${r.endDate}T${r.endTime?.slice(0, 8) || '23:59:59'}`);
+    return {
+      start: startDateTime,
+      end: endDateTime,
+      startDate: r.startDate,
+      endDate: r.endDate,
+      startTime: r.startTime || '00:00:00',
+      endTime: r.endTime || '23:59:59',
+      label: `${r.startDate} ${r.startTime?.slice(0, 5) || ''} → ${r.endDate} ${r.endTime?.slice(0, 5) || ''}`,
+    };
+  });
 
-  const isBookedDate = (date: Date) =>
-    bookedRanges.some((range) => date >= range.start && date <= range.end);
+  // Phân biệt 3 trạng thái: 'full' (full-day busy), 'partial' (1 phần ngày bận), 'free'
+  const getDayStatus = (date: Date): 'full' | 'partial' | 'free' => {
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
+    const overlapping = bookedRanges.filter((r) => r.start <= dayEnd && r.end >= dayStart);
+    if (overlapping.length === 0) return 'free';
+    // Check nếu phủ kín ngày (>= 1 đơn full-day)
+    const fullDayCovered = overlapping.some((r) => {
+      const rStart = new Date(r.start); rStart.setHours(0, 0, 0, 0);
+      const rEnd = new Date(r.end); rEnd.setHours(23, 59, 59, 999);
+      return rStart <= dayStart && rEnd >= dayEnd;
+    });
+    if (fullDayCovered) return 'full';
+    return 'partial';
+  };
+  const isBookedDate = (date: Date) => getDayStatus(date) === 'full';
+  const isPartiallyBooked = (date: Date) => getDayStatus(date) === 'partial';
   const getDayClassName = (date: Date) => (isBookedDate(date) ? 'booked-day' : '');
 
   /**
@@ -721,6 +746,17 @@ const CarDetail = () => {
                     const isStart = startDate && date.toDateString() === startDate.toDateString();
                     const dayLabel = date.getDate();
                     const monthShort = date.getMonth() + 1;
+                    const partial = isPartiallyBooked(date);
+                    const fullBooking = bookedRanges.find((r) => {
+                      const rStart = new Date(r.start); rStart.setHours(0, 0, 0, 0);
+                      const rEnd = new Date(r.end); rEnd.setHours(23, 59, 59, 999);
+                      return rStart <= new Date(date) && rEnd >= new Date(date);
+                    });
+                    const title = fullBooking
+                      ? busy
+                        ? `Đã có người đặt cả ngày: ${fullBooking.label}`
+                        : `Có người đặt một phần: ${fullBooking.label}`
+                      : `Còn trống — chọn làm ngày nhận`;
                     return (
                       <button
                         key={date.toISOString()}
@@ -734,14 +770,17 @@ const CarDetail = () => {
                         className={`relative aspect-square flex flex-col items-center justify-center rounded-lg text-[11px] leading-tight transition-colors ${
                           busy
                             ? 'bg-red-100 text-red-500 cursor-not-allowed'
+                            : partial
+                            ? 'bg-amber-100 text-amber-700 border border-amber-300'
                             : isStart
                             ? 'bg-primary text-white shadow-sm'
                             : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                         }`}
-                        title={busy ? 'Xe đã có người đặt' : `Còn trống — chọn làm ngày nhận`}
+                        title={title}
                       >
                         <span className="font-semibold">{dayLabel}</span>
                         <span className="text-[9px] opacity-75">th{monthShort}</span>
+                        {partial && <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-amber-500" />}
                       </button>
                     );
                   })}
@@ -749,6 +788,12 @@ const CarDetail = () => {
                 <p className="text-[11px] text-gray-400 mt-2">
                   Bấm 1 ô trống để chọn nhanh làm ngày nhận xe.
                 </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 text-[10px] text-gray-500 mb-5">
+                <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-50 border border-emerald-200" />Còn trống</span>
+                <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-amber-100 border border-amber-300" />Có người đặt một phần (vd: sáng)</span>
+                <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-red-100 border border-red-200" />Đã đặt cả ngày</span>
               </div>
 
               {/* Date pickers */}
